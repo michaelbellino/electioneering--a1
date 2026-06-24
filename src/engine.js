@@ -52,6 +52,16 @@
   var SAFE_LEAN = 40;     // |lean| >= 40 => "safe"; opponent never spends here
   var TOSSUP_BAND = 3;    // matches MapView display band
 
+  // Empirically-tuned engine-side balance bounds (NOT in data.js — they enforce
+  // the data.js balance.notes goal of "three viable lanes tuned to comparable
+  // strength" and stop the ground lane from snowballing to a turn-6 early clinch.
+  // Without these the volunteer pool grows unbounded and a single canvass swings
+  // +30..+57 lean, letting ground win 24/24 at every difficulty by ~week 6.)
+  var MAX_VOLUNTEERS = 30;          // ground-army ceiling (in thousands)
+  var CANVASS_VOL_COEFF = 0.4;      // canvass lean per volunteer (data.js prose: 0.6)
+  var MAX_FIELD_OFFICE_PASSIVE = 5; // cap per-region passive lean/turn from field offices
+  var MAX_GOTV_PASSIVE = 0.8;       // cap the standing recruit GOTV bonus
+
   var clamp = Util.clamp;
 
   /* ===================================================================== *
@@ -101,7 +111,7 @@
   var DIFFICULTY = {
     easy:   { strength: 0.7, gains: 0.8, momAccrual: 4, counterpunch: false, oppoPriority: false, startEdgeRegions: 0 },
     normal: { strength: 1.0, gains: 1.0, momAccrual: 6, counterpunch: true,  oppoPriority: false, startEdgeRegions: 0 },
-    hard:   { strength: 1.3, gains: 1.15, momAccrual: 8, counterpunch: true, oppoPriority: true,  startEdgeRegions: 4 }
+    hard:   { strength: 1.25, gains: 1.05, momAccrual: 7, counterpunch: true, oppoPriority: true,  startEdgeRegions: 2 }
   };
 
   /* ===================================================================== *
@@ -168,7 +178,7 @@
     o.scandalLevel = clamp(o.scandalLevel, 0, 100);
     o.funds = Math.max(0, o.funds);
     state.resources.funds = Math.round(state.resources.funds);
-    state.resources.volunteers = Math.max(0, state.resources.volunteers);
+    state.resources.volunteers = clamp(state.resources.volunteers, 0, MAX_VOLUNTEERS);
   }
 
   // Decisive (election-day) assignment: lean > 0 => player, lean <= 0 => opponent.
@@ -403,7 +413,7 @@
         }
         case 'volunteer_canvass': {
           groundAction = true;
-          delta = (5 + state.resources.volunteers * 0.6) * mm * mods.groundMult * regionBonus();
+          delta = (5 + state.resources.volunteers * CANVASS_VOL_COEFF) * mm * mods.groundMult * regionBonus();
           region.lean += delta; clampRegion(region);
           region.organized = true;
           n.nationalApproval += 1;
@@ -647,20 +657,21 @@
       var s = state, n = s.national, o = s.opponent;
       var mDrift = n.momentum * 0.05;
       var oDrift = o.momentum * 0.05;
-      var gotv = s.gotvPassive || 0;
+      var gotv = Math.min(s.gotvPassive || 0, MAX_GOTV_PASSIVE);
       var vol = s.resources.volunteers;
 
       s.regions.forEach(function (r) {
         // momentum drift on all leans; opponent drift on contested leans
         r.lean += mDrift;
         if (Math.abs(r.lean) < SAFE_LEAN) r.lean -= oDrift;
-        // field-office passive (sticky, organized)
-        if (r.fieldOffice) r.lean += r.fieldOffice * 3 * (vol / 10);
-        // recruit GOTV passive on player-leaning regions
+        // field-office passive (sticky, organized) — bounded so it can't snowball
+        if (r.fieldOffice) r.lean += Math.min(r.fieldOffice * 3 * (vol / 10), MAX_FIELD_OFFICE_PASSIVE);
+        // recruit GOTV passive on player-leaning regions (bounded standing bonus)
         if (gotv && r.lean > 0) r.lean += gotv;
-        // regression toward (baseline + approval*0.10); half rate for organized leans
+        // regression toward (baseline + approval*0.10); organized leans are sticky
+        // but still erode (~70% rate), so ground must keep reinvesting, not coast.
         var target = r.baseLean + n.nationalApproval * 0.10;
-        var rate = r.organized ? 0.06 : 0.12;
+        var rate = r.organized ? 0.085 : 0.12;
         r.lean += (target - r.lean) * rate;
         clampRegion(r);
       });
@@ -755,6 +766,8 @@
       state.turn += 1;
       state.resources.actionPoints = AP_PER_TURN; // Briefing: refresh AP (does NOT bank)
       state.groundActionThisTurn = false;
+      state.nextRegionActionBonus = 0; // polling-consultant bonus is "this turn" only
+      state.intel = null;              // consultant intel is revealed "for one turn" only
       undoStack = [];
 
       upkeep();                 // start-of-week model update

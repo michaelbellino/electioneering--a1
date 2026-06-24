@@ -260,6 +260,71 @@ assert((easyR.won || 0) >= (smartIns.won || 0) && (smartIns.won || 0) >= (hardR.
   'balance: win rate is monotonic easy(' + easyR.won + ') >= normal(' + smartIns.won + ') >= hard(' + hardR.won + ')');
 
 /* ----------------------------------------------------------------------- *
+ * Regression guards (lock in the CCGS-review fixes)
+ * ----------------------------------------------------------------------- */
+// The ground lane must SNOWBALL LATE, not clinch by week ~6 (was avg turn ~6.9).
+(function () {
+  var clinchTurns = [];
+  seeds(24, 'clinch').forEach(function (sd) {
+    var r = run({ seed: sd, candidateId: 'grassroots_organizer', difficulty: 'normal', strategy: groundGame, eventPolicy: safestChoice });
+    if (r.condition === 'win_early_clinch') clinchTurns.push(r.state.turn);
+  });
+  var avg = clinchTurns.length ? clinchTurns.reduce(function (a, b) { return a + b; }, 0) / clinchTurns.length : 99;
+  var early = clinchTurns.filter(function (t) { return t < 8; }).length;
+  assert(avg >= 9, 'balance: ground snowballs LATE — avg early-clinch turn ' + avg.toFixed(1) + ' >= 9');
+  assert(early === 0, 'balance: ground never clinches before week 8 (' + early + ' early clinches)');
+})();
+
+// Polling consultant: its "+25% this turn" bonus and "intel for one turn" must
+// NOT leak across the week boundary (was a confirmed bug).
+(function () {
+  var g = Engine.create({ seed: 'consult', candidateId: 'seasoned_insider', difficulty: 'normal' });
+  if (g.hasPendingEvent()) { var e = g.getPendingEvent(); g.resolveEvent(e.choices[0].id); }
+  var bought = g.doAction('polling_consultant');
+  var mid = g.getState();
+  g.endTurn();
+  if (g.hasPendingEvent()) { var e2 = g.getPendingEvent(); g.resolveEvent(e2.choices[0].id); }
+  var after = g.getState();
+  assert(bought.ok && mid.intel && mid.intel.active, 'consultant: intel is active the turn it is bought');
+  assert(!after.intel && after.nextRegionActionBonus === 0, 'consultant: intel + the +25% bonus expire after the turn (no cross-turn leak)');
+})();
+
+// Undo restores resources exactly within a turn and is cleared across weeks.
+(function () {
+  var g = Engine.create({ seed: 'undo', candidateId: 'seasoned_insider', difficulty: 'normal' });
+  if (g.hasPendingEvent()) { var e = g.getPendingEvent(); g.resolveEvent(e.choices[0].id); }
+  var before = g.getState();
+  var region = before.regions.filter(function (r) { return r.lean > 0 && r.lean < 35; })[0] || before.regions[0];
+  var did = g.doAction('tv_ad_blitz', region.id);
+  var u = g.undoLastAction();
+  var back = g.getState();
+  assert(did.ok && u.ok, 'undo: a region action and its undo both succeed');
+  assert(back.resources.funds === before.resources.funds && back.resources.actionPoints === before.resources.actionPoints,
+    'undo: funds + Action Points restored exactly');
+  g.doAction('tv_ad_blitz', region.id); g.endTurn();
+  assert(!g.undoLastAction().ok, 'undo: cleared after endTurn (cannot undo across the week boundary)');
+})();
+
+// save() -> load() -> identical continued play must yield byte-identical state
+// (stronger than same-seed replay: catches any field dropped from serialization).
+(function () {
+  function drive(g, n) {
+    for (var i = 0; i < n; i++) {
+      if (g.hasPendingEvent()) { var e = g.getPendingEvent(); g.resolveEvent(e.choices[e.choices.length - 1].id); }
+      g.doAction('major_fundraiser');
+      var st = g.getState();
+      g.doAction('tv_ad_blitz', st.regions[5].id);
+      g.endTurn();
+    }
+  }
+  var a = Engine.create({ seed: 'sleq', candidateId: 'charismatic_outsider', difficulty: 'hard' });
+  drive(a, 3);
+  var b = Engine.load(a.save());
+  drive(a, 4); drive(b, 4);
+  assert(a.save() === b.save(), 'save/load: reload then identical play yields byte-identical state');
+})();
+
+/* ----------------------------------------------------------------------- *
  * Summary
  * ----------------------------------------------------------------------- */
 console.log('\n=== summary ===');
