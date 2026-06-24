@@ -82,6 +82,31 @@ The app icon is generated dependency-free from the brand star:
 npm run icon         # writes build/icon.png
 ```
 
+### Distribution plan — an install for every edition
+
+This is designed up front so shipping any edition is a one-command / one-tag
+operation; nothing in the game code needs to change to produce installers.
+
+| Edition | Artifact(s) | How it's produced | Status |
+|---|---|---|---|
+| **Linux** | AppImage, `.deb`, `.tar.gz`, unpacked binary | `npm run dist:linux` (electron-builder, native) | **built & verified locally** |
+| **Windows** | NSIS `.exe` installer + portable `.exe` | `npm run dist:win` on a Windows runner (CI) | portable `.exe` built locally; branded installer via CI |
+| **macOS** | `.dmg` + `.zip` | `npm run dist:mac` on a macOS runner (CI) | via CI (cannot build/sign from Linux) |
+
+**Why CI for Windows/macOS:** a Windows `.exe` installer and a macOS `.dmg`
+can only be fully built (and code-signed) on their own OS. The committed
+GitHub Actions workflow (`.github/workflows/release.yml`) does exactly this:
+
+1. Push a version tag, e.g. `git tag v0.1.0 && git push origin v0.1.0`.
+2. CI runs the headless test suite, then builds the installers on **native**
+   Ubuntu, Windows, and macOS runners in parallel.
+3. The installers for every edition are uploaded as build artifacts and
+   attached to an auto-generated **GitHub Release** to download.
+
+A manual **Run workflow** (workflow_dispatch) builds all editions as artifacts
+without cutting a release. Code-signing certificates (optional) slot in as CI
+secrets later without code changes.
+
 ---
 
 ## Test
