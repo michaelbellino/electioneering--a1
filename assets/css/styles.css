@@ -1,4 +1,7 @@
-@import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&family=Fira+Sans:wght@300;400;500;600;700&display=swap');
+/* Fonts are self-hosted (see assets/css/app.css @font-face) so the game is
+   fully self-contained and makes no network call — the Google Fonts @import
+   that used to live here was removed for offline/privacy and to allow a strict
+   Content-Security-Policy. Fallback stacks still apply if a face is missing. */
 
 /* ==========================================================================
    CAMPAIGN TRAIL — CSS Visual System

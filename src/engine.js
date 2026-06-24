@@ -904,7 +904,18 @@
 
   function load(savedString) {
     var parsed = typeof savedString === 'string' ? JSON.parse(savedString) : savedString;
-    var state = parsed.state || parsed;
+    var state = parsed && (parsed.state || parsed);
+    // Validate the shape before constructing so a corrupt/tampered save fails
+    // cleanly (the caller's try/catch turns this into a "no save" fallback)
+    // rather than throwing later inside rendering/tally.
+    if (!state || typeof state !== 'object' ||
+        !Array.isArray(state.regions) || !state.regions.length ||
+        !state.resources || typeof state.resources !== 'object' ||
+        !state.national || typeof state.national !== 'object' ||
+        typeof state.turn !== 'number' || !isFinite(state.turn) ||
+        ['playing', 'won', 'lost'].indexOf(state.status) === -1) {
+      throw new Error('Campaign.Engine.load: malformed or unrecognized save data');
+    }
     var rng = makeRng(state.seed, state.draws || 0);
     // ensure forward-compat defaults
     if (state.gotvPassive == null) state.gotvPassive = 0;

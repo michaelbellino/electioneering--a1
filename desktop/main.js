@@ -52,7 +52,41 @@ function createWindow() {
     shell.openExternal(details.url);
     return { action: 'deny' };
   });
+
+  // Defense-in-depth: the app never navigates away from its bundled index.html.
+  // Block any top-level navigation to a different document (and open it in the
+  // system browser if it's external) so a regression can't load remote content.
+  mainWindow.webContents.on('will-navigate', function (event, url) {
+    if (url !== mainWindow.webContents.getURL()) {
+      event.preventDefault();
+      if (/^https?:/i.test(url)) shell.openExternal(url);
+    }
+  });
+  mainWindow.webContents.on('will-attach-webview', function (event) { event.preventDefault(); });
+
   mainWindow.on('closed', function () { mainWindow = null; });
+}
+
+// Apply a Content-Security-Policy to every response the renderer receives.
+// The game is fully self-contained (self-hosted fonts, local scripts), so the
+// policy is strict: only same-origin scripts, no remote connections, no plugins.
+// 'unsafe-inline' is needed for style ATTRIBUTES (the UI sets element.style and
+// inline widths); scripts stay 'self' only, so HTML-injection can't execute JS.
+function applyCsp() {
+  var ses = electron.session.defaultSession;
+  ses.webRequest.onHeadersReceived(function (details, callback) {
+    var headers = details.responseHeaders || {};
+    headers['Content-Security-Policy'] = [
+      "default-src 'self'; " +
+      "script-src 'self'; " +
+      "style-src 'self' 'unsafe-inline'; " +
+      "img-src 'self' data:; " +
+      "font-src 'self'; " +
+      "connect-src 'self'; " +
+      "object-src 'none'; base-uri 'none'; frame-src 'none'"
+    ];
+    callback({ responseHeaders: headers });
+  });
 }
 
 function buildMenu() {
@@ -106,6 +140,7 @@ if (!gotLock) {
   });
 
   app.whenReady().then(function () {
+    applyCsp();
     buildMenu();
     createWindow();
     app.on('activate', function () { if (BrowserWindow.getAllWindows().length === 0) createWindow(); });

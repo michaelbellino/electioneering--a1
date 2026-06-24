@@ -25,7 +25,8 @@
         var v = attrs[k];
         if (v == null || v === false) return;
         if (k === 'class') node.className = v;
-        else if (k === 'html') node.innerHTML = v;
+        // NOTE: no innerHTML sink here on purpose — all dynamic text goes through
+        // textContent/text nodes so author/save/event strings can never inject HTML.
         else if (k === 'text') node.textContent = v;
         else if (k === 'dataset') Object.keys(v).forEach(function (d) { node.dataset[d] = v[d]; });
         else if (k.slice(0, 2) === 'on' && typeof v === 'function') node.addEventListener(k.slice(2).toLowerCase(), v);
