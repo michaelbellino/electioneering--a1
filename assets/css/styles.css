@@ -1,0 +1,1386 @@
+@import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&family=Fira+Sans:wght@300;400;500;600;700&display=swap');
+
+/* ==========================================================================
+   CAMPAIGN TRAIL — CSS Visual System
+   A turn-based election-campaign strategy game.
+   Aesthetic: dark "campaign war room" dashboard.
+
+   TABLE OF CONTENTS
+   01. Design Tokens (:root)
+   02. Reset & Base
+   03. Accessibility Utilities & Motion
+   04. Typography helpers
+   05. Animations (keyframes + utility classes)
+   06. App Shell & Layout (.app, header, main, rails)
+   07. Topbar
+   08. KPI Bar & KPI Cards
+   09. Panels
+   10. Buttons
+   11. Action Cards
+   12. Map (regions, legend)
+   13. Meters / Progress / Electoral bar
+   14. Modal & Event choices
+   15. Misc (badge, toast, tooltip, tabs, chart, log)
+   16. Full-screen Screens (start / win / lose)
+   17. Candidate cards & difficulty pills
+   18. Responsive breakpoints
+   ========================================================================== */
+
+/* ==========================================================================
+   01. DESIGN TOKENS
+   ========================================================================== */
+:root {
+  /* --- Brand & party colors --- */
+  --color-primary: #1E40AF;       /* player / brand campaign blue (deep)   */
+  --color-primary-bright: #3B82F6;/* player / brand campaign blue (bright)  */
+  --color-opponent: #DC2626;      /* opponent red (deep)                    */
+  --color-opponent-bright: #EF4444;/* opponent red (bright)                 */
+  --color-accent: #F59E0B;        /* amber accent / primary CTA             */
+  --color-accent-deep: #D97706;   /* amber pressed                          */
+  --color-tossup: #64748B;        /* tossup / neutral slate                 */
+
+  /* --- Status colors --- */
+  --color-good: #22C55E;          /* green positive                         */
+  --color-warn: #F59E0B;          /* amber caution                          */
+  --color-bad: #EF4444;           /* red negative                           */
+  --color-info: #3B82F6;          /* informational blue                     */
+
+  /* --- Surfaces (dark "war room") --- */
+  --bg-midnight: #0A0E27;         /* app background (deepest)               */
+  --bg-panel: #121831;            /* panels / cards                         */
+  --bg-panel-2: #1A2142;          /* raised panel / hover surface           */
+  --bg-sunken: #070B1E;           /* sunken tracks / deep black accents     */
+  --bg-glass: rgba(18, 24, 49, 0.72); /* glass surface base                 */
+
+  /* --- Text (WCAG AA on dark) --- */
+  --text-heading: #F8FAFC;        /* headings — ~16:1 on midnight           */
+  --text-body: #E2E8F0;           /* body — ~12:1 on midnight               */
+  --text-muted: #94A3B8;          /* muted — large/secondary only (~6:1)    */
+  --text-faint: #64748B;          /* decorative / disabled hints            */
+  --text-on-accent: #1A1505;      /* dark text on amber (AA on #F59E0B)     */
+  --text-on-bright: #FFFFFF;      /* white on saturated blue/red            */
+
+  /* --- Borders & dividers --- */
+  --border: rgba(148, 163, 184, 0.16);
+  --border-strong: rgba(148, 163, 184, 0.32);
+  --border-glass: rgba(226, 232, 240, 0.10);
+
+  /* --- Spacing scale --- */
+  --sp-1: 0.25rem;  /* 4px  */
+  --sp-2: 0.5rem;   /* 8px  */
+  --sp-3: 0.75rem;  /* 12px */
+  --sp-4: 1rem;     /* 16px */
+  --sp-5: 1.5rem;   /* 24px */
+  --sp-6: 2rem;     /* 32px */
+  --sp-7: 3rem;     /* 48px */
+  --sp-8: 4rem;     /* 64px */
+
+  /* --- Radii --- */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-pill: 999px;
+
+  /* --- Shadows (tuned for dark surfaces) --- */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 4px 10px rgba(0, 0, 0, 0.45);
+  --shadow-lg: 0 12px 28px rgba(0, 0, 0, 0.55);
+  --shadow-xl: 0 24px 60px rgba(0, 0, 0, 0.65);
+  --shadow-focus: 0 0 0 3px rgba(59, 130, 246, 0.55); /* focus ring */
+  --glow-accent: 0 0 16px rgba(245, 158, 11, 0.35);
+
+  /* --- Typography --- */
+  --font-mono: 'Fira Code', ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+  --font-body: 'Fira Sans', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+
+  --fs-xs: 0.75rem;    /* 12px */
+  --fs-sm: 0.875rem;   /* 14px */
+  --fs-base: 1rem;     /* 16px */
+  --fs-md: 1.125rem;   /* 18px */
+  --fs-lg: 1.375rem;   /* 22px */
+  --fs-xl: 1.75rem;    /* 28px */
+  --fs-2xl: 2.25rem;   /* 36px */
+  --fs-3xl: 3rem;      /* 48px */
+
+  --lh-tight: 1.2;
+  --lh-snug: 1.4;
+  --lh-body: 1.6;
+
+  /* --- Transition durations --- */
+  --t-fast: 150ms;
+  --t-base: 200ms;
+  --t-slow: 300ms;
+  --ease: cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* --- Z-index scale --- */
+  --z-base: 0;
+  --z-raised: 10;
+  --z-sticky: 20;
+  --z-overlay: 30;
+  --z-modal: 50;
+  --z-toast: 60;
+
+  /* --- Layout dimensions --- */
+  --topbar-h: 64px;
+  --sidebar-w: 280px;
+  --rightrail-w: 320px;
+
+  color-scheme: dark;
+}
+
+/* ==========================================================================
+   02. RESET & BASE
+   ========================================================================== */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+body {
+  min-height: 100vh;
+  background-color: var(--bg-midnight);
+  /* Subtle war-room radial depth; falls back to flat color offline. */
+  background-image:
+    radial-gradient(1200px 600px at 80% -10%, rgba(30, 64, 175, 0.18), transparent 60%),
+    radial-gradient(900px 500px at -10% 110%, rgba(220, 38, 38, 0.10), transparent 60%);
+  background-attachment: fixed;
+  color: var(--text-body);
+  font-family: var(--font-body);
+  font-size: var(--fs-base);
+  line-height: var(--lh-body);
+  font-weight: 400;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+img,
+svg {
+  display: block;
+  max-width: 100%;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+a {
+  color: var(--color-primary-bright);
+  text-decoration: none;
+  transition: color var(--t-fast) var(--ease);
+}
+
+a:hover {
+  color: var(--color-accent);
+}
+
+/* Global visible keyboard focus. Pointer focus is suppressed via :focus-visible. */
+:focus-visible {
+  outline: 2px solid var(--color-primary-bright);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+::selection {
+  background: rgba(245, 158, 11, 0.35);
+  color: var(--text-heading);
+}
+
+/* ==========================================================================
+   03. ACCESSIBILITY UTILITIES & MOTION
+   ========================================================================== */
+.visually-hidden {
+  position: absolute !important;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Respect users who prefer reduced motion. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ==========================================================================
+   04. TYPOGRAPHY HELPERS
+   ========================================================================== */
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-mono);
+  color: var(--text-heading);
+  line-height: var(--lh-tight);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+/* Numbers/stats use the monospaced face for tabular alignment. */
+.is-numeric,
+.kpi-card__value,
+.action-card__cost,
+.region-tile__ev,
+.topbar__turn {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+}
+
+/* ==========================================================================
+   05. ANIMATIONS
+   ========================================================================== */
+@keyframes ct-countup {
+  from { opacity: 0; transform: translateY(0.35em); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes ct-pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.45; }
+}
+
+@keyframes ct-spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes ct-toast-in {
+  from { opacity: 0; transform: translateX(16px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes ct-modal-in {
+  from { opacity: 0; transform: translateY(12px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes ct-needle-glow {
+  0%, 100% { box-shadow: 0 0 6px rgba(248, 250, 252, 0.6); }
+  50%      { box-shadow: 0 0 14px rgba(248, 250, 252, 0.9); }
+}
+
+.anim-countup {
+  animation: ct-countup var(--t-slow) var(--ease) both;
+}
+
+.anim-pulse {
+  animation: ct-pulse 1.6s var(--ease) infinite;
+}
+
+/* ==========================================================================
+   06. APP SHELL & LAYOUT
+   ========================================================================== */
+.app {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  width: 100%;
+}
+
+.app__header {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-sticky);
+  background: var(--bg-glass);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  border-bottom: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+}
+
+.app__main {
+  flex: 1 1 auto;
+  display: grid;
+  grid-template-columns: var(--sidebar-w) minmax(0, 1fr) var(--rightrail-w);
+  grid-template-areas: "sidebar center rightrail";
+  gap: var(--sp-5);
+  width: 100%;
+  max-width: 1600px;
+  margin: 0 auto;
+  padding: var(--sp-5);
+  align-items: start;
+}
+
+.app__sidebar  { grid-area: sidebar; }
+.app__center   { grid-area: center; min-width: 0; }
+.app__rightrail{ grid-area: rightrail; }
+
+.app__sidebar,
+.app__rightrail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+  position: sticky;
+  top: calc(var(--topbar-h) + var(--sp-5));
+}
+
+.app__center {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-5);
+}
+
+/* ==========================================================================
+   07. TOPBAR
+   ========================================================================== */
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-4);
+  height: var(--topbar-h);
+  max-width: 1600px;
+  margin: 0 auto;
+  padding: 0 var(--sp-5);
+}
+
+.topbar__brand {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: var(--fs-md);
+  color: var(--text-heading);
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.topbar__brand::before {
+  /* Decorative star "campaign badge" — pure CSS, not an emoji. */
+  content: "";
+  width: 14px;
+  height: 14px;
+  background: var(--color-accent);
+  box-shadow: var(--glow-accent);
+  clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
+}
+
+.topbar__turn {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-2) var(--sp-4);
+  background: var(--bg-sunken);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  font-size: var(--fs-sm);
+  color: var(--text-body);
+  white-space: nowrap;
+}
+
+.topbar__turn strong {
+  color: var(--color-accent);
+  font-weight: 600;
+}
+
+/* ==========================================================================
+   08. KPI BAR & KPI CARDS
+   ========================================================================== */
+.kpi-bar {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: var(--sp-4);
+}
+
+.kpi-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  padding: var(--sp-4);
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  transition: border-color var(--t-base) var(--ease),
+              box-shadow var(--t-base) var(--ease),
+              background-color var(--t-base) var(--ease);
+}
+
+.kpi-card:hover {
+  border-color: var(--border-strong);
+  box-shadow: var(--shadow-md);
+}
+
+.kpi-card__label {
+  font-size: var(--fs-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.kpi-card__value {
+  font-size: var(--fs-2xl);
+  font-weight: 700;
+  color: var(--text-heading);
+  line-height: 1;
+}
+
+.kpi-card__delta {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  font-family: var(--font-mono);
+}
+
+/* Direction is conveyed by an arrow glyph AND color (not color alone). */
+.kpi-card__delta::before {
+  font-family: var(--font-mono);
+  font-weight: 700;
+}
+
+.kpi-card__delta.is-up   { color: var(--color-good); }
+.kpi-card__delta.is-up::before   { content: "\25B2"; } /* ▲ */
+
+.kpi-card__delta.is-down { color: var(--color-bad); }
+.kpi-card__delta.is-down::before { content: "\25BC"; } /* ▼ */
+
+.kpi-card__delta.is-flat { color: var(--text-muted); }
+.kpi-card__delta.is-flat::before { content: "\2013"; } /* – */
+
+.kpi-card__spark {
+  margin-top: var(--sp-2);
+  width: 100%;
+  height: 36px;
+  display: block;
+  color: var(--color-primary-bright); /* inherited by inline SVG stroke */
+  opacity: 0.9;
+}
+
+/* ==========================================================================
+   09. PANELS
+   ========================================================================== */
+.panel {
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  overflow: hidden;
+}
+
+.panel__title {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-4) var(--sp-5);
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: var(--fs-md);
+  font-weight: 600;
+  color: var(--text-heading);
+  border-bottom: 1px solid var(--border);
+  background: linear-gradient(180deg, var(--bg-panel-2), var(--bg-panel));
+}
+
+.panel__body {
+  padding: var(--sp-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+
+.panel__footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--sp-3);
+  padding: var(--sp-4) var(--sp-5);
+  border-top: 1px solid var(--border);
+  background: var(--bg-sunken);
+}
+
+/* ==========================================================================
+   10. BUTTONS
+   ========================================================================== */
+.btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-2);
+  min-height: 44px;          /* min touch target */
+  min-width: 44px;
+  padding: var(--sp-3) var(--sp-5);
+  font-family: var(--font-body);
+  font-size: var(--fs-base);
+  font-weight: 600;
+  line-height: 1;
+  color: var(--text-body);
+  background: var(--bg-panel-2);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+  transition: background-color var(--t-base) var(--ease),
+              border-color var(--t-base) var(--ease),
+              color var(--t-base) var(--ease),
+              box-shadow var(--t-base) var(--ease),
+              opacity var(--t-base) var(--ease);
+}
+
+.btn:hover {
+  background: var(--bg-panel);
+  border-color: var(--color-primary-bright);
+}
+
+.btn:focus-visible {
+  outline: none;
+  box-shadow: var(--shadow-focus);
+}
+
+.btn:active {
+  transform: translateY(1px); /* tactile press; does not reflow neighbors */
+}
+
+.btn[disabled],
+.btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* --- Variants --- */
+.btn--primary {
+  color: var(--text-on-bright);
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+}
+.btn--primary:hover {
+  background: var(--color-primary-bright);
+  border-color: var(--color-primary-bright);
+}
+
+.btn--accent {
+  color: var(--text-on-accent);
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  box-shadow: var(--glow-accent);
+}
+.btn--accent:hover {
+  background: #FBBF24;
+  border-color: #FBBF24;
+}
+.btn--accent:active {
+  background: var(--color-accent-deep);
+}
+
+.btn--ghost {
+  color: var(--text-body);
+  background: transparent;
+  border-color: var(--border-strong);
+}
+.btn--ghost:hover {
+  background: rgba(148, 163, 184, 0.10);
+  color: var(--text-heading);
+}
+
+.btn--danger {
+  color: var(--text-on-bright);
+  background: var(--color-opponent);
+  border-color: var(--color-opponent);
+}
+.btn--danger:hover {
+  background: var(--color-opponent-bright);
+  border-color: var(--color-opponent-bright);
+}
+
+/* --- Sizes / layout --- */
+.btn--sm {
+  min-height: 36px;
+  padding: var(--sp-2) var(--sp-3);
+  font-size: var(--fs-sm);
+}
+
+.btn--block {
+  display: flex;
+  width: 100%;
+}
+
+/* --- Loading state --- */
+.btn.is-loading {
+  color: transparent !important;
+  pointer-events: none;
+  cursor: progress;
+}
+.btn.is-loading::after {
+  content: "";
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  /* Spinner inherits the variant text color via box-shadow trick fallback. */
+  color: var(--text-on-bright);
+  animation: ct-spin 0.7s linear infinite;
+}
+.btn--accent.is-loading::after,
+.btn--ghost.is-loading::after { color: var(--text-heading); }
+
+/* ==========================================================================
+   11. ACTION CARDS
+   ========================================================================== */
+.action-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  padding: var(--sp-4);
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--color-primary-bright);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: border-color var(--t-base) var(--ease),
+              background-color var(--t-base) var(--ease),
+              box-shadow var(--t-base) var(--ease);
+}
+
+.action-card:hover {
+  background: var(--bg-panel-2);
+  border-color: var(--border-strong);
+  border-left-color: var(--color-accent);
+  box-shadow: var(--shadow-md);
+}
+
+.action-card:focus-visible {
+  outline: none;
+  box-shadow: var(--shadow-focus);
+}
+
+.action-card__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--sp-3);
+}
+
+.action-card__name {
+  font-family: var(--font-mono);
+  font-weight: 600;
+  font-size: var(--fs-md);
+  color: var(--text-heading);
+}
+
+.action-card__cost {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+  padding: var(--sp-1) var(--sp-2);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--color-accent);
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.30);
+  border-radius: var(--radius-sm);
+  white-space: nowrap;
+}
+
+.action-card__desc {
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+  line-height: var(--lh-snug);
+}
+
+.action-card.is-selected {
+  border-color: var(--color-accent);
+  border-left-color: var(--color-accent);
+  background: var(--bg-panel-2);
+  box-shadow: var(--glow-accent), var(--shadow-md);
+}
+
+.action-card.is-disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  border-left-color: var(--text-faint);
+  pointer-events: none;
+}
+.action-card.is-disabled .action-card__cost {
+  color: var(--color-bad);
+  background: rgba(239, 68, 68, 0.10);
+  border-color: rgba(239, 68, 68, 0.30);
+}
+
+/* ==========================================================================
+   12. MAP (regions, legend)
+   ========================================================================== */
+.map {
+  position: relative;
+  width: 100%;
+}
+
+.map__svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  background: var(--bg-sunken);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+
+/* Region tile — meant for SVG <g>/<path> or DOM blocks. Default tossup. */
+.region-tile {
+  fill: var(--color-tossup);
+  stroke: var(--bg-midnight);
+  stroke-width: 1.5;
+  cursor: pointer;
+  /* Animate paint, not geometry — no layout shift on hover. */
+  transition: fill var(--t-base) var(--ease),
+              filter var(--t-base) var(--ease),
+              stroke var(--t-base) var(--ease);
+}
+
+.region-tile:hover {
+  filter: brightness(1.18);
+}
+
+.region-tile:focus-visible {
+  outline: none;
+  stroke: var(--text-heading);
+  stroke-width: 2.5;
+}
+
+/* Allegiance states. Five-step diverging blue↔red scale. */
+.region-tile.is-player     { fill: var(--color-primary); }
+.region-tile.is-leanplayer { fill: var(--color-primary-bright); }
+.region-tile.is-tossup     { fill: var(--color-tossup); }
+.region-tile.is-leanopp    { fill: var(--color-opponent-bright); }
+.region-tile.is-opponent   { fill: var(--color-opponent); }
+
+.region-tile.is-selected {
+  stroke: var(--color-accent);
+  stroke-width: 3;
+  filter: drop-shadow(0 0 6px rgba(245, 158, 11, 0.7));
+}
+
+.region-tile.is-target {
+  stroke: var(--text-heading);
+  stroke-width: 2.5;
+  stroke-dasharray: 6 4;
+}
+
+/* Text labels rendered over tiles. Color is never the only cue. */
+.region-tile__label {
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  fill: var(--text-heading);
+  paint-order: stroke;
+  stroke: rgba(7, 11, 30, 0.8);
+  stroke-width: 3;
+  pointer-events: none;
+}
+
+.region-tile__ev {
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  fill: var(--text-heading);
+  paint-order: stroke;
+  stroke: rgba(7, 11, 30, 0.85);
+  stroke-width: 3;
+  pointer-events: none;
+}
+
+.map-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-3) var(--sp-4);
+  margin-top: var(--sp-3);
+  padding: var(--sp-3) var(--sp-4);
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+
+.map-legend__item {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  font-size: var(--fs-sm);
+  color: var(--text-body);
+}
+
+.map-legend__item::before {
+  content: "";
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  background: var(--color-tossup);
+  border: 1px solid var(--border-strong);
+  flex: none;
+}
+.map-legend__item.is-player::before     { background: var(--color-primary); }
+.map-legend__item.is-leanplayer::before { background: var(--color-primary-bright); }
+.map-legend__item.is-tossup::before      { background: var(--color-tossup); }
+.map-legend__item.is-leanopp::before     { background: var(--color-opponent-bright); }
+.map-legend__item.is-opponent::before    { background: var(--color-opponent); }
+
+/* ==========================================================================
+   13. METERS / PROGRESS / ELECTORAL BAR
+   ========================================================================== */
+.meter {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  width: 100%;
+}
+
+.meter__track {
+  width: 100%;
+  height: 10px;
+  background: var(--bg-sunken);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  overflow: hidden;
+}
+
+.meter__fill {
+  height: 100%;
+  width: 0;
+  border-radius: var(--radius-pill);
+  background: var(--color-primary-bright);
+  transition: width var(--t-slow) var(--ease),
+              background-color var(--t-base) var(--ease);
+}
+
+.meter__fill.is-good { background: var(--color-good); }
+.meter__fill.is-warn { background: var(--color-warn); }
+.meter__fill.is-bad  { background: var(--color-bad); }
+
+/* Electoral-college bar: player | undecided | opponent, with a 270 needle. */
+.ec-bar {
+  position: relative;
+  display: flex;
+  width: 100%;
+  height: 28px;
+  background: var(--bg-sunken);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.ec-bar__player,
+.ec-bar__opp,
+.ec-bar__undecided {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  color: var(--text-on-bright);
+  overflow: hidden;
+  white-space: nowrap;
+  transition: width var(--t-slow) var(--ease);
+}
+
+.ec-bar__player    { background: var(--color-primary); }
+.ec-bar__opp       { background: var(--color-opponent); }
+.ec-bar__undecided {
+  background: repeating-linear-gradient(
+    45deg,
+    var(--bg-panel-2),
+    var(--bg-panel-2) 6px,
+    var(--bg-panel) 6px,
+    var(--bg-panel) 12px
+  );
+  color: var(--text-muted);
+}
+
+/* 270-to-win needle. Position via inline style (e.g. left:50%). */
+.ec-bar__needle {
+  position: absolute;
+  top: -4px;
+  bottom: -4px;
+  left: 50%;
+  width: 2px;
+  background: var(--text-heading);
+  transform: translateX(-50%);
+  z-index: var(--z-raised);
+  animation: ct-needle-glow 2.2s var(--ease) infinite;
+}
+.ec-bar__needle::after {
+  content: "270";
+  position: absolute;
+  top: -18px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-heading);
+}
+
+/* ==========================================================================
+   14. MODAL & EVENT CHOICES
+   ========================================================================== */
+.modal {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--sp-5);
+}
+
+.modal__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(5, 8, 20, 0.72);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  z-index: var(--z-overlay);
+}
+
+.modal__card {
+  position: relative;
+  z-index: var(--z-modal);
+  width: 100%;
+  max-width: 560px;
+  max-height: calc(100vh - var(--sp-7));
+  overflow-y: auto;
+  background: var(--bg-panel);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xl);
+  padding: var(--sp-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+  animation: ct-modal-in var(--t-slow) var(--ease) both;
+}
+
+.modal__title {
+  font-family: var(--font-mono);
+  font-size: var(--fs-xl);
+  font-weight: 700;
+  color: var(--text-heading);
+}
+
+.modal__body {
+  font-size: var(--fs-base);
+  color: var(--text-body);
+  line-height: var(--lh-body);
+}
+
+.modal__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--sp-3);
+  margin-top: var(--sp-2);
+}
+
+/* Event branch choices inside an event modal. */
+.event-choice {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  width: 100%;
+  text-align: left;
+  padding: var(--sp-4);
+  background: var(--bg-sunken);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: border-color var(--t-base) var(--ease),
+              background-color var(--t-base) var(--ease),
+              box-shadow var(--t-base) var(--ease);
+}
+
+.event-choice:hover {
+  background: var(--bg-panel-2);
+  border-color: var(--color-accent);
+  box-shadow: var(--shadow-md);
+}
+
+.event-choice:focus-visible {
+  outline: none;
+  box-shadow: var(--shadow-focus);
+}
+
+.event-choice__label {
+  font-weight: 600;
+  color: var(--text-heading);
+}
+
+.event-choice__preview {
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+}
+
+/* ==========================================================================
+   15. MISC (badge, toast, tooltip, tabs, chart, log)
+   ========================================================================== */
+/* --- Badge --- */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+  padding: 2px var(--sp-2);
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  line-height: 1.4;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border-strong);
+  background: var(--bg-panel-2);
+  color: var(--text-body);
+  white-space: nowrap;
+}
+.badge.is-good { color: var(--color-good); background: rgba(34, 197, 94, 0.12);  border-color: rgba(34, 197, 94, 0.35); }
+.badge.is-warn { color: var(--color-warn); background: rgba(245, 158, 11, 0.12); border-color: rgba(245, 158, 11, 0.35); }
+.badge.is-bad  { color: var(--color-bad);  background: rgba(239, 68, 68, 0.12);  border-color: rgba(239, 68, 68, 0.35); }
+.badge.is-info { color: var(--color-info); background: rgba(59, 130, 246, 0.12); border-color: rgba(59, 130, 246, 0.35); }
+
+/* --- Toast --- */
+.toast {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-3);
+  width: 100%;
+  max-width: 360px;
+  padding: var(--sp-4);
+  background: var(--bg-panel);
+  border: 1px solid var(--border-strong);
+  border-left: 4px solid var(--color-info);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  color: var(--text-body);
+  font-size: var(--fs-sm);
+  z-index: var(--z-toast);
+  animation: ct-toast-in var(--t-base) var(--ease) both;
+}
+.toast.is-good { border-left-color: var(--color-good); }
+.toast.is-bad  { border-left-color: var(--color-bad); }
+
+/* --- Tooltip --- */
+.tooltip {
+  position: relative;
+  display: inline-flex;
+}
+.tooltip::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%) translateY(4px);
+  min-width: max-content;
+  max-width: 240px;
+  padding: var(--sp-2) var(--sp-3);
+  background: var(--bg-sunken);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-md);
+  color: var(--text-body);
+  font-family: var(--font-body);
+  font-size: var(--fs-xs);
+  line-height: var(--lh-snug);
+  white-space: normal;
+  opacity: 0;
+  pointer-events: none;
+  z-index: var(--z-overlay);
+  transition: opacity var(--t-fast) var(--ease),
+              transform var(--t-fast) var(--ease);
+}
+.tooltip:hover::after,
+.tooltip:focus-visible::after,
+.tooltip:focus-within::after {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* --- Tabs --- */
+.tabs {
+  display: flex;
+  gap: var(--sp-1);
+  border-bottom: 1px solid var(--border);
+}
+
+.tab {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: var(--sp-2) var(--sp-4);
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  cursor: pointer;
+  transition: color var(--t-base) var(--ease),
+              border-color var(--t-base) var(--ease);
+}
+.tab:hover { color: var(--text-body); }
+.tab:focus-visible {
+  outline: none;
+  box-shadow: var(--shadow-focus);
+  border-radius: var(--radius-sm);
+}
+.tab.is-active {
+  color: var(--color-accent);
+  border-bottom-color: var(--color-accent);
+}
+
+/* --- Chart container --- */
+.chart {
+  position: relative;
+  width: 100%;
+  min-height: 200px;
+  padding: var(--sp-4);
+  background: var(--bg-sunken);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  color: var(--text-muted); /* axis/label inheritance for inline SVG */
+}
+
+/* --- Log feed --- */
+.log {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  max-height: 320px;
+  overflow-y: auto;
+  padding-right: var(--sp-1);
+}
+
+.log-entry {
+  display: flex;
+  gap: var(--sp-2);
+  padding: var(--sp-2) var(--sp-3);
+  font-size: var(--fs-sm);
+  line-height: var(--lh-snug);
+  color: var(--text-body);
+  background: var(--bg-panel);
+  border-left: 3px solid var(--text-faint);
+  border-radius: var(--radius-sm);
+}
+/* Status conveyed by a leading glyph AND color (not color alone). */
+.log-entry::before {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  flex: none;
+}
+.log-entry.is-good    { border-left-color: var(--color-good); }
+.log-entry.is-good::before    { content: "+"; color: var(--color-good); }
+.log-entry.is-bad     { border-left-color: var(--color-bad); }
+.log-entry.is-bad::before     { content: "\2212"; color: var(--color-bad); } /* − */
+.log-entry.is-neutral { border-left-color: var(--text-faint); }
+.log-entry.is-neutral::before { content: "\2022"; color: var(--text-muted); } /* • */
+
+/* ==========================================================================
+   16. FULL-SCREEN SCREENS (start / win / lose)
+   ========================================================================== */
+.screen {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-5);
+  padding: var(--sp-6);
+  text-align: center;
+  background: var(--bg-midnight);
+  overflow-y: auto;
+}
+.screen h1 {
+  font-size: var(--fs-3xl);
+  max-width: 22ch;
+}
+.screen p {
+  max-width: 60ch;
+  color: var(--text-body);
+}
+
+.screen--start {
+  background-image:
+    radial-gradient(900px 500px at 50% -10%, rgba(245, 158, 11, 0.18), transparent 60%),
+    radial-gradient(800px 600px at 10% 110%, rgba(30, 64, 175, 0.22), transparent 60%);
+}
+
+.screen--win {
+  background-image:
+    radial-gradient(1000px 600px at 50% -10%, rgba(34, 197, 94, 0.22), transparent 60%);
+}
+.screen--win h1 { color: var(--color-good); }
+
+.screen--lose {
+  background-image:
+    radial-gradient(1000px 600px at 50% -10%, rgba(239, 68, 68, 0.20), transparent 60%);
+}
+.screen--lose h1 { color: var(--color-bad); }
+
+/* ==========================================================================
+   17. CANDIDATE CARDS & DIFFICULTY PILLS
+   ========================================================================== */
+.candidate-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  width: 100%;
+  max-width: 280px;
+  padding: var(--sp-5);
+  text-align: left;
+  background: var(--bg-panel);
+  border: 2px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  cursor: pointer;
+  transition: border-color var(--t-base) var(--ease),
+              background-color var(--t-base) var(--ease),
+              box-shadow var(--t-base) var(--ease);
+}
+.candidate-card:hover {
+  border-color: var(--color-primary-bright);
+  background: var(--bg-panel-2);
+  box-shadow: var(--shadow-lg);
+}
+.candidate-card:focus-visible {
+  outline: none;
+  box-shadow: var(--shadow-focus);
+}
+.candidate-card.is-selected {
+  border-color: var(--color-accent);
+  box-shadow: var(--glow-accent), var(--shadow-lg);
+}
+.candidate-card h3 { font-size: var(--fs-lg); }
+
+.difficulty-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: var(--sp-2) var(--sp-5);
+  background: var(--bg-panel);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-pill);
+  color: var(--text-body);
+  font-family: var(--font-mono);
+  font-weight: 600;
+  font-size: var(--fs-sm);
+  cursor: pointer;
+  transition: background-color var(--t-base) var(--ease),
+              border-color var(--t-base) var(--ease),
+              color var(--t-base) var(--ease);
+}
+.difficulty-pill:hover {
+  border-color: var(--color-primary-bright);
+  color: var(--text-heading);
+}
+.difficulty-pill:focus-visible {
+  outline: none;
+  box-shadow: var(--shadow-focus);
+}
+.difficulty-pill.is-active {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: var(--text-on-bright);
+}
+
+/* ==========================================================================
+   18. RESPONSIVE BREAKPOINTS
+   Targets: 375 / 768 / 1024 / 1440. Mobile-friendly, no horizontal scroll.
+   ========================================================================== */
+
+/* <= 1024px : drop the right rail under the center column. */
+@media (max-width: 1024px) {
+  .app__main {
+    grid-template-columns: var(--sidebar-w) minmax(0, 1fr);
+    grid-template-areas:
+      "sidebar center"
+      "sidebar rightrail";
+  }
+  .app__rightrail {
+    position: static;
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+  .app__rightrail > * {
+    flex: 1 1 280px;
+  }
+}
+
+/* <= 768px : single column; rails stack; sidebar no longer sticky. */
+@media (max-width: 768px) {
+  :root {
+    --topbar-h: 56px;
+  }
+  .app__main {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      "sidebar"
+      "center"
+      "rightrail";
+    gap: var(--sp-4);
+    padding: var(--sp-4);
+  }
+  .app__sidebar,
+  .app__rightrail {
+    position: static;
+    flex-direction: column;
+  }
+  .app__rightrail > * { flex: initial; }
+  .topbar { padding: 0 var(--sp-4); }
+  .modal__card { padding: var(--sp-5); }
+}
+
+/* <= 375px : tighten typography & padding, keep 16px base body text. */
+@media (max-width: 480px) {
+  :root {
+    --fs-2xl: 1.875rem;  /* 30px */
+    --fs-3xl: 2.25rem;   /* 36px */
+  }
+  .kpi-bar {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .topbar__brand { font-size: var(--fs-base); }
+  .panel__body { padding: var(--sp-4); }
+  .modal { padding: var(--sp-3); }
+  .modal__actions .btn { flex: 1 1 100%; } /* full-width stacked actions */
+  .candidate-card { max-width: 100%; }
+}
+
+/* >= 1440px : generous gutters & slightly wider rails. */
+@media (min-width: 1440px) {
+  :root {
+    --sidebar-w: 300px;
+    --rightrail-w: 340px;
+  }
+  .app__main { gap: var(--sp-6); }
+}
