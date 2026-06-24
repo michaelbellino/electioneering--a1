@@ -109,20 +109,37 @@ secrets later without code changes.
 
 ---
 
-## Test
+## Test / TDD
+
+The engine is pure and headless, so you develop it test-first. The unit suite
+uses **Node's built-in test runner** (`node --test`) — no framework, no build,
+no dependencies — with a **watch mode** for a tight red → green → refactor loop.
 
 ```bash
-npm test             # engine simulation: balance + all win/fail reachability
+npm run test:watch   # TDD loop: re-runs the unit suite on every save
+npm test             # unit suite once (test/*.test.js)
+npm run test:sim     # balance + win/fail reachability sweeps (test/sim.js)
 npm run test:dom     # jsdom: drives a full game through the rendered UI
-npm run test:all     # both
+npm run test:all     # unit + sim + dom (what CI runs)
 ```
 
-`test/sim.js` drives full games through the public engine API (no UI) and
-asserts that a smart strategy wins on Normal, that idle and over-leveraged play
-reach **every** fail condition (electoral loss, bankruptcy, scandal collapse),
-that difficulty is monotonic, and that the engine is deterministic per seed.
-`test/dom-smoke.js` loads `index.html` in jsdom and plays a full game through the
-real UI, asserting the screens render with no runtime error.
+**TDD loop:** start `npm run test:watch`, add a failing `it(...)` in
+`test/engine.test.js` (or a new `test/*.test.js`), watch it go red, implement in
+`src/engine.js`, watch it go green — the watcher re-runs when either the test or
+the engine source changes.
+
+Three layers:
+- **Unit** (`test/engine.test.js`, `util.test.js`, `data.test.js`) — 45 fast,
+  isolated tests of the public API, every action formula, the win/fail rules,
+  events, undo, determinism + save/load, and the spec invariants.
+- **Simulation** (`test/sim.js`) — drives full games through the public API (no
+  UI) and asserts a smart strategy wins on Normal, that idle and over-leveraged
+  play reach **every** fail condition (electoral loss, bankruptcy, scandal
+  collapse), that difficulty is monotonic, that the ground lane snowballs *late*
+  (no week-6 runaway), and that the engine is deterministic per seed.
+- **Rendered UI** (`test/dom-smoke.js`) — loads `index.html` in jsdom and plays
+  a full game through the real UI, asserting the screens render with no runtime
+  error.
 
 ---
 

@@ -25,8 +25,10 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run icon
-      - name: Engine simulation + balance suite
+      - name: Unit suite (node --test)
         run: npm test
+      - name: Simulation + balance reachability
+        run: npm run test:sim
       - name: Rendered-UI DOM smoke
         run: npm run test:dom
 
