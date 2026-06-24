@@ -315,7 +315,7 @@
       var affordable = true;
       if (state.resources.actionPoints < action.costActionPoints) { affordable = false; reason = 'Not enough Action Points'; }
       else if (state.resources.funds < costFunds) { affordable = false; reason = 'Not enough Funds'; }
-      else if (action.targeting === 'region' && !region) { reason = 'Select a region'; }
+      else if (action.targeting === 'region' && !region) { affordable = false; reason = 'Select a region'; }
       return {
         id: action.id, name: action.name, desc: action.description,
         costFunds: costFunds, costAP: action.costActionPoints,

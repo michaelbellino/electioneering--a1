@@ -117,7 +117,9 @@
   function toast(msg, kind) {
     var host = document.getElementById('toast-host');
     if (!host) return;
-    var t = h('div', { class: 'toast' + (kind ? ' is-' + kind : ''), role: 'status' }, msg);
+    // The #toast-host is the aria-live region; per-toast role="status" would
+    // create nested live regions (double announcements), so omit it here.
+    var t = h('div', { class: 'toast' + (kind ? ' is-' + kind : '') }, msg);
     host.appendChild(t);
     setTimeout(function () { t.style.opacity = '0'; t.style.transform = 'translateY(8px)'; }, 2600);
     setTimeout(function () { if (t.parentNode) t.parentNode.removeChild(t); }, 3000);
@@ -233,7 +235,7 @@
 
     var KPI_DEFS = [
       { key: 'funds', icon: 'funds', label: 'War Chest', fmt: function (s) { return Util.formatMoney(s.resources.funds * 1000); }, val: function (s) { return s.resources.funds; }, color: 'var(--color-accent)', money: true },
-      { key: 'actionPoints', icon: 'ap', label: 'Action Pts', fmt: function (s) { return s.resources.actionPoints + ' / 5'; }, val: function (s) { return s.resources.actionPoints; }, color: 'var(--color-primary-bright)' },
+      { key: 'actionPoints', icon: 'ap', label: 'Action Pts', fmt: function (s) { return s.resources.actionPoints + ' / 5'; }, val: function (s) { return s.resources.actionPoints; }, color: 'var(--color-primary-bright)', noDelta: true },
       { key: 'volunteers', icon: 'volunteers', label: 'Volunteers', fmt: function (s) { return (Math.round(s.resources.volunteers * 10) / 10) + 'k'; }, val: function (s) { return s.resources.volunteers; }, color: 'var(--color-good)' },
       { key: 'momentum', icon: 'momentum', label: 'Momentum', fmt: function (s) { return Util.formatSigned(s.national.momentum); }, val: function (s) { return s.national.momentum; }, color: 'var(--color-primary-bright)' },
       { key: 'nationalApproval', icon: 'approval', label: 'Approval', fmt: function (s) { return Util.formatSigned(s.national.nationalApproval); }, val: function (s) { return s.national.nationalApproval; }, color: 'var(--color-info)' },
@@ -251,7 +253,7 @@
       var header = h('header', { class: 'app__header' }, [
         h('div', { class: 'topbar' }, [
           h('div', { class: 'topbar__brand' }, 'Campaign Trail'),
-          refs.evSummary = h('div', { class: 'topbar__score', 'aria-live': 'polite' }),
+          refs.evSummary = h('div', { class: 'topbar__score' }),
           h('div', { class: 'topbar__turn' }, [refs.turnLabel = h('span', null, 'WEEK '), refs.turnNum = h('strong', null, '1'), h('span', null, ' / 12')]),
           h('div', { class: 'topbar__controls' }, [undoBtn, saveBtn, newBtn, endBtn])
         ])
@@ -346,14 +348,21 @@
       KPI_DEFS.forEach(function (def) {
         var ref = refs.kpiCards[def.key];
         setText(ref.value, def.fmt(s));
-        var d = vm.deltas[def.key] || 0;
-        // Arrows convey sentiment (green up = good news): for inverted stats like
-        // scandal, a DROP is the good (up) direction, so all KPIs read consistently.
-        var improving = def.invert ? d < 0 : d > 0;
-        var dir = Math.abs(d) < 0.05 ? 'flat' : (improving ? 'up' : 'down');
-        ref.delta.className = 'kpi-card__delta is-' + dir;
-        var mag = def.money ? Util.formatMoney(Math.abs(d) * 1000) : (Math.round(Math.abs(d) * 10) / 10);
-        ref.delta.textContent = dir === 'flat' ? 'no change' : mag + ' this week';
+        if (def.noDelta) {
+          // Action Points reset to 5 every week, so a week-over-week delta is
+          // meaningless (and rendered routine spending as a red "down" arrow).
+          ref.delta.className = 'kpi-card__delta is-flat';
+          ref.delta.textContent = 'resets weekly';
+        } else {
+          var d = vm.deltas[def.key] || 0;
+          // Arrows convey sentiment (green up = good news): for inverted stats like
+          // scandal, a DROP is the good (up) direction, so all KPIs read consistently.
+          var improving = def.invert ? d < 0 : d > 0;
+          var dir = Math.abs(d) < 0.05 ? 'flat' : (improving ? 'up' : 'down');
+          ref.delta.className = 'kpi-card__delta is-' + dir;
+          var mag = def.money ? Util.formatMoney(Math.abs(d) * 1000) : (Math.round(Math.abs(d) * 10) / 10);
+          ref.delta.textContent = dir === 'flat' ? 'no change' : mag + ' this week';
+        }
         if (vm.series[def.key] && vm.series[def.key].length >= 2) {
           Charts.sparkline(ref.spark, vm.series[def.key], { color: def.color, width: 120, height: 30 });
         }
@@ -497,9 +506,9 @@
       });
     }
 
-    function destroy() { if (mapController) mapController.destroy(); clear(root); built = false; }
+    function destroy() { if (mapController) { mapController.destroy(); mapController = null; } clear(root); built = false; }
 
-    return { update: update };
+    return { update: update, destroy: destroy };
   }
 
   function findRegion(regions, id) {
@@ -512,10 +521,11 @@
    * ===================================================================== */
   function showEventModal(rootEl, opts) {
     var ev = opts.event;
-    var card = h('div', { class: 'modal__card', role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'event-title' }, [
+    var prevFocus = document.activeElement; // restore focus here on close (WCAG 2.4.3)
+    var card = h('div', { class: 'modal__card', role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'event-title', 'aria-describedby': 'event-desc' }, [
       h('span', { class: 'badge is-info modal__kicker' }, ev.category.replace(/-/g, ' ')),
       h('h2', { class: 'modal__title', id: 'event-title' }, ev.title),
-      h('div', { class: 'modal__body' }, [h('p', null, ev.description)]),
+      h('div', { class: 'modal__body' }, [h('p', { id: 'event-desc' }, ev.description)]),
       h('div', { class: 'modal__actions' }, ev.choices.map(function (c) {
         var previews = (c.effects || []).map(function (eff) {
           var fx = effectText(eff);
@@ -544,8 +554,13 @@
       }
     }
     modal.addEventListener('keydown', onKey);
-    function close() { modal.removeEventListener('keydown', onKey); if (modal.parentNode) modal.parentNode.removeChild(modal); }
-    announce('Event: ' + ev.title);
+    function close() {
+      modal.removeEventListener('keydown', onKey);
+      if (modal.parentNode) modal.parentNode.removeChild(modal);
+      // return focus to whatever opened the event (usually the End Week button)
+      if (prevFocus && typeof prevFocus.focus === 'function') { try { prevFocus.focus(); } catch (e) { /* ignore */ } }
+    }
+    announce('Event: ' + ev.title + '. ' + ev.description);
     return { close: close };
   }
 

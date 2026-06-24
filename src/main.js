@@ -71,6 +71,7 @@
 
   /* ---------------- screen flow ---------------- */
   function showStart() {
+    if (app.dashboard && app.dashboard.destroy) app.dashboard.destroy();
     app.engine = null; app.dashboard = null; app.eventOpen = false; app.ended = false;
     app.selectedRegionId = null; app.series = {}; app.kpiBaseline = {};
     var diffBlurbs = {
@@ -109,6 +110,7 @@
     var st = app.engine.getState();
     recordSeries(st);                         // week-1 starting sample
     app.kpiBaseline = snapshotStats(st);
+    if (app.dashboard && app.dashboard.destroy) app.dashboard.destroy(); // tear down any prior MapView controller
     app.dashboard = UI.createDashboard({ root: root, deps: deps, callbacks: callbacks });
     refresh();
     UI.announce('Campaign started. Week 1 of 12.');
@@ -126,7 +128,7 @@
       if (r.ok) { autosave(); UI.toast('Undid last action.'); refresh(); }
       else UI.toast(r.error || 'Nothing to undo.', 'bad');
     },
-    onSave: function () { UI.toast(saveGame() ? 'Campaign saved.' : 'Could not save (storage blocked).', saveGame() ? 'good' : 'bad'); },
+    onSave: function () { var ok = saveGame(); UI.toast(ok ? 'Campaign saved.' : 'Could not save (storage blocked).', ok ? 'good' : 'bad'); },
     onNewGame: function () {
       if (window.confirm('Abandon this campaign and start a new one?')) { clearSave(); showStart(); }
     }
@@ -195,7 +197,9 @@
     if (app.ended) return;
     app.ended = true;
     clearSave();                               // a finished game shouldn't be "continued"
-    UI.renderEndScreen(root, buildVM(state), { onReplay: function () { showStart(); } });
+    var vm = buildVM(state);
+    if (app.dashboard && app.dashboard.destroy) app.dashboard.destroy(); // tear down the MapView before swapping screens
+    UI.renderEndScreen(root, vm, { onReplay: function () { showStart(); } });
   }
 
   /* ---------------- boot ---------------- */

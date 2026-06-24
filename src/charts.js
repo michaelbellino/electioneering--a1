@@ -140,12 +140,16 @@
         'white-space:nowrap', 'opacity:0', 'transition:opacity 120ms ease',
         'transform:translate(-50%,-115%)'
       ].join(';');
-      // The container must be a positioning context for absolute placement.
+      container.__campaignTip = tip;
+    }
+    // (Re)attach whenever the tooltip is missing OR was detached by a prior
+    // clear()/re-render — otherwise tooltips silently stop working after the
+    // first redraw because the cached node lingers detached from the DOM.
+    if (!tip.parentNode) {
       const pos = (typeof getComputedStyle === 'function')
         ? getComputedStyle(container).position : 'static';
       if (pos === 'static' || !pos) container.style.position = 'relative';
       container.appendChild(tip);
-      container.__campaignTip = tip;
     }
 
     function show(ev) {

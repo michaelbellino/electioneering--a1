@@ -26,6 +26,37 @@
 
 .app-root { display: block; min-height: 100vh; }
 
+/* Skip link: hidden until keyboard-focused, then revealed on-screen (WCAG 2.4.1). */
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  z-index: var(--z-toast);
+  padding: var(--sp-2) var(--sp-3);
+  background: var(--bg-panel-2);
+  color: var(--text-heading);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  text-decoration: none;
+}
+.skip-link:focus,
+.skip-link:focus-visible {
+  left: var(--sp-3);
+  top: var(--sp-3);
+  outline: none;
+  box-shadow: var(--shadow-focus);
+}
+
+/* Route the map tile keyboard-focus ring to the visible <rect> so :focus-visible
+   on the <g> actually paints (the rect carries the stroke). */
+.region-tile:focus-visible > .region-tile-rect,
+.region-tile:focus-visible > rect {
+  stroke: var(--text-heading);
+  stroke-width: 3;
+  paint-order: stroke;
+}
+
 /* Inline SVG icons inherit currentColor and never shift the baseline. */
 .icon { display: inline-flex; align-items: center; justify-content: center; vertical-align: -0.15em; }
 .icon svg { display: block; }
