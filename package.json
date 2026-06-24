@@ -1,0 +1,15 @@
+{
+  "name": "campaign-trail",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Campaign Trail: Road to 270 — a turn-based election-campaign strategy game (vanilla JS, no build; packaged for desktop with Electron).",
+  "license": "MIT",
+  "scripts": {
+    "test": "node test/sim.js",
+    "test:dom": "node test/dom-smoke.js",
+    "test:all": "node test/sim.js && node test/dom-smoke.js"
+  },
+  "devDependencies": {
+    "jsdom": "^24.0.0"
+  }
+}

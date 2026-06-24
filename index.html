@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="color-scheme" content="dark" />
+  <meta name="description" content="Campaign Trail: Road to 270 — a turn-based election-campaign strategy game. Spend Action Points and Funds across 18 regions over 12 weeks to win 270 electoral votes." />
+  <title>Campaign Trail: Road to 270</title>
+  <link rel="stylesheet" href="assets/css/styles.css" />
+  <link rel="stylesheet" href="assets/css/app.css" />
+</head>
+<body>
+  <a href="#main-content" class="visually-hidden">Skip to main content</a>
+
+  <!-- Single mount point; all screens are rendered by src/ui.js + src/main.js. -->
+  <div id="app" class="app-root"></div>
+
+  <!-- Live region for screen-reader status announcements. -->
+  <div id="sr-status" class="visually-hidden" role="status" aria-live="polite"></div>
+
+  <!-- Toast host (transient action feedback). -->
+  <div id="toast-host" aria-live="polite"></div>
+
+  <!--
+    Classic <script> tags in strict dependency order so the game runs straight
+    from file:// with no build step and no ES modules:
+        rng -> util -> charts -> map -> data -> engine -> ui -> main
+  -->
+  <script src="src/rng.js"></script>
+  <script src="src/util.js"></script>
+  <script src="src/charts.js"></script>
+  <script src="src/map.js"></script>
+  <script src="src/data.js"></script>
+  <script src="src/engine.js"></script>
+  <script src="src/ui.js"></script>
+  <script src="src/main.js"></script>
+</body>
+</html>

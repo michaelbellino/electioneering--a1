@@ -1,0 +1,168 @@
+/*
+ * Campaign Trail — app composition layer.
+ *
+ * styles.css is the immutable design-system CONTRACT (tokens + component
+ * classes). This file only:
+ *   1. Aliases the legacy CSS-var names the committed charts.js / map.js
+ *      modules reference (with light-theme fallbacks) onto the dark design
+ *      tokens, so their axis text, gridlines and legend read correctly.
+ *   2. Hides the map module's own inline-styled legend/tally in favour of the
+ *      contract .map-legend / .ec-bar.
+ *   3. Lays out the composite views (start, war-room, event, end) using ONLY
+ *      the design tokens — no new colors, spacing, radii or shadows.
+ */
+
+:root {
+  /* charts.js + map.js compatibility aliases -> dark design tokens */
+  --color-text: var(--text-muted);
+  --color-secondary: var(--color-primary-bright);
+  --color-grid: var(--border);
+  --body-font: var(--font-body);
+  --space-xs: var(--sp-1);
+  --space-sm: var(--sp-2);
+  --space-md: var(--sp-4);
+  --space-lg: var(--sp-5);
+}
+
+.app-root { display: block; min-height: 100vh; }
+
+/* Inline SVG icons inherit currentColor and never shift the baseline. */
+.icon { display: inline-flex; align-items: center; justify-content: center; vertical-align: -0.15em; }
+.icon svg { display: block; }
+
+.muted-note { color: var(--text-muted); font-size: var(--fs-sm); line-height: var(--lh-body); margin: 0; }
+.muted-note.small, .small { font-size: var(--fs-xs); }
+
+/* Give the contract titles + labels a consistent icon gutter. */
+.panel__title .icon,
+.kpi-card__label .icon { color: var(--text-muted); margin-right: 6px; }
+.panel__hint { margin-left: auto; font-family: var(--font-mono); font-size: var(--fs-xs); color: var(--text-faint); font-weight: 400; }
+
+/* The map module renders its own inline-styled legend + tally; suppress them
+   in favour of the on-contract .map-legend and .ec-bar we render ourselves. */
+.map-view > .map-legend,
+.map-view > .map-tally { display: none !important; }
+
+/* ============================ TOPBAR ============================ */
+.topbar__score { display: inline-flex; align-items: center; gap: var(--sp-2); font-family: var(--font-mono); font-size: var(--fs-sm); flex-wrap: wrap; }
+.score-you { color: var(--color-primary-bright); font-weight: 700; }
+.score-opp { color: var(--color-opponent-bright); font-weight: 700; }
+.score-sep { color: var(--text-faint); }
+.score-tag { font-size: var(--fs-xs); padding: 2px 8px; border-radius: var(--radius-pill); font-weight: 700; letter-spacing: 0.04em; }
+.score-tag.is-good { color: var(--color-good); background: rgba(34, 197, 94, 0.14); }
+.score-tag.is-bad { color: var(--color-bad); background: rgba(239, 68, 68, 0.14); }
+.topbar__controls { margin-left: var(--sp-3); display: inline-flex; align-items: center; gap: var(--sp-2); }
+.btn-label { display: inline; }
+
+/* ============================ KPI ============================ */
+.kpi-card__delta { font-size: var(--fs-xs); }
+.kpi-card__spark { margin-top: var(--sp-2); min-height: 30px; }
+
+/* ============================ MAP / EC BAR ============================ */
+.map .panel__body { display: flex; flex-direction: column; gap: var(--sp-3); }
+.ec-bar-wrap { margin-top: var(--sp-2); }
+.map-legend { margin-top: var(--sp-1); }
+
+/* ============================ ACTION PANEL ============================ */
+.action-list { display: flex; flex-direction: column; gap: var(--sp-3); max-height: 62vh; overflow-y: auto; padding-right: var(--sp-1); }
+.action-card__cost { display: inline-flex; gap: var(--sp-2); font-family: var(--font-mono); }
+.cost-ap { color: var(--color-primary-bright); font-weight: 700; }
+.cost-funds { color: var(--color-accent); font-weight: 700; }
+.action-card__tag { display: inline-block; margin-top: var(--sp-2); font-size: var(--fs-xs); letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-faint); }
+.action-card__tag.is-national { color: var(--color-info); }
+.action-card__reason { display: block; margin-top: var(--sp-1); font-size: var(--fs-xs); color: var(--color-warn); }
+
+/* ============================ REGION DETAIL ============================ */
+.region-detail__head { display: flex; align-items: center; gap: var(--sp-3); margin-bottom: var(--sp-3); }
+.region-chip { font-family: var(--font-mono); font-weight: 700; font-size: var(--fs-md); padding: var(--sp-2) var(--sp-3); border-radius: var(--radius-sm); color: var(--text-on-bright); background: var(--color-tossup); }
+.region-chip.is-player { background: var(--color-primary); }
+.region-chip.is-leanplayer { background: var(--color-primary-bright); }
+.region-chip.is-tossup { background: var(--color-tossup); color: var(--text-on-accent); }
+.region-chip.is-leanopp { background: var(--color-opponent-bright); }
+.region-chip.is-opponent { background: var(--color-opponent); }
+.region-detail__name { display: block; font-size: var(--fs-md); color: var(--text-heading); }
+.region-detail__ev { font-size: var(--fs-sm); color: var(--text-muted); font-family: var(--font-mono); }
+.region-detail__lean { display: flex; flex-wrap: wrap; gap: var(--sp-2); margin-bottom: var(--sp-3); }
+.region-meta { display: grid; gap: var(--sp-2); margin: 0 0 var(--sp-3); }
+.region-meta__row { display: flex; justify-content: space-between; gap: var(--sp-3); font-size: var(--fs-sm); border-bottom: 1px solid var(--border); padding-bottom: var(--sp-1); }
+.region-meta__row dt { color: var(--text-muted); margin: 0; }
+.region-meta__row dd { margin: 0; font-family: var(--font-mono); color: var(--text-body); }
+
+/* ============================ OPPONENT WAR ROOM ============================ */
+.opp-note { color: var(--text-body); font-size: var(--fs-sm); line-height: var(--lh-body); margin: 0 0 var(--sp-3); }
+.opp-meter { margin-bottom: var(--sp-3); }
+.opp-meter__head { display: flex; justify-content: space-between; font-size: var(--fs-xs); color: var(--text-muted); margin-bottom: var(--sp-1); }
+.opp-meter__val { font-family: var(--font-mono); color: var(--text-body); }
+.intel-line { display: flex; align-items: center; gap: var(--sp-2); color: var(--color-warn); font-size: var(--fs-sm); margin: var(--sp-2) 0 0; }
+
+/* ============================ LOG ============================ */
+.log-entry__turn { font-family: var(--font-mono); color: var(--text-faint); margin-right: var(--sp-2); font-size: var(--fs-xs); }
+.log-entry__text { color: var(--text-body); }
+
+/* ============================ EVENT MODAL ============================ */
+.modal__kicker { display: inline-block; margin-bottom: var(--sp-2); text-transform: capitalize; }
+.event-choice__sub { display: block; color: var(--text-muted); font-size: var(--fs-sm); margin: var(--sp-1) 0; }
+.event-choice__preview { display: flex; flex-wrap: wrap; gap: var(--sp-2); margin-top: var(--sp-2); }
+.fx { font-family: var(--font-mono); font-size: var(--fs-xs); padding: 2px 6px; border-radius: var(--radius-sm); background: var(--bg-sunken); border: 1px solid var(--border); }
+.fx.is-good { color: var(--color-good); }
+.fx.is-bad { color: var(--color-bad); }
+.fx.is-flat { color: var(--text-muted); }
+
+/* ============================ START SCREEN ============================ */
+.screen__hero { text-align: center; margin-bottom: var(--sp-6); }
+.brand-star { display: inline-block; width: 48px; height: 48px; background: var(--color-accent); box-shadow: var(--glow-accent); margin-bottom: var(--sp-3);
+  clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%); }
+.brand-star.is-win { background: var(--color-good); }
+.brand-star.is-lose { background: var(--color-bad); box-shadow: none; }
+.screen__tagline { color: var(--text-muted); max-width: 62ch; margin: var(--sp-3) auto 0; font-size: var(--fs-md); line-height: var(--lh-body); }
+.resume-row { display: flex; align-items: center; justify-content: center; gap: var(--sp-3); margin-bottom: var(--sp-6); flex-wrap: wrap; }
+.resume-hint { color: var(--text-faint); font-size: var(--fs-sm); }
+.start-section { margin-bottom: var(--sp-6); }
+.start-section__title { font-size: var(--fs-lg); color: var(--text-heading); margin: 0 0 var(--sp-4); padding-bottom: var(--sp-2); border-bottom: 1px solid var(--border); }
+.candidate-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: var(--sp-4); }
+.candidate-card { text-align: left; }
+.candidate-card__head { display: flex; align-items: center; gap: var(--sp-2); margin-bottom: var(--sp-2); }
+.candidate-dot { width: 12px; height: 12px; border-radius: 50%; flex: none; }
+.candidate-card__party { color: var(--color-primary-bright); font-size: var(--fs-sm); margin: 0 0 var(--sp-2); font-family: var(--font-mono); }
+.candidate-card__bio { color: var(--text-muted); font-size: var(--fs-sm); line-height: var(--lh-body); margin: 0 0 var(--sp-3); }
+.cand-attrs { display: grid; gap: var(--sp-2); margin-bottom: var(--sp-3); }
+.cand-attr { display: grid; grid-template-columns: 84px 1fr; align-items: center; gap: var(--sp-2); }
+.cand-attr__name { font-size: var(--fs-xs); color: var(--text-muted); text-transform: capitalize; }
+.cand-attr .meter { width: 100%; }
+.candidate-card__mods { font-size: var(--fs-xs); color: var(--text-faint); line-height: var(--lh-body); margin: 0; }
+.difficulty-row { display: flex; gap: var(--sp-3); flex-wrap: wrap; }
+.difficulty-pill { flex: 1 1 200px; text-align: left; }
+.difficulty-pill__desc { display: block; font-size: var(--fs-xs); color: var(--text-muted); font-weight: 400; margin-top: 2px; }
+.tutorial-beats { list-style: none; padding: 0; margin: 0; display: grid; gap: var(--sp-3); }
+.tutorial-beats li { display: flex; gap: var(--sp-3); align-items: flex-start; color: var(--text-body); font-size: var(--fs-sm); line-height: var(--lh-body); }
+.beat-num { flex: none; width: 24px; height: 24px; border-radius: 50%; background: var(--bg-panel-2); color: var(--color-accent); font-family: var(--font-mono); font-weight: 700; font-size: var(--fs-xs); display: flex; align-items: center; justify-content: center; }
+.start-actions { margin-top: var(--sp-5); max-width: 420px; margin-left: auto; margin-right: auto; }
+
+/* ============================ END SCREEN ============================ */
+.screen__verdict { color: var(--text-body); max-width: 64ch; margin: var(--sp-3) auto var(--sp-5); font-size: var(--fs-md); line-height: var(--lh-body); }
+.screen--win .ec-bar, .screen--lose .ec-bar { max-width: 720px; margin: 0 auto var(--sp-5); }
+.recap-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: var(--sp-3); margin: 0 auto var(--sp-5); max-width: 760px; }
+.recap-cell { background: var(--bg-panel); border: 1px solid var(--border); border-radius: var(--radius-md); padding: var(--sp-3); text-align: center; }
+.recap-cell dt { color: var(--text-muted); font-size: var(--fs-xs); margin-bottom: var(--sp-1); }
+.recap-cell dd { margin: 0; font-family: var(--font-mono); font-size: var(--fs-lg); color: var(--text-heading); }
+.screen--win .panel, .screen--lose .panel { max-width: 760px; margin: 0 auto var(--sp-5); }
+
+/* ============================ TOASTS ============================ */
+#toast-host { position: fixed; bottom: var(--sp-5); right: var(--sp-5); z-index: var(--z-toast); display: flex; flex-direction: column; gap: var(--sp-2); max-width: min(360px, 90vw); }
+.toast { transition: opacity var(--t-slow) var(--ease), transform var(--t-slow) var(--ease); }
+
+/* ============================ RESPONSIVE ============================ */
+@media (max-width: 1024px) {
+  .action-list { max-height: none; }
+}
+@media (max-width: 768px) {
+  .topbar { flex-wrap: wrap; height: auto; padding: var(--sp-2) var(--sp-3); gap: var(--sp-2); }
+  .topbar__turn { margin-left: 0; }
+  .topbar__controls { margin-left: auto; }
+  .action-list { max-height: none; }
+}
+@media (max-width: 480px) {
+  .topbar__controls .btn-label { display: none; }
+  .candidate-grid { grid-template-columns: 1fr; }
+  .start-section__title { font-size: var(--fs-md); }
+}
