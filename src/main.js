@@ -131,6 +131,20 @@
     onSave: function () { var ok = saveGame(); UI.toast(ok ? 'Campaign saved.' : 'Could not save (storage blocked).', ok ? 'good' : 'bad'); },
     onNewGame: function () {
       if (window.confirm('Abandon this campaign and start a new one?')) { clearSave(); showStart(); }
+    },
+    onFundraise: function (opts) {
+      var r = app.engine.fundraise(opts);
+      if (!r.ok) { UI.toast(r.error || 'Cannot fundraise right now.', 'bad'); return; }
+      autosave(); refresh();
+      var res = r.result;
+      UI.toast('Raised $' + res.yield + 'k' + (res.scandal ? ' · +' + res.scandal + ' scandal' : '') + (res.favors ? ' · favor owed' : ''), res.scandal ? 'neutral' : 'good');
+    },
+    onRally: function (opts) {
+      var r = app.engine.rally(opts);
+      if (!r.ok) { UI.toast(r.error || 'Cannot rally right now.', 'bad'); return; }
+      autosave(); refresh();
+      var res = r.result;
+      UI.toast('Rally: +' + res.momentum + ' momentum' + (res.gaffe ? ' · a gaffe!' : ''), res.gaffe ? 'bad' : 'good');
     }
   };
 

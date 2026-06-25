@@ -252,6 +252,27 @@ h1, h2, h3, .topbar__brand, .candidate-card h3, .start-section__title, .screen h
 #toast-host { position: fixed; bottom: var(--sp-5); right: var(--sp-5); z-index: var(--z-toast); display: flex; flex-direction: column; gap: var(--sp-2); max-width: min(360px, 90vw); }
 .toast { transition: opacity var(--t-slow) var(--ease), transform var(--t-slow) var(--ease); }
 
+/* ===== This Week — parameterized time-budget actions (Fundraise / Rally) ===== */
+.tw .panel__hint { color: var(--color-cold); font-family: var(--font-mono); }
+.tw-body { display: flex; flex-direction: column; gap: var(--sp-4); }
+.tw-act { border: 1px solid var(--border); border-radius: var(--radius-md); padding: var(--sp-3); background: var(--bg-panel-2); }
+.tw-act__h { display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--sp-2); }
+.tw-act__h strong { font-family: var(--font-display); font-size: var(--fs-md); letter-spacing: -0.01em; }
+.tw-hrs { font-family: var(--font-mono); font-size: var(--fs-sm); color: var(--text-muted); }
+.tw-seg { display: flex; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); overflow: hidden; margin-bottom: var(--sp-2); }
+.tw-src { flex: 1; font-family: var(--font-mono); font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: 0.03em; border: 0; border-right: 1px solid var(--border); background: var(--bg-panel); color: var(--text-muted); padding: 7px 4px; cursor: pointer; }
+.tw-src:last-child { border-right: 0; }
+.tw-src.is-on { background: var(--color-accent); color: var(--text-on-accent); }
+.tw-src.is-dirty.is-on { background: var(--color-money); color: #06210f; }
+.tw-range { width: 100%; accent-color: var(--color-accent); margin: 4px 0 9px; cursor: pointer; }
+.tw-range:disabled { accent-color: var(--text-faint); cursor: not-allowed; }
+.tw-fx { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: var(--sp-2); }
+.tw-chip { font-family: var(--font-mono); font-size: var(--fs-xs); padding: 2px 7px; border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--bg-panel); }
+.tw-chip.is-good { color: var(--color-money); }
+.tw-chip.is-bad { color: var(--color-bad); }
+.btn--block { width: 100%; }
+.btn--sm { padding: 8px 12px; font-size: var(--fs-sm); }
+
 /* ============================ RESPONSIVE ============================ */
 @media (max-width: 1024px) {
   .action-list { max-height: none; }

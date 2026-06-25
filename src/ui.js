@@ -236,6 +236,9 @@
     var refs = {};
     var mapController = null;
     var built = false;
+    // "This Week" parameterized-action state (hour budget; survives re-renders).
+    var weekState = { source: 'grassroots', fundHours: 8, rallyHours: 6, selectedRegionId: null };
+    var lastVm = null;
 
     var KPI_DEFS = [
       { key: 'funds', icon: 'funds', label: 'War Chest', fmt: function (s) { return Util.formatMoney(s.resources.funds * 1000); }, val: function (s) { return s.resources.funds; }, color: 'var(--color-accent)', money: true },
@@ -263,16 +266,50 @@
         ])
       ]);
 
-      // ---- sidebar: region detail + action panel ----
+      // ---- sidebar: This Week (parameterized) + region detail + legacy actions ----
       refs.regionPanelBody = h('div', { class: 'panel__body' });
       var regionPanel = h('section', { class: 'panel' }, [h('div', { class: 'panel__title' }, [icon('map'), h('span', null, 'Region')]), refs.regionPanelBody]);
+
+      // Parameterized time-budget actions (Fundraise / Rally) — choose how long
+      // and how, spending from the weekly hour budget. Wired to engine.fundraise/rally.
+      function srcBtn(key, label, dirty) {
+        return h('button', { type: 'button', class: 'tw-src' + (weekState.source === key ? ' is-on' : '') + (dirty ? ' is-dirty' : ''), dataset: { src: key },
+          onclick: function () { weekState.source = key; if (lastVm) updateThisWeek(lastVm); } }, label);
+      }
+      refs.fundSrcRow = h('div', { class: 'tw-seg' }, [srcBtn('grassroots', 'Grassroots'), srcBtn('pac', 'PACs'), srcBtn('dark', 'Dark $', true)]);
+      refs.fundHoursVal = h('span', { class: 'tw-hrs' }, weekState.fundHours + 'h');
+      refs.fundSlider = h('input', { type: 'range', class: 'tw-range', min: '1', max: '40', value: String(weekState.fundHours), 'aria-label': 'Fundraise hours',
+        oninput: function () { weekState.fundHours = +this.value; if (lastVm) updateThisWeek(lastVm); } });
+      refs.fundFx = h('div', { class: 'tw-fx' });
+      refs.fundBtn = h('button', { type: 'button', class: 'btn btn--accent btn--block btn--sm', onclick: function () { cbk.onFundraise({ hours: weekState.fundHours, source: weekState.source }); } }, [icon('funds', 14), h('span', null, 'Fundraise')]);
+
+      refs.rallyHoursVal = h('span', { class: 'tw-hrs' }, weekState.rallyHours + 'h');
+      refs.rallySlider = h('input', { type: 'range', class: 'tw-range', min: '1', max: '40', value: String(weekState.rallyHours), 'aria-label': 'Rally hours',
+        oninput: function () { weekState.rallyHours = +this.value; if (lastVm) updateThisWeek(lastVm); } });
+      refs.rallyFx = h('div', { class: 'tw-fx' });
+      refs.rallyBtnLabel = h('span', null, 'Rally (national)');
+      refs.rallyBtn = h('button', { type: 'button', class: 'btn btn--ghost btn--block btn--sm', onclick: function () { cbk.onRally({ hours: weekState.rallyHours, regionId: weekState.selectedRegionId }); } }, [icon('momentum', 14), refs.rallyBtnLabel]);
+
+      var thisWeekPanel = h('section', { class: 'panel tw' }, [
+        h('div', { class: 'panel__title' }, [icon('refresh'), h('span', null, 'This Week'), refs.twHint = h('span', { class: 'panel__hint' }, '40h to spend')]),
+        h('div', { class: 'panel__body tw-body' }, [
+          h('div', { class: 'tw-act' }, [
+            h('div', { class: 'tw-act__h' }, [h('strong', null, 'Fundraise'), refs.fundHoursVal]),
+            refs.fundSrcRow, refs.fundSlider, refs.fundFx, refs.fundBtn
+          ]),
+          h('div', { class: 'tw-act' }, [
+            h('div', { class: 'tw-act__h' }, [h('strong', null, 'Rally'), refs.rallyHoursVal]),
+            refs.rallySlider, refs.rallyFx, refs.rallyBtn
+          ])
+        ])
+      ]);
 
       refs.actionList = h('div', { class: 'panel__body action-list' });
       var actionPanel = h('section', { class: 'panel' }, [
         h('div', { class: 'panel__title' }, [icon('ap'), h('span', null, 'Campaign Actions')]),
         refs.actionList
       ]);
-      var sidebar = h('aside', { class: 'app__sidebar' }, [regionPanel, actionPanel]);
+      var sidebar = h('aside', { class: 'app__sidebar' }, [thisWeekPanel, regionPanel, actionPanel]);
 
       // ---- center: KPI bar + map + ev-bar + polling chart ----
       refs.kpiCards = {};
@@ -337,6 +374,7 @@
     /* ---- per-update rendering ---- */
     function update(vm) {
       if (!built) build(vm);
+      lastVm = vm;
       var s = vm.state, t = vm.tally;
 
       // topbar score + turn
@@ -393,8 +431,9 @@
       // region detail
       renderRegionDetail(vm);
 
-      // action list
+      // action list + this-week parameterized panel
       renderActions(vm);
+      updateThisWeek(vm);
 
       // opponent + log
       renderOpponent(vm);
@@ -402,6 +441,41 @@
 
       // undo availability
       refs.undoBtn.disabled = !s.canUndo;
+    }
+
+    // "This Week" hour-budget panel: clamp sliders to remaining hours, refresh
+    // the (approximate) projected effects, and keep the rally target in sync.
+    function updateThisWeek(vm) {
+      var hoursLeft = vm.state.resources.hours != null ? vm.state.resources.hours : 40;
+      weekState.selectedRegionId = vm.selectedRegionId;
+      setText(refs.twHint, (Math.round(hoursLeft * 10) / 10) + 'h left / 40h');
+      var maxH = Math.max(1, Math.floor(hoursLeft));
+      [['fundSlider', 'fundHours', 'fundHoursVal'], ['rallySlider', 'rallyHours', 'rallyHoursVal']].forEach(function (t) {
+        var sl = refs[t[0]];
+        sl.max = String(maxH);
+        if (+sl.value > maxH) { sl.value = String(maxH); }
+        weekState[t[1]] = +sl.value;
+        setText(refs[t[2]], sl.value + 'h');
+      });
+      // sync the on-state of the source buttons
+      refs.fundSrcRow.querySelectorAll('.tw-src').forEach(function (n) { n.classList.toggle('is-on', n.dataset.src === weekState.source); });
+      var disabled = hoursLeft < 1 || vm.state.status !== 'playing';
+      refs.fundBtn.disabled = disabled; refs.rallyBtn.disabled = disabled;
+      refs.fundSlider.disabled = disabled; refs.rallySlider.disabled = disabled;
+
+      // approximate projections (mirror the engine's constants; the engine is authoritative)
+      var mm = Math.max(0.6, 1 + vm.state.national.momentum / 200);
+      var sm = { grassroots: 1.0, pac: 2.2, dark: 3.4 }[weekState.source] || 1;
+      clear(refs.fundFx);
+      refs.fundFx.appendChild(h('span', { class: 'tw-chip is-good' }, '≈ +$' + Math.round(weekState.fundHours * 10 * sm * mm) + 'k'));
+      if (weekState.source === 'dark') { refs.fundFx.appendChild(h('span', { class: 'tw-chip is-bad' }, '+scandal')); refs.fundFx.appendChild(h('span', { class: 'tw-chip is-bad' }, 'favor owed')); }
+      else if (weekState.source === 'grassroots') refs.fundFx.appendChild(h('span', { class: 'tw-chip is-good' }, '+approval'));
+      clear(refs.rallyFx);
+      refs.rallyFx.appendChild(h('span', { class: 'tw-chip is-good' }, '≈ +' + (Math.round(weekState.rallyHours * 0.7 * 10) / 10) + ' momentum'));
+      if (weekState.rallyHours >= 12) refs.rallyFx.appendChild(h('span', { class: 'tw-chip is-bad' }, 'gaffe risk'));
+
+      var reg = weekState.selectedRegionId ? vm.state.regions.filter(function (r) { return r.id === weekState.selectedRegionId; })[0] : null;
+      setText(refs.rallyBtnLabel, reg ? ('Rally in ' + reg.abbreviation) : 'Rally (national)');
     }
 
     function renderPollingChart(vm) {
