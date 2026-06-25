@@ -1,0 +1,104 @@
+name: build & release
+
+# Runs the headless test suite on every PR / branch push, and builds the
+# desktop installers on NATIVE runners (the only way to produce a signed,
+# verifiable Windows .exe and macOS .dmg). Triggers:
+#   - pull_request / push       -> run the test suite (fast checks on the PR)
+#   - push a tag like v0.1.0     -> test + build all platforms + GitHub Release
+#   - manual "Run workflow"      -> test + build all platforms, upload artifacts
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+# Cancel an in-progress run for the same ref when a new commit arrives.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read   # least privilege by default; the release job opts up to write
+
+jobs:
+  test:
+    name: headless tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run icon
+      - name: Unit suite (node --test)
+        run: npm test
+      - name: Simulation + balance reachability
+        run: npm run test:sim
+      - name: Rendered-UI DOM smoke
+        run: npm run test:dom
+
+  build:
+    name: build (${{ matrix.os }})
+    needs: test
+    # Only build installers on a release tag or a manual run — PR/branch pushes
+    # just run the fast test job above.
+    if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/')
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            args: --linux AppImage deb tar.gz
+            glob: "dist/*.AppImage dist/*.deb dist/*.tar.gz"
+          - os: windows-latest
+            args: --win nsis portable
+            glob: "dist/*.exe"
+          - os: macos-latest
+            args: --mac dmg zip
+            glob: "dist/*.dmg dist/*.zip"
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: Generate app icon
+        run: npm run icon
+      - name: Build installers
+        run: npx --no-install electron-builder ${{ matrix.args }} --publish never
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: campaign-trail-${{ matrix.os }}
+          path: |
+            dist/*.AppImage
+            dist/*.deb
+            dist/*.tar.gz
+            dist/*.exe
+            dist/*.dmg
+            dist/*.zip
+          if-no-files-found: ignore
+
+  release:
+    name: attach to release
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write   # only this job needs to publish the Release
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/**/*
+          generate_release_notes: true

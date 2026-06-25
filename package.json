@@ -1,0 +1,85 @@
+{
+  "name": "campaign-trail",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Campaign Trail: Road to 270 — a turn-based election-campaign strategy game. Runs from file:// with no build, and ships as a desktop app (Windows / macOS / Linux) via Electron.",
+  "author": {
+    "name": "Campaign Trail",
+    "email": "maintainers@campaign-trail.app"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/michaelbellino/electioneering--a1.git"
+  },
+  "main": "desktop/main.js",
+  "homepage": "./",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --dev",
+    "icon": "node tools/gen-icon.js",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder",
+    "dist:linux": "electron-builder --linux AppImage deb tar.gz",
+    "dist:win": "electron-builder --win nsis portable",
+    "dist:mac": "electron-builder --mac dmg zip",
+    "test": "node --test test/*.test.js",
+    "test:watch": "node --test --watch test/*.test.js",
+    "test:sim": "node test/sim.js",
+    "test:dom": "node test/dom-smoke.js",
+    "test:all": "node --test test/*.test.js && node test/sim.js && node test/dom-smoke.js"
+  },
+  "devDependencies": {
+    "electron": "^31.7.7",
+    "electron-builder": "^24.13.3",
+    "jsdom": "^24.0.0"
+  },
+  "build": {
+    "appId": "com.campaigntrail.road270",
+    "productName": "Campaign Trail",
+    "copyright": "Campaign Trail: Road to 270",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "index.html",
+      "src/**/*",
+      "assets/**/*",
+      "desktop/**/*",
+      "build/icon.png",
+      "!**/*.map"
+    ],
+    "extraMetadata": {
+      "main": "desktop/main.js"
+    },
+    "linux": {
+      "target": ["AppImage", "deb", "tar.gz"],
+      "category": "Game",
+      "maintainer": "Campaign Trail Maintainers <maintainers@campaign-trail.app>",
+      "icon": "build/icon.png",
+      "synopsis": "Turn-based election-campaign strategy game",
+      "description": "Run a national campaign across 18 regions over 12 weeks, spending Action Points and Funds to clinch 270 electoral votes against a reactive opponent AI."
+    },
+    "win": {
+      "target": ["nsis", "portable"],
+      "icon": "build/icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Campaign Trail"
+    },
+    "mac": {
+      "target": ["dmg", "zip"],
+      "category": "public.app-category.strategy-games",
+      "icon": "build/icon.png"
+    },
+    "dmg": {
+      "title": "Campaign Trail"
+    }
+  }
+}
