@@ -210,12 +210,15 @@
 
 /* ============================ END SCREEN ============================ */
 .screen__verdict { color: var(--text-body); max-width: 64ch; margin: var(--sp-3) auto var(--sp-5); font-size: var(--fs-md); line-height: var(--lh-body); }
-.screen--win .ec-bar, .screen--lose .ec-bar { max-width: 720px; margin: 0 auto var(--sp-5); }
-.recap-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: var(--sp-3); margin: 0 auto var(--sp-5); max-width: 760px; }
+/* width:100% so these centered end-screen blocks actually reach their max-width
+   instead of shrinking to content (same non-stretched flex-child trap as the
+   start screen — margin:auto can't grow a flex item that is already narrower). */
+.screen--win .ec-bar, .screen--lose .ec-bar { width: 100%; max-width: 720px; margin: 0 auto var(--sp-5); }
+.recap-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: var(--sp-3); margin: 0 auto var(--sp-5); max-width: 760px; width: 100%; }
 .recap-cell { background: var(--bg-panel); border: 1px solid var(--border); border-radius: var(--radius-md); padding: var(--sp-3); text-align: center; }
 .recap-cell dt { color: var(--text-muted); font-size: var(--fs-xs); margin-bottom: var(--sp-1); }
 .recap-cell dd { margin: 0; font-family: var(--font-mono); font-size: var(--fs-lg); color: var(--text-heading); }
-.screen--win .panel, .screen--lose .panel { max-width: 760px; margin: 0 auto var(--sp-5); }
+.screen--win .panel, .screen--lose .panel { width: 100%; max-width: 760px; margin: 0 auto var(--sp-5); }
 
 /* ============================ TOASTS ============================ */
 #toast-host { position: fixed; bottom: var(--sp-5); right: var(--sp-5); z-index: var(--z-toast); display: flex; flex-direction: column; gap: var(--sp-2); max-width: min(360px, 90vw); }

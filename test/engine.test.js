@@ -261,6 +261,21 @@ describe('determinism + save/load', () => {
     assert.throws(() => Engine.load('{"x":1}'));
     assert.throws(() => Engine.load('not json'));
   });
+  it('repairs a region missing baseLean instead of NaN-ing the map on upkeep', () => {
+    // A tampered/old save can omit baseLean; upkeep does target = baseLean + ...,
+    // which without a repair turns every region lean into NaN on the next week.
+    const g = craft((st) => { delete st.regions[0].baseLean; });
+    clearEvent(g);
+    assert.ok(g.endTurn().ok, 'endTurn (which runs upkeep) should succeed');
+    const leans = g.getState().regions.map((r) => r.lean);
+    assert.ok(leans.every(Number.isFinite), 'all region leans stay finite after upkeep');
+  });
+  it('rejects a save whose region.lean / electoralVotes is non-finite', () => {
+    const bad1 = JSON.parse(newGame().save()); bad1.state.regions[0].lean = null;
+    const bad2 = JSON.parse(newGame().save()); bad2.state.regions[0].electoralVotes = 'x';
+    assert.throws(() => Engine.load(JSON.stringify(bad1)), /malformed|unrecognized/i);
+    assert.throws(() => Engine.load(JSON.stringify(bad2)), /malformed|unrecognized/i);
+  });
 });
 
 describe('tally()', () => {

@@ -916,6 +916,19 @@
         ['playing', 'won', 'lost'].indexOf(state.status) === -1) {
       throw new Error('Campaign.Engine.load: malformed or unrecognized save data');
     }
+    // Validate/repair engine-critical region fields. lean & electoralVotes are
+    // unrecoverable if absent/non-finite (reject); baseLean is the regression
+    // target read every upkeep — if a tampered/old save omits it, upkeep would
+    // turn the whole map to NaN, so repair it from the current lean.
+    for (var ri = 0; ri < state.regions.length; ri++) {
+      var reg = state.regions[ri];
+      if (!reg || typeof reg !== 'object' ||
+          typeof reg.lean !== 'number' || !isFinite(reg.lean) ||
+          typeof reg.electoralVotes !== 'number' || !isFinite(reg.electoralVotes)) {
+        throw new Error('Campaign.Engine.load: malformed or unrecognized save data');
+      }
+      if (typeof reg.baseLean !== 'number' || !isFinite(reg.baseLean)) reg.baseLean = baselineOf(reg.lean);
+    }
     var rng = makeRng(state.seed, state.draws || 0);
     // ensure forward-compat defaults
     if (state.gotvPassive == null) state.gotvPassive = 0;
