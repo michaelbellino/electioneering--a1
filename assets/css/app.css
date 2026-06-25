@@ -168,7 +168,15 @@
 .resume-hint { color: var(--text-faint); font-size: var(--fs-sm); }
 .start-section { margin-bottom: var(--sp-6); }
 .start-section__title { font-size: var(--fs-lg); color: var(--text-heading); margin: 0 0 var(--sp-4); padding-bottom: var(--sp-2); border-bottom: 1px solid var(--border); }
-.candidate-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: var(--sp-4); }
+/* The .screen flex column centers its children (align-items:center), so blocks
+   shrink to content. Without an explicit width the candidate grid below
+   collapses to a single narrow column ~2342px tall, burying the CTA. Give the
+   start-screen blocks a centered, width-constrained column so the grid has room
+   to lay out several cards per row. */
+.screen__hero, .resume-row, .start-section, .start-actions { width: 100%; margin-inline: auto; }
+.screen__hero, .resume-row, .start-section { max-width: 960px; }
+.candidate-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: var(--sp-4); align-items: start; }
+.candidate-grid .candidate-card { max-width: none; }   /* fill the grid track, not the global 280px cap */
 .candidate-card { text-align: left; }
 .candidate-card__head { display: flex; align-items: center; gap: var(--sp-2); margin-bottom: var(--sp-2); }
 .candidate-dot { width: 12px; height: 12px; border-radius: 50%; flex: none; }
@@ -183,9 +191,22 @@
 .difficulty-pill { flex: 1 1 200px; text-align: left; }
 .difficulty-pill__desc { display: block; font-size: var(--fs-xs); color: var(--text-muted); font-weight: 400; margin-top: 2px; }
 .tutorial-beats { list-style: none; padding: 0; margin: 0; display: grid; gap: var(--sp-3); }
+@media (min-width: 720px) { .tutorial-beats { grid-template-columns: 1fr 1fr; gap: var(--sp-3) var(--sp-6); } }
 .tutorial-beats li { display: flex; gap: var(--sp-3); align-items: flex-start; color: var(--text-body); font-size: var(--fs-sm); line-height: var(--lh-body); }
 .beat-num { flex: none; width: 24px; height: 24px; border-radius: 50%; background: var(--bg-panel-2); color: var(--color-accent); font-family: var(--font-mono); font-weight: 700; font-size: var(--fs-xs); display: flex; align-items: center; justify-content: center; }
 .start-actions { margin-top: var(--sp-5); max-width: 420px; margin-left: auto; margin-right: auto; }
+/* Pin the primary CTA to the bottom of the (content-rich, scrolling) start
+   screen so "Launch campaign" is always reachable without hunting for it. */
+.screen--start .start-actions {
+  position: sticky;
+  bottom: 0;
+  width: 100%;
+  max-width: none;
+  margin-top: var(--sp-5);
+  padding: var(--sp-3) 0 var(--sp-2);
+  background: linear-gradient(to top, var(--bg-midnight) 78%, transparent);
+}
+.screen--start .start-actions .btn { max-width: 420px; margin-inline: auto; }
 
 /* ============================ END SCREEN ============================ */
 .screen__verdict { color: var(--text-body); max-width: 64ch; margin: var(--sp-3) auto var(--sp-5); font-size: var(--fs-md); line-height: var(--lh-body); }

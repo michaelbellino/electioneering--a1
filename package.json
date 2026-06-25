@@ -27,12 +27,14 @@
     "test:watch": "node --test --watch test/*.test.js",
     "test:sim": "node test/sim.js",
     "test:dom": "node test/dom-smoke.js",
-    "test:all": "node --test test/*.test.js && node test/sim.js && node test/dom-smoke.js"
+    "test:layout": "node test/layout.e2e.mjs",
+    "test:all": "node --test test/*.test.js && node test/sim.js && node test/dom-smoke.js && node test/layout.e2e.mjs"
   },
   "devDependencies": {
     "electron": "^31.7.7",
     "electron-builder": "^24.13.3",
-    "jsdom": "^24.0.0"
+    "jsdom": "^24.0.0",
+    "playwright-core": "^1.61.1"
   },
   "build": {
     "appId": "com.campaigntrail.road270",

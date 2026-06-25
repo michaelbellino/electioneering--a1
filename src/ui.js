@@ -218,7 +218,9 @@
     ]);
     rootEl.appendChild(screen);
     var firstCard = rootEl.querySelector('.candidate-card');
-    if (firstCard) firstCard.focus();
+    // preventScroll: keep keyboard focus on the first option without yanking the
+    // tall start screen down past its hero on load.
+    if (firstCard) firstCard.focus({ preventScroll: true });
   }
 
   /* ===================================================================== *
@@ -614,7 +616,7 @@
       ariaLabel: 'Electoral votes by week for you and the opponent.'
     });
     var btn = rootEl.querySelector('.btn--accent');
-    if (btn) btn.focus();
+    if (btn) btn.focus({ preventScroll: true });
     announce(won ? 'Victory. ' + vm.state.endReason : 'Defeat. ' + vm.state.endReason);
   }
 

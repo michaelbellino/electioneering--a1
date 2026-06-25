@@ -120,7 +120,8 @@ npm run test:watch   # TDD loop: re-runs the unit suite on every save
 npm test             # unit suite once (test/*.test.js)
 npm run test:sim     # balance + win/fail reachability sweeps (test/sim.js)
 npm run test:dom     # jsdom: drives a full game through the rendered UI
-npm run test:all     # unit + sim + dom (what CI runs)
+npm run test:layout  # real Chromium: start-screen layout guard (self-skips w/o a browser)
+npm run test:all     # unit + sim + dom + layout
 ```
 
 **TDD loop:** start `npm run test:watch`, add a failing `it(...)` in
@@ -140,6 +141,26 @@ Three layers:
 - **Rendered UI** (`test/dom-smoke.js`) — loads `index.html` in jsdom and plays
   a full game through the real UI, asserting the screens render with no runtime
   error.
+- **Browser layout** (`test/layout.e2e.mjs`) — loads the real page in headless
+  Chromium (Playwright) and asserts the start screen is usable across viewports
+  (candidate cards lay out as a row, the primary CTA stays in view, no horizontal
+  overflow, single-column on mobile). jsdom can't do CSS layout, so this guards
+  layout regressions. It **self-skips** when no browser is available, so the
+  default CI stays green; provide one with `npx playwright install chromium`.
+
+---
+
+## Repository layout
+
+This repo is **Campaign Trail** at its root. Supporting material lives alongside:
+
+```
+src/ assets/ desktop/ test/ ...   the game (vanilla JS, no build) + Electron shell
+.claude/skills/ui-ux-pro-max/     UI/UX design-intelligence skill (used during design)
+claude-code-game-studios/         vendored studio agents/skills/templates (dev tooling)
+reference/stateline/              a separate TypeScript/React take on an election game,
+                                  kept for reference (not part of the build)
+```
 
 ---
 
