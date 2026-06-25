@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="color-scheme" content="dark" />
+  <meta name="color-scheme" content="light dark" />
   <meta name="description" content="Campaign Trail: Road to 270 — a turn-based election-campaign strategy game. Spend Action Points and Funds across 18 regions over 12 weeks to win 270 electoral votes." />
   <title>Campaign Trail: Road to 270</title>
   <link rel="stylesheet" href="assets/css/styles.css" />
@@ -11,6 +11,11 @@
 </head>
 <body>
   <a href="#main-content" class="skip-link">Skip to main content</a>
+
+  <!-- Global theme toggle (bright is default; choice persists). -->
+  <button id="theme-toggle" class="theme-toggle theme-toggle--fixed" type="button" aria-pressed="false" aria-label="Switch to dark mode">
+    <span class="theme-toggle__icon" aria-hidden="true">◐</span><span class="theme-toggle__label">Dark</span>
+  </button>
 
   <!-- Single mount point; all screens are rendered by src/ui.js + src/main.js. -->
   <div id="app" class="app-root"></div>

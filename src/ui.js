@@ -194,7 +194,8 @@
       h('div', { class: 'screen__hero' }, [
         h('span', { class: 'brand-star', 'aria-hidden': 'true' }),
         h('h1', null, 'Campaign Trail'),
-        h('p', { class: 'screen__tagline' }, 'Road to 270 — twelve weeks, eighteen regions, 538 electoral votes. Out-campaign a reactive rival and clinch the presidency.')
+        h('p', { class: 'screen__sub' }, 'Democracy, Optimized.™ — a product of DEMOS Strategic Solutions'),
+        h('p', { class: 'screen__tagline' }, 'Twelve weeks, eighteen regions, 538 electoral votes — and a system that runs on money. Out-optimize a reactive rival, work the network, and clinch 270. The posters smile; the machine counts.')
       ]),
       vm.hasSave ? h('div', { class: 'resume-row' }, [
         h('button', { class: 'btn btn--ghost', type: 'button', onclick: function () { cb.onContinue(); } }, [icon('play'), 'Continue saved campaign']),
@@ -255,7 +256,7 @@
 
       var header = h('header', { class: 'app__header' }, [
         h('div', { class: 'topbar' }, [
-          h('div', { class: 'topbar__brand' }, 'Campaign Trail'),
+          h('div', { class: 'topbar__brand' }, [h('span', null, 'Campaign Trail'), h('span', { class: 'brand-sub' }, 'Democracy, Optimized.™')]),
           refs.evSummary = h('div', { class: 'topbar__score' }),
           h('div', { class: 'topbar__turn' }, [refs.turnLabel = h('span', null, 'WEEK '), refs.turnNum = h('strong', null, '1'), h('span', null, ' / 12')]),
           h('div', { class: 'topbar__controls' }, [undoBtn, saveBtn, newBtn, endBtn])

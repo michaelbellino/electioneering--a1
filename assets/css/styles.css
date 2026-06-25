@@ -6,7 +6,10 @@
 /* ==========================================================================
    CAMPAIGN TRAIL — CSS Visual System
    A turn-based election-campaign strategy game.
-   Aesthetic: dark "campaign war room" dashboard.
+   Aesthetic: bright "civic brand" surface over a cold optimization machine —
+   a satire of money-in-politics. Bright is default; dark is an opt-in theme.
+   All component colour/surface/text comes from the tokens below, which the
+   html.dark block re-maps, so the whole UI is theme-agnostic.
 
    TABLE OF CONTENTS
    01. Design Tokens (:root)
@@ -33,40 +36,42 @@
    01. DESIGN TOKENS
    ========================================================================== */
 :root {
-  /* --- Brand & party colors --- */
-  --color-primary: #1E40AF;       /* player / brand campaign blue (deep)   */
-  --color-primary-bright: #3B82F6;/* player / brand campaign blue (bright)  */
-  --color-opponent: #DC2626;      /* opponent red (deep)                    */
-  --color-opponent-bright: #EF4444;/* opponent red (bright)                 */
-  --color-accent: #F59E0B;        /* amber accent / primary CTA             */
-  --color-accent-deep: #D97706;   /* amber pressed                          */
-  --color-tossup: #64748B;        /* tossup / neutral slate                 */
+  /* --- Brand & party colors (bright "civic brand" theme) --- */
+  --color-primary: #1F5FBF;       /* player / civic blue (deep)             */
+  --color-primary-bright: #2E7BE0;/* player / civic blue (bright)           */
+  --color-opponent: #C8243A;      /* opponent red (deep)                    */
+  --color-opponent-bright: #E0455A;/* opponent red (bright)                 */
+  --color-accent: #F2542D;        /* WARM coral — the "human" brand / CTA   */
+  --color-accent-deep: #C23A19;   /* coral pressed                          */
+  --color-tossup: #8A93A4;        /* tossup / neutral slate                 */
+  --color-cold: #0E83C8;          /* the machine: cold network / data       */
+  --color-money: #2FA866;         /* corruption / dirty money green         */
 
   /* --- Status colors --- */
-  --color-good: #22C55E;          /* green positive                         */
-  --color-warn: #F59E0B;          /* amber caution                          */
-  --color-bad: #EF4444;           /* red negative                           */
-  --color-info: #3B82F6;          /* informational blue                     */
+  --color-good: #2FA866;          /* positive / money green                 */
+  --color-warn: #E08A1E;          /* amber caution                          */
+  --color-bad: #D7263D;           /* red negative                           */
+  --color-info: #0E83C8;          /* informational / cold                    */
 
-  /* --- Surfaces (dark "war room") --- */
-  --bg-midnight: #0A0E27;         /* app background (deepest)               */
-  --bg-panel: #121831;            /* panels / cards                         */
-  --bg-panel-2: #1A2142;          /* raised panel / hover surface           */
-  --bg-sunken: #070B1E;           /* sunken tracks / deep black accents     */
-  --bg-glass: rgba(18, 24, 49, 0.72); /* glass surface base                 */
+  /* --- Surfaces (bright "civic paper") --- */
+  --bg-midnight: #EEF0F4;         /* app background (cool paper)            */
+  --bg-panel: #FFFFFF;            /* panels / cards                         */
+  --bg-panel-2: #F4F6F9;          /* raised panel / hover surface           */
+  --bg-sunken: #E9ECF2;           /* sunken tracks / inset surfaces         */
+  --bg-glass: rgba(255, 255, 255, 0.80); /* glass surface base              */
 
-  /* --- Text (WCAG AA on dark) --- */
-  --text-heading: #F8FAFC;        /* headings — ~16:1 on midnight           */
-  --text-body: #E2E8F0;           /* body — ~12:1 on midnight               */
-  --text-muted: #94A3B8;          /* muted — large/secondary only (~6:1)    */
-  --text-faint: #64748B;          /* decorative / disabled hints            */
-  --text-on-accent: #1A1505;      /* dark text on amber (AA on #F59E0B)     */
+  /* --- Text (WCAG AA on paper) --- */
+  --text-heading: #15171F;        /* headings — ~15:1 on paper              */
+  --text-body: #2C3340;           /* body — ~11:1                            */
+  --text-muted: #5A6273;          /* muted — secondary (~5.5:1)             */
+  --text-faint: #8B93A4;          /* decorative / disabled hints            */
+  --text-on-accent: #FFFFFF;      /* white on coral (large/bold)            */
   --text-on-bright: #FFFFFF;      /* white on saturated blue/red            */
 
   /* --- Borders & dividers --- */
-  --border: rgba(148, 163, 184, 0.16);
-  --border-strong: rgba(148, 163, 184, 0.32);
-  --border-glass: rgba(226, 232, 240, 0.10);
+  --border: rgba(21, 23, 31, 0.11);
+  --border-strong: rgba(21, 23, 31, 0.22);
+  --border-glass: rgba(21, 23, 31, 0.08);
 
   /* --- Spacing scale --- */
   --sp-1: 0.25rem;  /* 4px  */
@@ -84,17 +89,18 @@
   --radius-lg: 16px;
   --radius-pill: 999px;
 
-  /* --- Shadows (tuned for dark surfaces) --- */
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
-  --shadow-md: 0 4px 10px rgba(0, 0, 0, 0.45);
-  --shadow-lg: 0 12px 28px rgba(0, 0, 0, 0.55);
-  --shadow-xl: 0 24px 60px rgba(0, 0, 0, 0.65);
-  --shadow-focus: 0 0 0 3px rgba(59, 130, 246, 0.55); /* focus ring */
-  --glow-accent: 0 0 16px rgba(245, 158, 11, 0.35);
+  /* --- Shadows (tuned for bright surfaces) --- */
+  --shadow-sm: 0 1px 2px rgba(21, 23, 31, 0.06);
+  --shadow-md: 0 4px 14px -6px rgba(21, 23, 31, 0.16);
+  --shadow-lg: 0 14px 32px -16px rgba(21, 23, 31, 0.24);
+  --shadow-xl: 0 28px 60px -24px rgba(21, 23, 31, 0.30);
+  --shadow-focus: 0 0 0 3px rgba(242, 84, 45, 0.42); /* warm focus ring */
+  --glow-accent: 0 8px 20px -8px rgba(242, 84, 45, 0.45);
 
   /* --- Typography --- */
-  --font-mono: 'Fira Code', ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
-  --font-body: 'Fira Sans', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'Space Mono', ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+  --font-body: 'Public Sans', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-display: 'Bricolage Grotesque', 'Public Sans', system-ui, sans-serif;
 
   --fs-xs: 0.75rem;    /* 12px */
   --fs-sm: 0.875rem;   /* 14px */
@@ -128,7 +134,33 @@
   --sidebar-w: 280px;
   --rightrail-w: 320px;
 
+  color-scheme: light;
+}
+
+/* ==========================================================================
+   01b. DARK THEME — the machine "at night". Opt-in via <html class="dark">,
+   toggled by the UI and persisted; bright is the default.
+   ========================================================================== */
+html.dark {
   color-scheme: dark;
+  --color-primary: #2E7BE0;  --color-primary-bright: #5B9DF5;
+  --color-opponent: #E0455A; --color-opponent-bright: #FF6B7E;
+  --color-accent: #FF6A45;   --color-accent-deep: #FF8566;
+  --color-tossup: #6B7486;   --color-cold: #2FB6EC; --color-money: #37C77C;
+  --color-good: #37C77C; --color-warn: #F0A93C; --color-bad: #FF5A6E; --color-info: #2FB6EC;
+
+  --bg-midnight: #0A0C12; --bg-panel: #141823; --bg-panel-2: #1C2230; --bg-sunken: #0E121B;
+  --bg-glass: rgba(18, 22, 32, 0.72);
+
+  --text-heading: #EAF0F7; --text-body: #CBD4E1; --text-muted: #94A0B3; --text-faint: #69748A;
+  --text-on-accent: #160A06; --text-on-bright: #FFFFFF;
+
+  --border: rgba(148, 163, 184, 0.16); --border-strong: rgba(148, 163, 184, 0.30);
+  --border-glass: rgba(226, 232, 240, 0.10);
+
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.5); --shadow-md: 0 4px 12px rgba(0,0,0,0.5);
+  --shadow-lg: 0 16px 36px rgba(0,0,0,0.6); --shadow-xl: 0 28px 64px rgba(0,0,0,0.7);
+  --shadow-focus: 0 0 0 3px rgba(255,106,69,0.5); --glow-accent: 0 0 18px rgba(255,106,69,0.35);
 }
 
 /* ==========================================================================

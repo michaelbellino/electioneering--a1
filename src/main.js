@@ -202,10 +202,37 @@
     UI.renderEndScreen(root, vm, { onReplay: function () { showStart(); } });
   }
 
+  /* ---------------- theme (bright default, dark optional, persisted) ---------------- */
+  var THEME_KEY = 'campaign-trail:theme:v1';
+  function applyTheme(mode) {
+    var dark = mode === 'dark';
+    document.documentElement.classList.toggle('dark', dark);
+    var btn = document.getElementById('theme-toggle');
+    if (btn) {
+      btn.setAttribute('aria-pressed', dark ? 'true' : 'false');
+      btn.setAttribute('aria-label', dark ? 'Switch to bright mode' : 'Switch to dark mode');
+      var label = btn.querySelector('.theme-toggle__label');
+      var ic = btn.querySelector('.theme-toggle__icon');
+      if (label) label.textContent = dark ? 'Bright' : 'Dark';
+      if (ic) ic.textContent = dark ? '◑' : '◐';
+    }
+  }
+  function initTheme() {
+    var saved = safeLS(function () { return localStorage.getItem(THEME_KEY); }, null);
+    applyTheme(saved === 'dark' ? 'dark' : 'light');   // bright is the default
+    var btn = document.getElementById('theme-toggle');
+    if (btn) btn.addEventListener('click', function () {
+      var next = document.documentElement.classList.contains('dark') ? 'light' : 'dark';
+      applyTheme(next);
+      safeLS(function () { localStorage.setItem(THEME_KEY, next); return true; }, false);
+    });
+  }
+
   /* ---------------- boot ---------------- */
   function boot() {
     // Expose a small debug handle (no effect on gameplay).
     window.CampaignApp = app;
+    initTheme();
     if (hasSave()) {
       // Offer resume from the start screen (the "Continue" button), but boot to start.
       showStart();

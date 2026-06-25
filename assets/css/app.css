@@ -12,23 +12,18 @@
  *      the design tokens — no new colors, spacing, radii or shadows.
  */
 
-/* Self-hosted fonts (Fira Sans / Fira Code, OFL) — no CDN, works offline. */
-@font-face {
-  font-family: 'Fira Sans'; font-style: normal; font-weight: 400; font-display: swap;
-  src: url('../fonts/fira-sans-400.woff2') format('woff2');
-}
-@font-face {
-  font-family: 'Fira Sans'; font-style: normal; font-weight: 700; font-display: swap;
-  src: url('../fonts/fira-sans-700.woff2') format('woff2');
-}
-@font-face {
-  font-family: 'Fira Code'; font-style: normal; font-weight: 400; font-display: swap;
-  src: url('../fonts/fira-code-400.woff2') format('woff2');
-}
-@font-face {
-  font-family: 'Fira Code'; font-style: normal; font-weight: 600; font-display: swap;
-  src: url('../fonts/fira-code-600.woff2') format('woff2');
-}
+/* Self-hosted fonts (all SIL OFL) — no CDN, works offline under a strict CSP.
+   The three faces encode the satire: a warm humanist DISPLAY (Bricolage
+   Grotesque) for the friendly "brand" surface, the civic US-government BODY
+   (Public Sans), and a cold technical MONO (Space Mono) for the machine's data. */
+@font-face { font-family: 'Bricolage Grotesque'; font-style: normal; font-weight: 400; font-display: swap; src: url('../fonts/bricolage-400.woff2') format('woff2'); }
+@font-face { font-family: 'Bricolage Grotesque'; font-style: normal; font-weight: 700; font-display: swap; src: url('../fonts/bricolage-700.woff2') format('woff2'); }
+@font-face { font-family: 'Bricolage Grotesque'; font-style: normal; font-weight: 800; font-display: swap; src: url('../fonts/bricolage-800.woff2') format('woff2'); }
+@font-face { font-family: 'Public Sans'; font-style: normal; font-weight: 400; font-display: swap; src: url('../fonts/public-sans-400.woff2') format('woff2'); }
+@font-face { font-family: 'Public Sans'; font-style: normal; font-weight: 600; font-display: swap; src: url('../fonts/public-sans-600.woff2') format('woff2'); }
+@font-face { font-family: 'Public Sans'; font-style: normal; font-weight: 700; font-display: swap; src: url('../fonts/public-sans-700.woff2') format('woff2'); }
+@font-face { font-family: 'Space Mono'; font-style: normal; font-weight: 400; font-display: swap; src: url('../fonts/space-mono-400.woff2') format('woff2'); }
+@font-face { font-family: 'Space Mono'; font-style: normal; font-weight: 700; font-display: swap; src: url('../fonts/space-mono-700.woff2') format('woff2'); }
 
 :root {
   /* charts.js + map.js compatibility aliases -> dark design tokens */
@@ -41,6 +36,39 @@
   --space-md: var(--sp-4);
   --space-lg: var(--sp-5);
 }
+
+/* Headlines wear the warm humanist DISPLAY face; data/labels stay on the cold
+   MONO; body on civic Public Sans (set by the base reset). */
+h1, h2, h3, .topbar__brand, .candidate-card h3, .start-section__title, .screen h1 {
+  font-family: var(--font-display);
+  letter-spacing: -0.015em;
+}
+
+/* Satirical product chrome: the friendly "brand" tagline + the cold session tag. */
+.topbar__brand { display: flex; flex-direction: column; line-height: 1.05; }
+.brand-sub { font-family: var(--font-mono); font-size: 9.5px; letter-spacing: 0.04em; color: var(--color-accent); margin-top: 2px; text-transform: none; font-weight: 400; }
+.topbar__session { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.06em; color: var(--text-faint); text-transform: uppercase; }
+.topbar__session b { color: var(--color-cold); }
+
+/* Global theme toggle (bottom-left, above the screen overlays). */
+.theme-toggle { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; }
+.theme-toggle--fixed {
+  position: fixed; left: var(--sp-3); bottom: var(--sp-3); z-index: var(--z-toast);
+  display: inline-flex; align-items: center; gap: 7px; padding: 8px 13px;
+  border-radius: var(--radius-pill); border: 1px solid var(--border-strong);
+  background: var(--bg-glass); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+  color: var(--text-body); box-shadow: var(--shadow-md); cursor: pointer;
+  transition: background var(--t-base) var(--ease), box-shadow var(--t-base) var(--ease);
+}
+.theme-toggle--fixed:hover { background: var(--bg-panel-2); }
+.theme-toggle--fixed:focus-visible { outline: none; box-shadow: var(--shadow-focus); }
+.theme-toggle__icon { font-size: 14px; line-height: 1; color: var(--color-cold); }
+
+/* Satirical sub-brand line under the hero / in the masthead. */
+.screen__sub { font-family: var(--font-mono); font-size: var(--fs-sm); letter-spacing: 0.02em;
+  color: var(--color-accent); margin: var(--sp-2) auto 0; }
+
+@media (max-width: 480px) { .theme-toggle--fixed .theme-toggle__label { display: none; } }
 
 .app-root { display: block; min-height: 100vh; }
 

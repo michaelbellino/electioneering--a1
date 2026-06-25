@@ -1,16 +1,22 @@
 # Campaign Trail: Road to 270
 
-A turn-based **election-campaign strategy game**, styled as a dark "campaign
-war room" dashboard. Run a national campaign across **18 regions** worth **538
-electoral votes** over **12 weeks**, freely spending **Action Points** and a
-**Funds** war chest on a non-linear mix of air-war, ground-game, and momentum
-plays — reacting to dynamic events and a reactive opponent AI — racing to clinch
-**270**.
+A turn-based **election-campaign strategy game** — and a **satire of money-in-politics**:
+a bright, friendly campaign-tech "brand" (*DEMOS Strategic Solutions — Democracy,
+Optimized.™*) whose civic surface hides a cold optimization machine that treats voters
+as nodes and democracy as a product. Run a national campaign across **18 regions** worth
+**538 electoral votes** over **12 weeks**, racing to clinch **270** against a reactive
+rival — while the UI quietly corrupts as you work the money.
 
-The game is hand-written vanilla JavaScript with a pure, deterministic engine
-and a thin SVG render layer. It runs **with no build step straight from
-`file://`** for development and testing, and ships as a **packaged desktop app**
-(Windows / macOS / Linux) via Electron.
+**Bright by default, with an opt-in dark theme.** A distinct identity built on
+self-hosted open-source type (Bricolage Grotesque · Public Sans · Space Mono) and custom
+SVG glyphs. The game is hand-written vanilla JavaScript with a pure, deterministic engine
+and a thin SVG render layer. It runs **with no build step straight from `file://`** and
+ships as a **packaged desktop app** (Windows / macOS / Linux) via Electron.
+
+> The deeper "full tycoon sim" redesign (parameterized fundraising/rallies, a time
+> economy, donor/dark-money networks, staff & ops, media & opposition) is specced in
+> [`docs/REDESIGN.md`](docs/REDESIGN.md) and shipping in phases. Phase 1 (this identity)
+> is in.
 
 ---
 
