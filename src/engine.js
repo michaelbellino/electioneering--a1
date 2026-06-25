@@ -45,6 +45,19 @@
   var VOTES_TO_WIN = BAL.electoralVotesToWin;        // 270
   var MAX_TURNS = design.turnStructure.totalTurns;   // 12
   var AP_PER_TURN = design.turnStructure.actionPointsPerTurn; // 5
+
+  /* ---- tycoon redesign: a weekly TIME budget + parameterized actions ----
+     Hours are the scarce per-week resource the player allocates across
+     activities (fundraise/rally/ads…), replacing one-click Action Points.
+     Effects scale with how long and how hard you push — and dirty money
+     costs you exposure. */
+  var HOURS_PER_WEEK = 40;
+  var FUNDRAISE_BASE_PER_HOUR = 10; // $k per hour at multiplier 1
+  var FUNDRAISE_SOURCES = {
+    grassroots: { mult: 1.0, scandalPerHour: 0.0, favors: 0, approvalPerHour: 0.12, label: 'grassroots donors' },
+    pac:        { mult: 2.2, scandalPerHour: 0.12, favors: 0, approvalPerHour: 0.0,  label: 'a friendly PAC' },
+    dark:       { mult: 3.4, scandalPerHour: 0.50, favors: 1, approvalPerHour: 0.0,  label: 'an untraceable super PAC' }
+  };
   var EVENT_CHANCE = BAL.eventChancePerTurn;          // 0.45
   var BASE_VOLATILITY = BAL.baseVolatility;           // 2.5
   var BANKRUPTCY = BAL.bankruptcyThreshold;           // 0
@@ -571,6 +584,65 @@
       return { ok: true, applied: applied };
     }
 
+    /* ---- parameterized tycoon actions (weekly time budget) ---- */
+    function hoursRemaining() { return state.resources.hours; }
+    function hoursGuard(hours) {
+      if (state.status !== 'playing') return 'Game is over';
+      if (state.pendingEvent) return 'Resolve the pending event first';
+      if (typeof hours !== 'number' || !isFinite(hours) || hours <= 0) return 'Choose how many hours to spend';
+      if (hours > state.resources.hours + 1e-9) return 'Not enough hours left this week';
+      return null;
+    }
+    // Fundraise: choose how long (hours) and from WHERE (source). Dirty money
+    // raises far more per hour but adds scandal exposure and a favor owed.
+    function fundraise(opts) {
+      opts = opts || {};
+      var hours = Math.round((opts.hours || 0) * 10) / 10;
+      var src = FUNDRAISE_SOURCES[opts.source] || FUNDRAISE_SOURCES.grassroots;
+      var err = hoursGuard(hours);
+      if (err) return { ok: false, error: err };
+      syncDraws(); undoStack.push(snapshot());
+      var n = state.national;
+      var variance = 0.9 + rng.next() * 0.2;   // deterministic 0.9..1.1
+      var yield_ = Math.round(hours * FUNDRAISE_BASE_PER_HOUR * src.mult * Math.max(0.6, momentumMult(n.momentum)) * variance);
+      state.resources.funds += yield_;
+      state.resources.hours = Util.round(state.resources.hours - hours, 1);
+      var scandalAdd = src.scandalPerHour * hours;
+      if (scandalAdd) n.scandalLevel += scandalAdd;
+      if (src.approvalPerHour) n.nationalApproval += src.approvalPerHour * hours;
+      if (src.favors) state.favorsOwed = (state.favorsOwed || 0) + src.favors;
+      clampNational(state);
+      log(state, scandalAdd ? 'neutral' : 'good',
+        'Fundraised ' + hours + 'h via ' + src.label + ' (+$' + yield_ + 'k' + (scandalAdd ? ', +' + Util.round(scandalAdd, 0) + ' scandal' : '') + ').');
+      syncDraws();
+      return { ok: true, result: { hours: hours, source: opts.source || 'grassroots', yield: yield_, scandal: Util.round(scandalAdd, 1), favors: src.favors, hoursLeft: state.resources.hours } };
+    }
+    // Rally: choose how long to work the crowd (and optionally a region). More
+    // hours => more momentum/lean, but the gaffe risk climbs with fatigue.
+    function rally(opts) {
+      opts = opts || {};
+      var hours = Math.round((opts.hours || 0) * 10) / 10;
+      var err = hoursGuard(hours);
+      if (err) return { ok: false, error: err };
+      var region = opts.regionId ? regionById(state, opts.regionId) : null;
+      if (opts.regionId && !region) return { ok: false, error: 'Unknown region' };
+      syncDraws(); undoStack.push(snapshot());
+      var n = state.national;
+      var momGain = Util.round(hours * 0.7, 1);
+      n.momentum += momGain;
+      n.mediaBuzz += hours * 0.3;
+      var leanGain = 0;
+      if (region) { leanGain = Util.round(hours * 0.45, 1); region.lean += leanGain; region.touchedByPlayer = true; clampRegion(region); }
+      state.resources.hours = Util.round(state.resources.hours - hours, 1);
+      var gaffe = rng.next() < Math.min(0.35, hours * 0.015);
+      if (gaffe) { n.scandalLevel += rng.int(4, 8); n.momentum -= 4; }
+      clampNational(state);
+      log(state, gaffe ? 'bad' : 'good',
+        'Held a ' + hours + 'h rally' + (region ? ' in ' + region.name : '') + ' (+' + momGain + ' momentum' + (gaffe ? '; a gaffe nudged your scandal up' : '') + ').');
+      syncDraws();
+      return { ok: true, result: { hours: hours, momentum: momGain, lean: leanGain, gaffe: gaffe, hoursLeft: state.resources.hours } };
+    }
+
     /* ---- opponent AI ---- */
     function scoreOpponentTargets(s) {
       // Rank non-safe regions by attack value: tossups & thin player leads worth most EV.
@@ -765,6 +837,7 @@
       // advance to next week
       state.turn += 1;
       state.resources.actionPoints = AP_PER_TURN; // Briefing: refresh AP (does NOT bank)
+      state.resources.hours = HOURS_PER_WEEK;      // weekly time budget refreshes (does NOT bank)
       state.groundActionThisTurn = false;
       state.nextRegionActionBonus = 0; // polling-consultant bonus is "this turn" only
       state.intel = null;              // consultant intel is revealed "for one turn" only
@@ -811,6 +884,9 @@
       availableActions: availableActions,
       canAfford: canAfford,
       doAction: doAction,
+      fundraise: fundraise,
+      rally: rally,
+      hoursRemaining: hoursRemaining,
       undoLastAction: undoLastAction,
       hasPendingEvent: hasPendingEvent,
       getPendingEvent: getPendingEvent,
@@ -872,6 +948,7 @@
       resources: {
         funds: mods.startFunds,
         actionPoints: AP_PER_TURN,
+        hours: HOURS_PER_WEEK,
         volunteers: mods.startVolunteers
       },
       national: {
@@ -895,6 +972,7 @@
       nextRegionActionBonus: 0,
       intel: null,
       groundActionThisTurn: false,
+      favorsOwed: 0,
       endReason: null,
       endCondition: null
     };
@@ -934,6 +1012,8 @@
     if (state.gotvPassive == null) state.gotvPassive = 0;
     if (state.nextRegionActionBonus == null) state.nextRegionActionBonus = 0;
     if (state.firedEvents == null) state.firedEvents = [];
+    if (state.favorsOwed == null) state.favorsOwed = 0;
+    if (state.resources && state.resources.hours == null) state.resources.hours = HOURS_PER_WEEK;
     return createInstance(state, rng, false);
   }
 

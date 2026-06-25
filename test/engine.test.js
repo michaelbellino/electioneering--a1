@@ -286,3 +286,67 @@ describe('tally()', () => {
     assert.equal(t.votesToWin, 270);
   });
 });
+
+describe('hour budget + parameterized actions (tycoon redesign)', () => {
+  it('each week starts with a 40-hour budget', () => {
+    const g = newGame();
+    assert.equal(g.getState().resources.hours, 40);
+    assert.equal(g.hoursRemaining(), 40);
+  });
+  it('fundraise spends hours and raises funds; cannot overspend the week', () => {
+    const g = newGame(); clearEvent(g);
+    const before = g.getState().resources.funds;
+    const r = g.fundraise({ hours: 8, source: 'grassroots' });
+    assert.ok(r.ok, 'fundraise ok');
+    assert.ok(r.result.yield > 0, 'raised something');
+    assert.equal(g.getState().resources.hours, 32);
+    assert.ok(g.getState().resources.funds > before);
+    assert.equal(g.fundraise({ hours: 100, source: 'grassroots' }).ok, false, 'cannot overspend hours');
+    assert.equal(g.fundraise({ hours: 0, source: 'grassroots' }).ok, false, 'must spend > 0 hours');
+  });
+  it('dark money out-raises grassroots for equal hours, but adds scandal + a favor owed', () => {
+    const clean = newGame({ seed: 'fr' }); clearEvent(clean);
+    const dirty = newGame({ seed: 'fr' }); clearEvent(dirty);
+    const cr = clean.fundraise({ hours: 10, source: 'grassroots' });
+    const dr = dirty.fundraise({ hours: 10, source: 'dark' });
+    assert.ok(dr.result.yield > cr.result.yield, 'dark raises more');
+    assert.ok(dirty.getState().national.scandalLevel > clean.getState().national.scandalLevel, 'dark adds scandal');
+    assert.ok((dirty.getState().favorsOwed || 0) > (clean.getState().favorsOwed || 0), 'dark owes a favor');
+  });
+  it('fundraise yield is monotonic in hours and deterministic per seed', () => {
+    const g4 = newGame({ seed: 'x' }); clearEvent(g4);
+    const g8 = newGame({ seed: 'x' }); clearEvent(g8);
+    assert.ok(g8.fundraise({ hours: 8, source: 'pac' }).result.yield >
+              g4.fundraise({ hours: 4, source: 'pac' }).result.yield, 'more hours raises more');
+    const a = newGame({ seed: 'm' }); clearEvent(a);
+    const b = newGame({ seed: 'm' }); clearEvent(b);
+    assert.equal(a.fundraise({ hours: 5, source: 'pac' }).result.yield,
+                 b.fundraise({ hours: 5, source: 'pac' }).result.yield, 'deterministic per seed');
+  });
+  it('rally spends hours, adds momentum + region lean, and is undoable', () => {
+    const g = newGame(); clearEvent(g);
+    const rid = g.getState().regions[0].id;
+    const leanBefore = g.getState().regions[0].lean;
+    const r = g.rally({ regionId: rid, hours: 6 });
+    assert.ok(r.ok && r.result.momentum > 0);
+    assert.equal(g.getState().resources.hours, 34);
+    assert.ok(g.getState().regions[0].lean > leanBefore, 'region lean rose');
+    const u = g.undoLastAction();
+    assert.ok(u.ok);
+    assert.equal(g.getState().resources.hours, 40, 'undo restores hours');
+  });
+  it('the hour budget refreshes to 40 each new week', () => {
+    const g = newGame(); clearEvent(g);
+    g.fundraise({ hours: 30, source: 'grassroots' });
+    assert.equal(g.getState().resources.hours, 10);
+    clearEvent(g); g.endTurn(); clearEvent(g);
+    assert.equal(g.getState().resources.hours, 40);
+  });
+  it('save/load preserves hours + favors owed', () => {
+    const g = newGame(); clearEvent(g);
+    g.fundraise({ hours: 12, source: 'dark' });
+    const g2 = Engine.load(g.save());
+    assert.equal(g2.getState().resources.hours, g.getState().resources.hours);
+    assert.equal(g2.getState().favorsOwed, g.getState().favorsOwed);
+  });
+});
