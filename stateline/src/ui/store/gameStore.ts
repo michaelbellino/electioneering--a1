@@ -9,6 +9,7 @@ import { Engine, type GameAction, type GameState, type SandboxOverrides } from '
 import type { ScenarioCandidate } from '@engine/scenario'
 import { getScenario } from '@data/scenarios/index'
 import type { DifficultyId } from '@data/campaign/difficulties'
+import { loadSave, saveGame } from '@ui/store/saves'
 
 export type Screen = 'menu' | 'create' | 'campaign' | 'election'
 
@@ -41,6 +42,8 @@ interface GameStore {
   rematch: () => void
   dispatch: (action: GameAction) => void
   advanceTurn: () => void
+  save: (name?: string) => void
+  load: (slotId: string) => void
   reset: () => void
 }
 
@@ -102,6 +105,22 @@ export const useGame = create<GameStore>((set, get) => ({
     if (!engine) return
     const state = engine.advanceTurn()
     set({ state, screen: state.phase === 'election_night' ? 'election' : get().screen })
+  },
+
+  save: (name) => {
+    const state = get().state
+    if (state) saveGame(state, name)
+  },
+
+  load: (slotId) => {
+    const state = loadSave(slotId)
+    if (!state) return
+    const engine = Engine.deserialize(JSON.stringify(state))
+    set({
+      engine,
+      state: engine.getState(),
+      screen: engine.getState().phase === 'election_night' ? 'election' : 'campaign',
+    })
   },
 
   reset: () => set({ engine: null, state: null, screen: 'menu', setup: DEFAULT_SETUP }),

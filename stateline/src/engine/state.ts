@@ -12,6 +12,7 @@ import type { ElectorateState } from './electorate/types'
 import type { CampaignState, CandidateState } from './campaign/types'
 import type { PendingDilemma } from './campaign/dilemmas'
 import type { TerritoryState } from './territory/generate'
+import type { AiCandidateState } from './ai/agent'
 import type { AllocationResult, ElectoralMethod } from './electoral/types'
 
 export const ENGINE_VERSION = '0.1.0'
@@ -70,6 +71,8 @@ export interface GameState {
   /** The semi-open-world map: communities, locations, presence, fog-of-war intel. */
   territory: TerritoryState
   candidates: Record<EntityId, CandidateState>
+  /** Live AI state for every non-player candidate: war chest, personality, map location. */
+  aiCandidates: Record<EntityId, AiCandidateState>
   playerCandidateId: EntityId
   aiOpponentIntensity: number
   campaign: CampaignState

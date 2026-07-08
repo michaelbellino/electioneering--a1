@@ -1640,3 +1640,14 @@ h3 {
     grid-template-columns: 1fr;
   }
 }
+
+/* ── Saves ──────────────────────────────────────────────── */
+.continue-strip { width: 100%; max-width: 1100px; text-align: left; margin-bottom: 1.25rem; }
+.save-row-wrap { display: flex; gap: 0.6rem; flex-wrap: wrap; }
+.save-chip { display: flex; align-items: stretch; background: var(--panel); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+.save-load { background: none; border: 0; color: var(--ink); font-family: inherit; text-align: left; padding: 0.5rem 0.8rem; cursor: pointer; }
+.save-load:hover { background: var(--panel-2); }
+.save-load strong { display: block; font-size: 0.84rem; }
+.save-load span { font-size: 0.72rem; color: var(--muted); }
+.save-del { background: none; border: 0; border-left: 1px solid var(--border); color: var(--faint); padding: 0 0.6rem; cursor: pointer; font-size: 1rem; }
+.save-del:hover { color: var(--bad); }

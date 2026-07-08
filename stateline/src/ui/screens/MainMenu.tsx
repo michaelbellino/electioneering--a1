@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { deleteSave, listSaves } from '@ui/store/saves'
 import { useGame } from '@ui/store/gameStore'
 import { PA_RACES, SCENARIOS } from '@data/scenarios/index'
 import { DIFFICULTIES } from '@data/campaign/difficulties'
@@ -18,6 +19,8 @@ function Stars({ n }: { n: number }) {
 
 export function MainMenu() {
   const goTo = useGame((s) => s.goTo)
+  const load = useGame((s) => s.load)
+  const [saves, setSaves] = useState(() => listSaves())
   const setup = useGame((s) => s.setup)
   const configure = useGame((s) => s.configure)
   const [sandboxOpen, setSandboxOpen] = useState(setup.sandbox !== null)
@@ -44,6 +47,32 @@ export function MainMenu() {
           Pick a race, build a candidate, survive the campaign. Every run is a different story.
         </p>
       </div>
+
+      {saves.length > 0 && (
+        <section className="continue-strip" aria-label="Continue a saved campaign">
+          <h3 className="setup-title">Continue</h3>
+          <div className="save-row-wrap">
+            {saves.slice(0, 4).map((sv) => (
+              <div key={sv.id} className="save-chip">
+                <button className="save-load" onClick={() => load(sv.id)}>
+                  <strong>{sv.scenarioTitle}</strong>
+                  <span>{sv.phase === 'election_night' ? 'election night' : `week ${sv.week}`} · {new Date(sv.savedAt).toLocaleDateString()}</span>
+                </button>
+                <button
+                  className="save-del"
+                  aria-label={`Delete save ${sv.name}`}
+                  onClick={() => {
+                    deleteSave(sv.id)
+                    setSaves(listSaves())
+                  }}
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       <div className="setup-grid">
         <section className="setup-section">

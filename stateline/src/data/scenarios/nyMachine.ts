@@ -34,6 +34,20 @@ export const NY13_PRIMARY_CHALLENGE: Scenario = {
     baseExposure: 0.12,
     baseFavorability: 0.02,
   },
+  extraOpponents: [
+    {
+      id: 'also_ran',
+      name: 'Gus Pomeroy (R)',
+      party: 'R',
+      attributes: { charisma: 0.4, competence: 0.45, integrity: 0.55, fundraising: 0.3 },
+      positions: {
+        taxes_spending: -0.5, healthcare: -0.4, immigration: -0.5, guns: -0.5,
+        abortion: -0.4, climate_energy: -0.5, crime_policing: -0.5, social_culture: -0.5,
+      },
+      baseExposure: 0.15,
+      baseFavorability: -0.02,
+    },
+  ],
   opponent: {
     id: 'opponent',
     name: 'Marisol Vega (D)',

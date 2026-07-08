@@ -32,6 +32,7 @@ import type { ElectorateState } from './electorate/types'
 import { areAdjacent, getCommunity, type TerritoryState } from './territory/generate'
 import { communityElectorate, localProfiles } from './territory/local'
 import { evaluateElectorate } from './electorate/evaluate'
+import { runAiTurn } from './ai/agent'
 import { resolveElection } from './electoral/resolve'
 import { EVENT_ELECTION_DAY, type GameState, type PollRecord } from './state'
 
@@ -220,38 +221,6 @@ function travel(state: GameState, communityId: string): GameState {
         message: `${adjacent ? 'Drove over' : 'Bus tour'} to ${dest.name}.`,
       },
     ],
-  }
-}
-
-/** Opponent moves along the map each week and builds presence where they go. */
-function tickOpponentTerritory(state: GameState, day: DayIndex): TerritoryState {
-  const t = state.territory
-  const rng = new Rng(forkRng(state.rng.ai!, `move:${day}`))
-  const here = getCommunity(t, t.opponentLocation)
-  // Weighted hop: bigger neighbors pull harder; sometimes they barnstorm (jump anywhere).
-  const options = [t.opponentLocation, ...(here?.neighbors ?? [])]
-  const jump = rng.bool(0.2)
-  const pool = jump ? t.communities.map((c) => c.id) : options
-  const weights = pool.map((id) => getCommunity(t, id)?.weight ?? 0.01)
-  const total = weights.reduce((a, b) => a + b, 0)
-  let x = rng.float() * total
-  let dest = pool[pool.length - 1]!
-  for (let i = 0; i < pool.length; i++) {
-    x -= weights[i]!
-    if (x < 0) {
-      dest = pool[i]!
-      break
-    }
-  }
-  // A field director keeps the ground organization warm between visits.
-  const decayRate = staffEffectiveness(state.campaign, 'field_director') > 0 ? 0.85 : 0.75
-  const decayed = (m: Readonly<Record<string, number>>) =>
-    Object.fromEntries(Object.entries(m).map(([k, v]) => [k, v * decayRate]).filter(([, v]) => (v as number) > 0.01))
-  return {
-    ...t,
-    opponentLocation: dest,
-    presence: decayed(t.presence),
-    oppPresence: bumpPresence(decayed(t.oppPresence), t, dest, 0.3 * Math.min(1.5, 0.5 + state.aiOpponentIntensity)),
   }
 }
 
@@ -497,6 +466,10 @@ function commissionPoll(state: GameState, kind: string): GameState {
   } else if (kind === 'opponent') {
     // Opposition research: their platform, exposed policy by policy, plus a war-chest estimate.
     const opp = state.candidates[opponentId(state)]!
+    const oppAi = state.aiCandidates[opp.id]
+    const headRows: (readonly [string, string, string, string])[] = oppAi
+      ? [[`War chest (est.)`, formatUsd(Math.round(oppAi.cash / 5_000_00) * 5_000_00), `${oppAi.personality.replace('_', ' ')} playbook`, ''] as const]
+      : []
     const rows = POLICIES.map((p) => {
       const stance = opp.positions[p.areaId] ?? 0
       const side = stance > 0.05 ? p.proLabel : stance < -0.05 ? p.conLabel : 'No clear position'
@@ -504,7 +477,7 @@ function commissionPoll(state: GameState, kind: string): GameState {
       const vuln = stance !== 0 && agree < 0.45 ? 'VULNERABLE' : ''
       return [p.label, side, `${Math.round(Math.max(0, Math.min(1, agree)) * 100)}% agree`, vuln] as const
     }).sort((a, b) => (a[3] === 'VULNERABLE' ? -1 : 1) - (b[3] === 'VULNERABLE' ? -1 : 1))
-    report = { day, kind: 'issues', title: `Oppo book: ${opp.name}`, cost, columns: ['Policy', 'Their position', 'District', 'Attack?'], rows }
+    report = { day, kind: 'issues', title: `Oppo book: ${opp.name}`, cost, columns: ['Policy', 'Their position', 'District', 'Attack?'], rows: [...headRows, ...rows] }
   } else {
     // Community poll: buys intel on the 5 biggest communities you haven't canvassed lately.
     const staleBefore = day - 21
@@ -665,36 +638,55 @@ function tickDilemmas(state: GameState, day: DayIndex): GameState {
 }
 
 // --- Tick -------------------------------------------------------------------
-function opponentEffects(state: GameState, day: DayIndex): ScheduledEffect[] {
-  const intensity = state.aiOpponentIntensity
-  if (intensity <= 0) return []
-  const oppId = opponentId(state)
-  const base = (suffix: string, channel: 'nameRecognition' | 'favorability', magnitude: number, decay: number) => ({
-    id: `eff:ai:${oppId}:${day}:${suffix}`,
-    target: { kind: 'electorate' as const, jurisdictionId: state.election.jurisdictionId, candidateId: oppId, channel },
-    op: 'add' as const,
-    magnitude,
-    enactedDay: day,
-    rampStartDays: 0,
-    rampDurationDays: 3,
-    decayHalfLifeDays: decay,
-    sunsetDay: null,
-    attributionActorId: oppId,
-    sourceSubsystem: 'campaign' as const,
-  })
-  return [
-    base('nr', 'nameRecognition', intensity, 30),
-    base('fav', 'favorability', intensity * 0.08, 21),
-  ]
-}
-
 export function tick(state: GameState): GameState {
   if (state.phase !== 'campaign') return state
   const calendar = advanceCalendar(state.calendar, 1)
   const day = calendar.dayIndex
   const candidate = state.candidates[state.playerCandidateId]!
 
-  // Player upkeep + opponent campaigning.
+  // AI candidates take their turns FIRST (they read last week's race, like the player did).
+  const preProfiles = profilesAt(state, state.ledger, state.calendar.dayIndex)
+  const preShares = evaluateElectorate(effectiveElectorate(state), preProfiles).sharesByCandidate
+  const decayRate = staffEffectiveness(state.campaign, 'field_director') > 0 ? 0.85 : 0.75
+  const decayMap = (m: Readonly<Record<string, number>>) =>
+    Object.fromEntries(Object.entries(m).map(([k, v]) => [k, v * decayRate]).filter(([, v]) => (v as number) > 0.01))
+  let oppPresence = decayMap(state.territory.oppPresence)
+  const aiCandidates: GameState['aiCandidates'] = { ...state.aiCandidates }
+  const aiEffects: ScheduledEffect[] = []
+  const aiLogs: GameState['log'] = []
+  let ledgerLen = state.ledger.length
+  for (const id of Object.keys(aiCandidates)) {
+    const res = runAiTurn(aiCandidates[id]!, {
+      day,
+      ledgerLength: ledgerLen,
+      jurisdictionId: state.election.jurisdictionId,
+      intensity: state.aiOpponentIntensity,
+      territory: state.territory,
+      profiles: preProfiles,
+      shares: preShares,
+      rngBase: state.rng.ai!,
+    })
+    aiCandidates[id] = res.ai
+    aiEffects.push(...res.effects)
+    ledgerLen += res.effects.length
+    for (const [cid, amt] of Object.entries(res.presence)) {
+      oppPresence[cid] = Math.min(1, (oppPresence[cid] ?? 0) + amt)
+    }
+    aiLogs.push({
+      day,
+      kind: 'opposition',
+      message: `${state.candidates[id]?.name ?? 'A rival'} ${res.logLine}.`,
+    })
+  }
+  const primaryOpp = state.election.candidateIds.find((id) => id !== state.playerCandidateId)
+  const territoryAfterAi = {
+    ...state.territory,
+    presence: decayMap(state.territory.presence),
+    oppPresence,
+    opponentLocation: primaryOpp ? (aiCandidates[primaryOpp]?.location ?? state.territory.opponentLocation) : state.territory.opponentLocation,
+  }
+
+  // Player upkeep.
   const tickRes = tickCampaign(state.campaign, candidate, calendar.daysPerTick)
   // A digital director converts name recognition into a weekly online-donation stream.
   const digitalEff = staffEffectiveness(state.campaign, 'digital_director')
@@ -706,7 +698,7 @@ export function tick(state: GameState): GameState {
     onlineRaise > 0
       ? { ...tickRes.campaign, finance: raise(tickRes.campaign.finance, onlineRaise) }
       : tickRes.campaign
-  let ledger = [...state.ledger, ...opponentEffects(state, day)]
+  let ledger = [...state.ledger, ...aiEffects]
 
   // Fire due events (election day).
   const [due, eventQueue] = popDue(state.eventQueue, day)
@@ -738,7 +730,7 @@ export function tick(state: GameState): GameState {
   const advanced: GameState = {
     ...state,
     calendar,
-    territory: tickOpponentTerritory(state, day),
+    territory: territoryAfterAi,
     campaign: campaignAfterUpkeep,
     ledger,
     eventQueue,
@@ -752,24 +744,9 @@ export function tick(state: GameState): GameState {
       ...extraLogs,
     ],
   }
-  // The opposition is a live agent: report where they spent their week (they're trackable).
-  const oppTerr = advanced.territory
-  const oppTown = getCommunity(oppTerr, oppTerr.opponentLocation)
-  const withOppNews: GameState = oppTown
-    ? {
-        ...advanced,
-        log: [
-          ...advanced.log,
-          {
-            day,
-            kind: 'opposition',
-            message: `${advanced.candidates[opponentId(advanced)]?.name ?? 'Your opponent'} campaigned in ${oppTown.name} this week.`,
-          },
-        ],
-      }
-    : advanced
+  const withAi: GameState = { ...advanced, aiCandidates, log: [...advanced.log, ...aiLogs] }
   // Dilemmas: auto-resolve last week's ignored one, then maybe land a new one on the desk.
-  return tickDilemmas(withOppNews, day)
+  return tickDilemmas(withAi, day)
 }
 
 export function applyAction(state: GameState, action: GameAction): GameState {

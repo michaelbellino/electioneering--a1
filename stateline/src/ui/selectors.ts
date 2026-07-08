@@ -29,11 +29,28 @@ export interface PollPoint {
   opponent: number
 }
 
+/** Two-way view (player vs strongest rival) — kept for compact readouts. */
 export function pollSeries(state: GameState): PollPoint[] {
-  return state.polls.map((p, i) => ({
-    week: i + 1,
-    player: (p.shares['player'] ?? 0) * 100,
-    opponent: (p.shares['opponent'] ?? 0) * 100,
+  return state.polls.map((p, i) => {
+    const rivals = state.election.candidateIds.filter((id) => id !== state.playerCandidateId)
+    const best = Math.max(0, ...rivals.map((id) => p.shares[id] ?? 0))
+    return {
+      week: i + 1,
+      player: (p.shares[state.playerCandidateId] ?? 0) * 100,
+      opponent: best * 100,
+    }
+  })
+}
+
+/** Full N-way poll series: one line per candidate. */
+export function pollSeriesAll(
+  state: GameState,
+): Array<{ candidateId: string; name: string; party: Party; points: number[] }> {
+  return state.election.candidateIds.map((id) => ({
+    candidateId: id,
+    name: state.candidates[id]?.name ?? id,
+    party: state.candidates[id]?.party ?? 'I',
+    points: state.polls.map((p) => (p.shares[id] ?? 0) * 100),
   }))
 }
 

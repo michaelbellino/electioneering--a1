@@ -115,6 +115,17 @@ export function buildPaRaces(): PaRaceMeta[] {
         opponentIntensity: 0.55,
         player: playerDefaults(pa.baselinePartisanLean),
         opponent: opponentFor(`us-pa:${office}`, pa.baselinePartisanLean, true),
+        extraOpponents: [
+          {
+            id: 'spoiler',
+            name: 'Dr. Willa Grange (I)',
+            party: 'I' as const,
+            attributes: { charisma: 0.65, competence: 0.55, integrity: 0.7, fundraising: 0.35 },
+            positions: Object.fromEntries(ISSUE_IDS.map((id) => [id, 0.05])) as Record<IssueId, number>,
+            baseExposure: 0.2,
+            baseFavorability: 0.05,
+          },
+        ],
       },
     }
   }

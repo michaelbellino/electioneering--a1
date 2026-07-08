@@ -111,7 +111,6 @@ export function TrailMap({ state, results = false }: { state: GameState; results
               const { cx, cy } = px(c)
               const info = fillFor(c)
               const isHere = t.playerLocation === c.id
-              const oppHere = t.opponentLocation === c.id
               const presence = t.presence[c.id] ?? 0
               const active = selected === c.id
               return (
@@ -153,11 +152,20 @@ export function TrailMap({ state, results = false }: { state: GameState; results
                       ★
                     </text>
                   )}
-                  {oppHere && !results && (
-                    <text className="town-marker opp" x={r(c) - 8} y={-r(c) + 2} aria-label="Opponent is here">
-                      ▲
-                    </text>
-                  )}
+                  {!results &&
+                    Object.values(state.aiCandidates)
+                      .filter((ai) => ai.location === c.id)
+                      .map((ai, i) => (
+                        <text
+                          key={ai.candidateId}
+                          className="town-marker opp"
+                          x={r(c) - 8 - i * 12}
+                          y={-r(c) + 2}
+                          aria-label={`${state.candidates[ai.candidateId]?.name ?? 'Rival'} is here`}
+                        >
+                          ▲
+                        </text>
+                      ))}
                 </g>
               )
             })}

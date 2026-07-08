@@ -17,6 +17,7 @@ import { buildElectorate } from './electorate/build'
 import type { Party } from './electorate/types'
 import { createCampaign, createCandidate } from './campaign/logic'
 import { generateTerritory } from './territory/generate'
+import type { AiCandidateState, AiPersonality } from './ai/agent'
 import type { CandidateAttributes } from './campaign/types'
 import type { ElectoralMethod } from './electoral/types'
 import { ENGINE_VERSION, EVENT_ELECTION_DAY, type GameState } from './state'
@@ -40,6 +41,8 @@ export interface Scenario {
   readonly method: ElectoralMethod
   readonly player: ScenarioCandidate
   readonly opponent: ScenarioCandidate
+  /** Additional rivals (three-way races, spoilers, primary fields). */
+  readonly extraOpponents?: readonly ScenarioCandidate[]
   readonly startingCash: Cents
   /** How hard the AI opponent campaigns each tick (name-rec exposure units emitted per week). */
   readonly opponentIntensity: number
@@ -98,7 +101,9 @@ export function createGame(scenario: Scenario, seed: number, setup: GameSetup = 
       1,
     ),
   })
-  const opponent = createCandidate({ ...scenario.opponent })
+  const opponents = [scenario.opponent, ...(scenario.extraOpponents ?? [])].map((o, i) =>
+    createCandidate({ ...o, id: o.id === 'opponent' && i > 0 ? `opponent${i + 1}` : o.id }),
+  )
 
   const startDay = dateToDayIndex(scenario.startDate)
   const electionDay =
@@ -122,7 +127,7 @@ export function createGame(scenario: Scenario, seed: number, setup: GameSetup = 
     candidateId: player.id,
     electionId,
     jurisdictionId: scenario.jurisdictionId,
-    opponentIds: [opponent.id],
+    opponentIds: opponents.map((o) => o.id),
     startingCash,
     maxActionPoints,
     modifiers: {
@@ -164,11 +169,24 @@ export function createGame(scenario: Scenario, seed: number, setup: GameSetup = 
       title: scenario.title,
       electionDay,
       method: scenario.method,
-      candidateIds: [player.id, opponent.id],
+      candidateIds: [player.id, ...opponents.map((o) => o.id)],
     },
     electorate,
     territory,
-    candidates: { [player.id]: player, [opponent.id]: opponent },
+    candidates: Object.fromEntries([[player.id, player], ...opponents.map((o) => [o.id, o])]),
+    aiCandidates: Object.fromEntries(
+      opponents.map((o, i) => {
+        const personality: AiPersonality =
+          i > 0 ? 'insurgent' : (o.baseExposure ?? 0) > 0.5 ? 'frontrunner' : 'attack_dog'
+        const ai: AiCandidateState = {
+          candidateId: o.id,
+          personality,
+          cash: Math.round(startingCash * (0.8 + (o.attributes?.fundraising ?? 0.5))),
+          location: territory.playerLocation,
+        }
+        return [o.id, ai]
+      }),
+    ),
     playerCandidateId: player.id,
     aiOpponentIntensity:
       setup.sandbox?.opponentIntensity ?? scenario.opponentIntensity * difficulty.opponentMult,

@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.0.1",
   "type": "module",
-  "description": "Stateline — a deep US political & electoral simulation game (Democracy-series inspired). Pure deterministic TypeScript engine + React UI.",
+  "description": "Stateline \u2014 a deep US political & electoral simulation game (Democracy-series inspired). Pure deterministic TypeScript engine + React UI.",
   "engines": {
     "node": ">=20"
   },
@@ -18,7 +18,10 @@
     "etl:demographics": "node scripts/etl/fetch-census.mjs",
     "typecheck": "tsc -b --noEmit",
     "lint": "eslint . --max-warnings 0",
-    "format": "prettier --write \"src/**/*.{ts,tsx,css,md}\""
+    "format": "prettier --write \"src/**/*.{ts,tsx,css,md}\"",
+    "tauri": "tauri",
+    "desktop:dev": "tauri dev",
+    "desktop:build": "tauri build"
   },
   "dependencies": {
     "react": "^18.3.1",
