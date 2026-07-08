@@ -3,6 +3,30 @@ import { partyColor } from '@ui/selectors'
 import { TrailMap } from '@ui/screens/TrailMap'
 import { getDifficulty } from '@data/campaign/difficulties'
 import { getTrait } from '@data/campaign/traits'
+import { useCountUp } from '@ui/juice'
+
+function TallyPct({ value }: { value: number }) {
+  const v = useCountUp(value, 1600)
+  return <div className="result-pct">{v.toFixed(1)}%</div>
+}
+
+function Confetti() {
+  return (
+    <div className="confetti" aria-hidden="true">
+      {Array.from({ length: 48 }, (_, i) => (
+        <span
+          key={i}
+          style={{
+            left: `${(i * 61) % 100}%`,
+            animationDelay: `${(i % 12) * 0.12}s`,
+            animationDuration: `${2.4 + ((i * 7) % 10) / 6}s`,
+            background: ['var(--dem)', 'var(--gop)', 'var(--gold)', 'var(--ind)', '#e9eef5'][i % 5],
+          }}
+        />
+      ))}
+    </div>
+  )
+}
 
 export function ElectionNight() {
   const state = useGame((s) => s.state)
@@ -24,8 +48,9 @@ export function ElectionNight() {
   const traits = state.meta.traitIds.map((id) => getTrait(id)?.label).filter(Boolean)
 
   return (
-    <div className="election-night">
-      <div className={`result-banner ${won ? 'win' : 'lose'}`}>
+    <div className="election-night screen-in">
+      {won && <Confetti />}
+      <div className={`result-banner banner-in ${won ? 'win' : 'lose'}`}>
         <span className="result-kicker">{state.election.title} · Results</span>
         <h1>{won ? 'You win the seat!' : `${winner?.name ?? 'Your opponent'} takes the seat`}</h1>
         <p>
@@ -47,16 +72,19 @@ export function ElectionNight() {
           const c = state.candidates[id]
           const isWinner = result.winnerIds[0] === id
           return (
-            <div className="result-row" key={id}>
+            <div className="result-row" key={id} style={{ animationDelay: `${0.2 + ordered.indexOf(id) * 0.25}s` }}>
               <div className="result-name">
                 <span className="dot" style={{ background: partyColor(c?.party ?? 'I') }} />
                 <span className="who">{c?.name ?? id}</span>
                 {isWinner && <span className="winner-tag">Winner</span>}
               </div>
               <div className="result-track">
-                <div className="result-fill" style={{ width: `${share}%`, background: partyColor(c?.party ?? 'I') }} />
+                <div
+                  className="result-fill bar-grow"
+                  style={{ width: `${share}%`, background: partyColor(c?.party ?? 'I'), animationDelay: `${0.3 + ordered.indexOf(id) * 0.25}s` }}
+                />
               </div>
-              <div className="result-pct">{share.toFixed(1)}%</div>
+              <TallyPct value={share} />
             </div>
           )
         })}

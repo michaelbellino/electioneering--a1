@@ -2,9 +2,10 @@ import { useGame } from '@ui/store/gameStore'
 import type { GameState } from '@engine/index'
 import { policySentiment, termVerdict } from '@engine/governing/governing'
 import { getPolicy } from '@data/policies'
+import { useCountUp } from '@ui/juice'
 
 function ApprovalMeter({ value }: { value: number }) {
-  const pct = Math.round(value * 100)
+  const pct = Math.round(useCountUp(value * 100, 700))
   const tone = value >= 0.54 ? 'var(--good)' : value >= 0.46 ? 'var(--gold)' : 'var(--bad)'
   return (
     <div className="stat">
@@ -55,7 +56,7 @@ export function GoverningDashboard({ state }: { state: GameState }) {
   }
 
   return (
-    <div className="dashboard">
+    <div className="dashboard screen-in">
       <div className="dash-bar panel">
         <div className="dash-title">
           <strong>{gov.title}</strong>
@@ -144,7 +145,7 @@ export function GoverningDashboard({ state }: { state: GameState }) {
             <h3>The record</h3>
             <ul className="log">
               {[...gov.record].reverse().slice(0, 10).map((r, i) => (
-                <li key={i} className={r.delta >= 0 ? 'log-action' : 'log-action_blocked'}>
+                <li key={gov.record.length - i} className={`record-in ${r.delta >= 0 ? 'log-action' : 'log-action_blocked'}`}>
                   wk {r.week}: {r.text}
                 </li>
               ))}

@@ -108,7 +108,7 @@ export function CandidateCreator() {
   }
 
   return (
-    <div>
+    <div className="screen-in">
       <div className="page-head">
         <span className="kicker">
           {scenario.title} · {difficulty.label}

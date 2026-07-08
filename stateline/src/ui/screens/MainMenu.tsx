@@ -39,10 +39,10 @@ export function MainMenu() {
   }
 
   return (
-    <div className="menu">
+    <div className="menu screen-in">
       <div className="hero hero-compact">
         <span className="hero-kicker">Political Campaign Simulator · Pre-Alpha</span>
-        <h1>Stateline</h1>
+        <h1 className="hero-title">Stateline</h1>
         <p className="tagline">
           Pick a race, build a candidate, survive the campaign. Every run is a different story.
         </p>

@@ -48,9 +48,12 @@ export function LineChart({
         {baseline != null && (
           <line x1={0} x2={W} y1={y(baseline)} y2={y(baseline)} className="chart-baseline" vectorEffect="non-scaling-stroke" />
         )}
-        {series.map((s) => (
+        {series.map((s, si) => (
           <polyline
             key={s.label}
+            className="chart-line"
+            pathLength={1}
+            style={{ animationDelay: `${si * 120}ms` }}
             points={s.points.map((v, i) => `${x(i)},${y(v)}`).join(' ')}
             fill="none"
             stroke={s.color}

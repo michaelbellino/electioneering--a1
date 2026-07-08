@@ -1658,3 +1658,188 @@ h3 {
 .bill-actions { display: flex; gap: 0.5rem; margin-top: 0.5rem; }
 .dilemma-card.outcome-good { border-color: rgb(62 207 148 / 0.55); }
 .dilemma-card.outcome-bad { border-color: rgb(255 112 112 / 0.55); }
+
+/* ═══ GAME FEEL — motion system ═══════════════════════════ */
+/* Ambient: slow-drifting aurora behind everything. */
+body::before {
+  content: '';
+  position: fixed;
+  inset: -30%;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(42% 34% at 24% 22%, rgb(45 125 210 / 0.10), transparent 70%),
+    radial-gradient(36% 30% at 78% 12%, rgb(179 136 255 / 0.06), transparent 70%),
+    radial-gradient(40% 36% at 62% 86%, rgb(255 112 112 / 0.05), transparent 70%);
+  animation: aurora 46s ease-in-out infinite alternate;
+}
+@keyframes aurora {
+  from { transform: translate3d(-2%, -1%, 0) rotate(0.001deg); }
+  to { transform: translate3d(2.5%, 2%, 0) rotate(0.001deg); }
+}
+
+/* Screen transitions */
+@keyframes screenIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: none; }
+}
+.screen-in { animation: screenIn 0.4s cubic-bezier(0.2, 0.7, 0.2, 1); }
+
+/* Hero title shimmer */
+.hero-title {
+  background: linear-gradient(100deg, var(--ink) 20%, var(--accent) 42%, #b9dcff 50%, var(--accent) 58%, var(--ink) 80%);
+  background-size: 220% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: shimmer 7s ease-in-out infinite;
+}
+@keyframes shimmer {
+  0%, 100% { background-position: 85% 0; }
+  50% { background-position: 15% 0; }
+}
+
+/* Tiles & panels get physicality */
+.scenario-tile, .difficulty-tile, .trait-card, .action-card, .dilemma-option, .save-chip, .hq-row {
+  transition: border-color 0.15s, background 0.15s, transform 0.15s cubic-bezier(0.2, 0.7, 0.2, 1), box-shadow 0.15s;
+}
+.scenario-tile:hover, .difficulty-tile:hover, .trait-card:hover:not(:disabled), .dilemma-option:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px -12px rgb(0 0 0 / 0.7);
+}
+.action-card:hover:not(:disabled) { transform: translateY(-1px); }
+.action-card:active:not(:disabled), .btn:active { transform: translateY(1px) scale(0.99); }
+.btn-primary { position: relative; overflow: hidden; }
+.btn-primary::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(100deg, transparent 30%, rgb(255 255 255 / 0.22) 50%, transparent 70%);
+  background-size: 220% 100%;
+  background-position: 120% 0;
+  transition: background-position 0.5s;
+}
+.btn-primary:hover::after { background-position: -60% 0; }
+
+/* ── Map life ── */
+.trail-road { stroke-dasharray: 3 7; animation: roadFlow 24s linear infinite; }
+@keyframes roadFlow { to { stroke-dashoffset: -200; } }
+.town-circle, .town { transform-box: fill-box; transform-origin: center; }
+.town-circle { transition: filter 0.15s, transform 0.2s cubic-bezier(0.2, 0.7, 0.2, 1); }
+.town:hover .town-circle { transform: scale(1.07); }
+.town-fog { animation: fogBreathe 4.2s ease-in-out infinite; }
+@keyframes fogBreathe { 0%, 100% { opacity: 0.85; } 50% { opacity: 0.55; } }
+.presence-ring {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: ringPulse 2.6s ease-in-out infinite;
+}
+@keyframes ringPulse {
+  0%, 100% { transform: scale(1); stroke-opacity: 0.9; }
+  50% { transform: scale(1.12); stroke-opacity: 0.35; }
+}
+.cand-marker { transition: transform 0.9s cubic-bezier(0.3, 0.8, 0.3, 1); }
+.you-marker .town-marker { animation: bob 2.2s ease-in-out infinite; display: inline-block; }
+@keyframes bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
+.town-reveal { animation: townPop 0.5s cubic-bezier(0.3, 1.4, 0.4, 1) backwards; }
+@keyframes townPop { from { opacity: 0; transform: scale(0.6); } to { opacity: 1; transform: scale(1); } }
+
+/* ── Chart draw-in ── */
+.chart-line {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: drawLine 1.1s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+@keyframes drawLine { to { stroke-dashoffset: 0; } }
+
+/* ── Floating deltas ── */
+.floaters {
+  position: fixed;
+  top: 5.2rem;
+  right: clamp(1rem, 12vw, 12rem);
+  z-index: 60;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+.floater {
+  font-weight: 800;
+  font-size: 1.05rem;
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 2px 8px rgb(0 0 0 / 0.6);
+  animation: floatUp 1.35s cubic-bezier(0.2, 0.6, 0.3, 1) forwards;
+}
+.floater-gain { color: var(--good); }
+.floater-loss { color: var(--bad); }
+.floater-info { color: var(--accent); }
+@keyframes floatUp {
+  0% { opacity: 0; transform: translateY(6px) scale(0.9); }
+  15% { opacity: 1; transform: translateY(0) scale(1.06); }
+  30% { transform: translateY(-4px) scale(1); }
+  100% { opacity: 0; transform: translateY(-42px); }
+}
+.cash-value { transition: color 0.3s; }
+.cash-value.falling { color: var(--bad); }
+
+/* ── Week sweep ── */
+.week-sweep {
+  position: fixed;
+  inset: 0;
+  z-index: 55;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(100deg, transparent 20%, rgb(10 13 19 / 0.85) 40%, rgb(10 13 19 / 0.85) 60%, transparent 80%);
+  background-size: 300% 100%;
+  animation: sweepBg 1.1s cubic-bezier(0.6, 0, 0.3, 1) forwards;
+}
+.week-sweep span {
+  font-size: clamp(1.6rem, 4.5vw, 2.6rem);
+  font-weight: 800;
+  letter-spacing: 0.22em;
+  color: var(--ink);
+  text-shadow: 0 0 24px rgb(74 163 255 / 0.6);
+  animation: sweepText 1.1s cubic-bezier(0.6, 0, 0.3, 1) forwards;
+}
+@keyframes sweepBg { 0% { background-position: 120% 0; } 35% { background-position: 50% 0; } 65% { background-position: 50% 0; } 100% { background-position: -60% 0; } }
+@keyframes sweepText { 0% { opacity: 0; transform: translateX(60px); } 30% { opacity: 1; transform: none; } 70% { opacity: 1; transform: none; } 100% { opacity: 0; transform: translateX(-60px); } }
+
+/* ── Dilemma & outcome theatre ── */
+.dilemma-backdrop { animation: backdropIn 0.25s ease-out; }
+@keyframes backdropIn { from { opacity: 0; } }
+.dilemma-card { animation: cardIn 0.4s cubic-bezier(0.25, 1.2, 0.4, 1); }
+@keyframes cardIn { from { opacity: 0; transform: translateY(24px) scale(0.96); } }
+.dilemma-card.outcome { animation: stampIn 0.45s cubic-bezier(0.3, 1.6, 0.4, 1); }
+@keyframes stampIn { from { opacity: 0; transform: scale(1.15); } }
+
+/* ── Election night theatre ── */
+.banner-in { animation: bannerIn 0.7s cubic-bezier(0.2, 1.1, 0.3, 1); }
+@keyframes bannerIn { from { opacity: 0; transform: scale(0.92) translateY(16px); } }
+.result-row { animation: screenIn 0.5s cubic-bezier(0.2, 0.7, 0.2, 1) backwards; }
+.bar-grow { animation: barGrow 1.5s cubic-bezier(0.2, 0.8, 0.2, 1) backwards; transform-origin: left; }
+@keyframes barGrow { from { transform: scaleX(0); } }
+.confetti { position: fixed; inset: 0; pointer-events: none; z-index: 70; overflow: hidden; }
+.confetti span {
+  position: absolute;
+  top: -12px;
+  width: 9px;
+  height: 14px;
+  border-radius: 2px;
+  opacity: 0.95;
+  animation: confettiFall linear forwards;
+}
+@keyframes confettiFall {
+  0% { transform: translateY(-10vh) rotate(0) rotateY(0); }
+  100% { transform: translateY(110vh) rotate(660deg) rotateY(520deg); opacity: 0.7; }
+}
+
+/* ── Record entries slide in ── */
+.record-in { animation: recordIn 0.35s ease-out backwards; }
+@keyframes recordIn { from { opacity: 0; transform: translateX(-8px); } }
+
+/* AP pips pop when they refill */
+.ap-pip { transition: background 0.25s, box-shadow 0.25s, transform 0.25s; }
+.ap-pip:not(.spent) { animation: pipPop 0.35s cubic-bezier(0.3, 1.5, 0.4, 1); }
+@keyframes pipPop { from { transform: scale(0.4); } }

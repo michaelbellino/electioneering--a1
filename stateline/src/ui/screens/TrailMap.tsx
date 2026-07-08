@@ -107,17 +107,17 @@ export function TrailMap({ state, results = false }: { state: GameState; results
               const pb = px(b)
               return <line key={i} x1={pa.cx} y1={pa.cy} x2={pb.cx} y2={pb.cy} className="trail-road" />
             })}
-            {t.communities.map((c) => {
+            {t.communities.map((c, ci) => {
               const { cx, cy } = px(c)
               const info = fillFor(c)
-              const isHere = t.playerLocation === c.id
               const presence = t.presence[c.id] ?? 0
               const active = selected === c.id
               return (
                 <g
                   key={c.id}
                   transform={`translate(${cx}, ${cy})`}
-                  className={`town ${active ? 'town-active' : ''}`}
+                  className={`town ${active ? 'town-active' : ''} ${results ? 'town-reveal' : ''}`}
+                  style={results ? { animationDelay: `${ci * 70}ms` } : undefined}
                   role="button"
                   tabIndex={0}
                   aria-label={`${c.name}, ${ARCHETYPE_LABEL[c.archetype]}${info.share !== null ? `, you at ${Math.round(info.share * 100)}%` : ', no local data'}`}
@@ -147,28 +147,38 @@ export function TrailMap({ state, results = false }: { state: GameState; results
                   <text className="town-name" y={r(c) + 16}>
                     {c.name}
                   </text>
-                  {isHere && (
-                    <text className="town-marker you" x={-r(c) - 4} y={-r(c) + 2} aria-label="You are here">
-                      ★
-                    </text>
-                  )}
-                  {!results &&
-                    Object.values(state.aiCandidates)
-                      .filter((ai) => ai.location === c.id)
-                      .map((ai, i) => (
-                        <text
-                          key={ai.candidateId}
-                          className="town-marker opp"
-                          x={r(c) - 8 - i * 12}
-                          y={-r(c) + 2}
-                          aria-label={`${state.candidates[ai.candidateId]?.name ?? 'Rival'} is here`}
-                        >
-                          ▲
-                        </text>
-                      ))}
                 </g>
               )
             })}
+            {/* Candidate markers live on their own layer so they GLIDE between towns on travel. */}
+            {!results && (
+              <g className="marker-layer" aria-hidden="true">
+                {Object.values(state.aiCandidates).map((ai, i) => {
+                  const c = getCommunity(t, ai.location)
+                  if (!c) return null
+                  const { cx, cy } = px(c)
+                  return (
+                    <g
+                      key={ai.candidateId}
+                      className="cand-marker"
+                      style={{ transform: `translate(${cx + r(c) - 10 - i * 13}px, ${cy - r(c) - 4}px)` }}
+                    >
+                      <text className="town-marker opp">▲</text>
+                    </g>
+                  )
+                })}
+                {(() => {
+                  const c = getCommunity(t, t.playerLocation)
+                  if (!c) return null
+                  const { cx, cy } = px(c)
+                  return (
+                    <g className="cand-marker you-marker" style={{ transform: `translate(${cx - r(c) - 6}px, ${cy - r(c) - 2}px)` }}>
+                      <text className="town-marker you">★</text>
+                    </g>
+                  )
+                })()}
+              </g>
+            )}
           </svg>
         </div>
         <div className="trail-legend">

@@ -11,6 +11,7 @@ import { STAFF_POOL, MAX_OFFICES, officeCost } from '@data/campaign/staff'
 import { getCommunity } from '@engine/territory/generate'
 import type { GameState } from '@engine/index'
 import { fmtUsd, fmtUsdDelta } from '@ui/format'
+import { CashValue, FloatingDeltas, WeekSweep } from '@ui/juice'
 
 function Standings({ state }: { state: GameState }) {
   const rows = standings(state)
@@ -288,8 +289,10 @@ export function CampaignDashboard() {
   ]
 
   return (
-    <div className="dashboard">
+    <div className="dashboard screen-in">
       <DilemmaModal state={state} />
+      <FloatingDeltas />
+      <WeekSweep />
       <div className="dash-bar panel">
         <div className="dash-title">
           <strong>{state.election.title}</strong>
@@ -313,7 +316,7 @@ export function CampaignDashboard() {
         <div className="dash-stats">
           <div className="stat">
             <span className="stat-label">Cash</span>
-            <span className="stat-value">{fmtUsd(state.campaign.finance.cash)}</span>
+            <CashValue cents={state.campaign.finance.cash} />
           </div>
           <div className="stat">
             <span className="stat-label">Action points</span>
