@@ -93,6 +93,8 @@ export interface CampaignState {
   readonly modifiers: CampaignModifiers
   /** Ad buys per channel this campaign (drives diminishing returns). */
   readonly adFatigue: Readonly<Record<string, number>>
+  /** Fundraisers held this campaign — donors tire (diminishing hauls). */
+  readonly fundraiserUses: number
 }
 
 /** A single ledger effect an action emits, before being lowered to a ScheduledEffect. */

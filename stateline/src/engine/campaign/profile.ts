@@ -74,11 +74,18 @@ export function deriveTurnoutBoostMap(
 ): Record<string, number> {
   const boost: Record<string, number> = {}
   for (const cand of candidates) {
-    const mag = sumElectorateChannel(ledger, day, {
+    const gotv = sumElectorateChannel(ledger, day, {
       jurisdictionId,
       candidateId: cand.candidateId,
       channel: 'turnout',
     })
+    // Enthusiasm (M2): excitement turns out your own leaners — persuasion's separate currency.
+    const enthusiasm = sumElectorateChannel(ledger, day, {
+      jurisdictionId,
+      candidateId: cand.candidateId,
+      channel: 'enthusiasm',
+    })
+    const mag = gotv + Math.max(0, enthusiasm) * 0.4
     if (mag <= 0) continue
     const dir = partyDir(cand.party)
     for (const g of groups) {

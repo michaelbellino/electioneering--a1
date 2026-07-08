@@ -17,7 +17,7 @@ export const HOUSE_SPECIAL_PA07: Scenario = {
   electionDate: { year: 2026, month: 9, day: 15 },
   method: 'fptp',
   startingCash: USD(50_000),
-  opponentIntensity: 0.35,
+  opponentIntensity: 0.52,
   player: {
     id: 'player',
     name: 'Your Candidate',

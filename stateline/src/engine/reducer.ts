@@ -169,7 +169,7 @@ const LOCAL_CATEGORIES = new Set(['event', 'ground_game', 'message'])
 function localReach(territory: TerritoryState, communityId: string): number {
   const c = getCommunity(territory, communityId)
   if (!c) return 1
-  return Math.min(1.5, 0.6 + c.weight * 4.5)
+  return Math.min(1.3, 0.55 + c.weight * 4)
 }
 
 function bumpPresence(
@@ -710,9 +710,15 @@ export function tick(state: GameState): GameState {
       const profiles = profilesAt(state, ledger, day)
       const boost = turnoutBoostAt(state, profiles, ledger, day)
       const tieRng = new Rng(forkRng(state.rng.events!, `tie:${day}`))
-      result = resolveElection(effectiveElectorate(state), profiles, state.election.method, {
+      const eff = effectiveElectorate(state)
+      result = resolveElection(eff, profiles, state.election.method, {
         turnoutBoost: boost,
         rng: tieRng,
+        // M2: election night is the SUM of the map — ground presence is worth real votes.
+        communities: state.territory.communities.map((c) => ({
+          electorate: communityElectorate(eff, c),
+          profiles: localProfiles(profiles, state.playerCandidateId, c, state.territory),
+        })),
       })
       phase = 'election_night'
       const won = result.winnerIds[0] === state.playerCandidateId

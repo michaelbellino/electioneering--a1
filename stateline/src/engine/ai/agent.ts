@@ -105,7 +105,7 @@ export function runAiTurn(ai: AiCandidateState, ctx: AiTurnCtx): AiTurnResult {
     wGround + desperation * 0.1,
   ]
 
-  const moves = 3
+  const moves = ctx.intensity > 0.65 ? 4 : 3 // hard/brutal opponents simply work harder
   for (let m = 0; m < moves; m++) {
     const total = weights.reduce((a, b) => a + b, 0)
     let x = rng.float() * total
@@ -124,12 +124,12 @@ export function runAiTurn(ai: AiCandidateState, ctx: AiTurnCtx): AiTurnResult {
       did.push('fundraised')
     } else if (pick === 1 && cash >= USD(15_000)) {
       cash -= USD(15_000)
-      effects.push(eff(ctx, ai.candidateId, ai.candidateId, n++, 'nameRecognition', 0.35 * ctx.intensity * 2, 25, 0.6))
-      effects.push(eff(ctx, ai.candidateId, ai.candidateId, n++, 'favorability', 0.04 * ctx.intensity * 2, 20, 0.7))
+      effects.push(eff(ctx, ai.candidateId, ai.candidateId, n++, 'nameRecognition', 0.35 * ctx.intensity * 3.4, 25, 0.6))
+      effects.push(eff(ctx, ai.candidateId, ai.candidateId, n++, 'favorability', 0.05 * ctx.intensity * 3.4, 20, 0.7))
       did.push('ran positive ads')
     } else if (pick === 2 && cash >= USD(12_000)) {
       cash -= USD(12_000)
-      effects.push(eff(ctx, ai.candidateId, rivalId, n++, 'favorability', -0.045 * ctx.intensity * 2, 20, -0.7))
+      effects.push(eff(ctx, ai.candidateId, rivalId, n++, 'favorability', -0.07 * ctx.intensity * 3.4, 20, -0.7))
       effects.push(eff(ctx, ai.candidateId, ai.candidateId, n++, 'favorability', -0.01, 14, -0.7))
       did.push(`attacked ${rivalId === ctx.profiles[0]?.candidateId ? 'you' : 'a rival'}`)
     } else {
@@ -149,7 +149,7 @@ export function runAiTurn(ai: AiCandidateState, ctx: AiTurnCtx): AiTurnResult {
         }
       }
       const reach = Math.min(1.5, 0.6 + (getCommunity(ctx.territory, location)?.weight ?? 0.05) * 4.5)
-      effects.push(eff(ctx, ai.candidateId, ai.candidateId, n++, 'nameRecognition', 0.3 * ctx.intensity * 2 * reach, 30, 0.5))
+      effects.push(eff(ctx, ai.candidateId, ai.candidateId, n++, 'nameRecognition', 0.35 * ctx.intensity * 3.2 * reach, 30, 0.5))
       presence[location] = (presence[location] ?? 0) + 0.3
       did.push(`rallied in ${getCommunity(ctx.territory, location)?.name ?? 'town'}`)
     }

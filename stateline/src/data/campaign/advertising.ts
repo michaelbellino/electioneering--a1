@@ -75,7 +75,7 @@ export function getAdChannel(id: string): AdChannelDef | undefined {
 }
 
 /** Fatigue: each buy on a channel this campaign multiplies later buys by 1/(1+RATE×n). */
-export const AD_FATIGUE_RATE = 0.4
+export const AD_FATIGUE_RATE = 0.28
 /** Public opinion can move at most this far (±) on one issue in one campaign (TPP's ±10 rule). */
 export const OPINION_SHIFT_CAP = 0.08
 /** Attack ads backfire when at least this share of the electorate agrees with the attacked position. */

@@ -85,6 +85,7 @@ export function createCampaign(input: CreateCampaignInput): CampaignState {
       scandalMult: input.modifiers?.scandalMult ?? 1,
     },
     adFatigue: {},
+    fundraiserUses: 0,
   }
 }
 
@@ -161,9 +162,13 @@ export function applyCampaignAction(
 
   let finance = spend(campaign.finance, def.cashCost)
   let raised = 0
+  let fundraiserUses = campaign.fundraiserUses
   if (def.fundraising) {
-    raised = Math.round(def.fundraising.baseAmount * fundraiseMultiplier(campaign, candidate))
+    // Donor fatigue: the same rolodex yields less every time you shake it.
+    const fatigue = 1 / (1 + 0.22 * fundraiserUses)
+    raised = Math.round(def.fundraising.baseAmount * fundraiseMultiplier(campaign, candidate) * fatigue)
     finance = raise(finance, raised)
+    fundraiserUses += 1
   }
 
   const multiplier = actionMultiplier(campaign, candidate, def) * (ctx.extraMultiplier ?? 1)
@@ -181,6 +186,7 @@ export function applyCampaignAction(
   const next: CampaignState = {
     ...campaign,
     finance,
+    fundraiserUses,
     actionPoints: campaign.actionPoints - def.actionPointCost,
     cooldowns: {
       ...campaign.cooldowns,

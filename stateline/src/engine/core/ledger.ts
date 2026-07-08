@@ -11,7 +11,7 @@ import type { DayIndex } from './calendar'
 import type { EntityId, Signed1 } from './primitives'
 
 /** Which modeled quantity an effect pushes on. */
-export type EffectChannel = 'nameRecognition' | 'favorability' | 'turnout' | 'persuasion'
+export type EffectChannel = 'nameRecognition' | 'favorability' | 'turnout' | 'persuasion' | 'enthusiasm'
 
 export type EffectTarget =
   | {

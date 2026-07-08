@@ -92,7 +92,7 @@ export function buildPaRaces(): PaRaceMeta[] {
         electionDate: { year: 2026, month: 9, day: 15 },
         method: 'fptp' as const,
         startingCash: USD(50_000),
-        opponentIntensity: 0.3 + 0.25 * Math.min(1, Math.abs(j.baselinePartisanLean)),
+        opponentIntensity: 0.45 + 0.25 * Math.min(1, Math.abs(j.baselinePartisanLean)),
         player: playerDefaults(j.baselinePartisanLean),
         opponent: opponentFor(j.id, j.baselinePartisanLean, false),
       },
@@ -112,7 +112,7 @@ export function buildPaRaces(): PaRaceMeta[] {
         electionDate: dayIndexToDate(dateToDayIndex(startDate) + weeks * 7),
         method: 'fptp' as const,
         startingCash: USD(cash),
-        opponentIntensity: 0.55,
+        opponentIntensity: 0.65,
         player: playerDefaults(pa.baselinePartisanLean),
         opponent: opponentFor(`us-pa:${office}`, pa.baselinePartisanLean, true),
         extraOpponents: [
