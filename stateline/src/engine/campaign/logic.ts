@@ -62,6 +62,7 @@ export interface CreateCampaignInput {
   readonly maxActionPoints?: number
   readonly staff?: readonly StaffMember[]
   readonly offices?: number
+  readonly modifiers?: Partial<CampaignState['modifiers']>
 }
 
 export function createCampaign(input: CreateCampaignInput): CampaignState {
@@ -79,10 +80,14 @@ export function createCampaign(input: CreateCampaignInput): CampaignState {
     offices: input.offices ?? 0,
     strategy: { tone: 0, focusIssue: null },
     cooldowns: {},
+    modifiers: {
+      salaryMult: input.modifiers?.salaryMult ?? 1,
+      scandalMult: input.modifiers?.scandalMult ?? 1,
+    },
   }
 }
 
-function staffEffectiveness(campaign: CampaignState, role: StaffRole): number {
+export function staffEffectiveness(campaign: CampaignState, role: StaffRole): number {
   return Math.min(
     1.5,
     campaign.staff.filter((s) => s.role === role).reduce((a, s) => a + s.effectiveness, 0),
@@ -123,6 +128,8 @@ export interface ApplyActionCtx {
   readonly day: DayIndex
   /** Current ledger length, used as a nonce for deterministic effect ids. */
   readonly ledgerLength: number
+  /** Additional multiplier from context (e.g. WHERE the action happens on the map). */
+  readonly extraMultiplier?: number
 }
 
 /**
@@ -158,7 +165,7 @@ export function applyCampaignAction(
     finance = raise(finance, raised)
   }
 
-  const multiplier = actionMultiplier(campaign, candidate, def)
+  const multiplier = actionMultiplier(campaign, candidate, def) * (ctx.extraMultiplier ?? 1)
   const newEffects = lowerEffects(def, {
     candidateId: candidate.id,
     opponentId: campaign.opponentIds[0] ?? null,
@@ -191,7 +198,9 @@ export function tickCampaign(
 ): TickResult {
   const weeks = daysPerTick / 7
   let finance = campaign.finance
-  const salaries = Math.round(campaign.staff.reduce((a, s) => a + s.weeklySalary, 0) * weeks)
+  const salaries = Math.round(
+    campaign.staff.reduce((a, s) => a + s.weeklySalary, 0) * weeks * campaign.modifiers.salaryMult,
+  )
   if (salaries > 0) finance = spend(finance, salaries)
   const trickle = Math.round((20000 + 80000 * candidate.attributes.fundraising) * weeks)
   if (trickle > 0) finance = raise(finance, trickle)

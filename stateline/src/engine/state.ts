@@ -10,6 +10,8 @@ import type { ScheduledEffect } from './core/ledger'
 import type { EntityId, GamePhase, LogEntry } from './core/primitives'
 import type { ElectorateState } from './electorate/types'
 import type { CampaignState, CandidateState } from './campaign/types'
+import type { PendingDilemma } from './campaign/dilemmas'
+import type { TerritoryState } from './territory/generate'
 import type { AllocationResult, ElectoralMethod } from './electoral/types'
 
 export const ENGINE_VERSION = '0.1.0'
@@ -24,6 +26,10 @@ export interface GameMeta {
   /** Bumped exactly once per applyAction/tick so UI selectors can memoize on it. */
   readonly revision: number
   readonly scenarioId: string
+  /** Difficulty level id this run was created with (see data/campaign/difficulties). */
+  readonly difficulty: string
+  /** Background traits picked at creation (see data/campaign/traits). */
+  readonly traitIds: readonly string[]
 }
 
 export interface SliceElection {
@@ -50,6 +56,8 @@ export interface GameState {
   ledger: ScheduledEffect[]
   election: SliceElection
   electorate: ElectorateState
+  /** The semi-open-world map: communities, locations, presence, fog-of-war intel. */
+  territory: TerritoryState
   candidates: Record<EntityId, CandidateState>
   playerCandidateId: EntityId
   aiOpponentIntensity: number
@@ -57,4 +65,8 @@ export interface GameState {
   result: AllocationResult | null
   polls: PollRecord[]
   log: LogEntry[]
+  /** Dilemma awaiting a decision (auto-resolves to its default if the week advances). */
+  pendingDilemma: PendingDilemma | null
+  /** Dilemma defs already drawn this run (each fires at most once). */
+  seenDilemmas: string[]
 }

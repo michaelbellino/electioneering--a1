@@ -2,8 +2,12 @@ import { useState } from 'react'
 import { useGame } from '@ui/store/gameStore'
 import { LineChart } from '@ui/components/LineChart'
 import { InfluenceMap } from '@ui/screens/InfluenceMap'
+import { TrailMap } from '@ui/screens/TrailMap'
+import { DilemmaModal } from '@ui/screens/DilemmaModal'
 import { actionAvailability, partyColor, pollSeries, standings, weeksToElection } from '@ui/selectors'
 import { CAMPAIGN_ACTIONS } from '@data/campaign/actions'
+import { STAFF_POOL, MAX_OFFICES, officeCost } from '@data/campaign/staff'
+import { getCommunity } from '@engine/territory/generate'
 import type { GameState } from '@engine/index'
 import { fmtUsd, fmtUsdDelta } from '@ui/format'
 
@@ -17,6 +21,11 @@ function Standings({ state }: { state: GameState }) {
           <div className="standing-name">
             <span className="dot" style={{ background: partyColor(s.party) }} />
             {s.name} {s.candidateId === state.playerCandidateId && <em>(you)</em>}
+            {(state.candidates[s.candidateId]?.scandalLoad ?? 0) > 0.05 && (
+              <em className="scandal-chip">
+                scandal {Math.round((state.candidates[s.candidateId]?.scandalLoad ?? 0) * 100)}
+              </em>
+            )}
           </div>
           <div className="meters">
             <Meter label="Name rec." value={s.awareness} color={partyColor(s.party)} />
@@ -31,14 +40,7 @@ function Standings({ state }: { state: GameState }) {
 function Meter({ label, value, color }: { label: string; value: number; color: string }) {
   const pct = Math.round(value * 100)
   return (
-    <div
-      className="meter"
-      role="meter"
-      aria-label={label}
-      aria-valuenow={pct}
-      aria-valuemin={0}
-      aria-valuemax={100}
-    >
+    <div className="meter" role="meter" aria-label={label} aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100}>
       <span className="meter-label">{label}</span>
       <div className="meter-track">
         <div className="meter-fill" style={{ width: `${pct}%`, background: color }} />
@@ -94,11 +96,7 @@ function Polling({ state }: { state: GameState }) {
                 </span>
               </div>
               <div className="poll-margin">
-                {Math.abs(lead) < 0.05
-                  ? 'Dead heat.'
-                  : lead > 0
-                    ? `You lead by ${lead.toFixed(1)} pts.`
-                    : `You trail by ${(-lead).toFixed(1)} pts.`}
+                {Math.abs(lead) < 0.05 ? 'Dead heat.' : lead > 0 ? `You lead by ${lead.toFixed(1)} pts.` : `You trail by ${(-lead).toFixed(1)} pts.`}
               </div>
             </>
           )}
@@ -110,13 +108,18 @@ function Polling({ state }: { state: GameState }) {
 
 function Actions({ state }: { state: GameState }) {
   const dispatch = useGame((s) => s.dispatch)
+  const here = getCommunity(state.territory, state.territory.playerLocation)
   return (
     <div className="panel">
-      <h3>Campaign Actions</h3>
+      <h3>
+        Campaign Actions
+        {here && <span className="h3-aside">on the ground in {here.name}</span>}
+      </h3>
       <div className="actions">
         {CAMPAIGN_ACTIONS.map((def) => {
           const avail = actionAvailability(state, def)
           const isGain = Boolean(def.fundraising)
+          const isLocal = ['event', 'ground_game', 'message'].includes(def.category)
           return (
             <button
               key={def.id}
@@ -132,12 +135,64 @@ function Actions({ state }: { state: GameState }) {
               </div>
               <div className="action-desc">{def.description}</div>
               <div className="action-meta">
-                <span>{def.actionPointCost} AP</span>
+                <span>
+                  {def.actionPointCost} AP{isLocal && here ? ` · here in ${here.name}` : ' · district-wide'}
+                </span>
                 {!avail.ok && <span className="action-block">{avail.reason}</span>}
               </div>
             </button>
           )
         })}
+      </div>
+    </div>
+  )
+}
+
+function Hq({ state }: { state: GameState }) {
+  const dispatch = useGame((s) => s.dispatch)
+  const hired = new Set(state.campaign.staff.map((s) => s.id))
+  const offices = state.campaign.offices
+  const nextOffice = officeCost(offices)
+  return (
+    <div className="panel">
+      <h3>
+        The Team
+        <span className="h3-aside">
+          payroll {fmtUsd(Math.round(state.campaign.staff.reduce((a, s) => a + s.weeklySalary, 0) * state.campaign.modifiers.salaryMult))}/wk
+        </span>
+      </h3>
+      <div className="hq-staff">
+        {STAFF_POOL.map((def) => {
+          const isHired = hired.has(def.id)
+          return (
+            <div key={def.id} className={`hq-row ${isHired ? 'hired' : ''}`}>
+              <div className="hq-info">
+                <strong>{def.name}</strong>
+                <span>{def.blurb}</span>
+              </div>
+              {isHired ? (
+                <button className="btn btn-sm" onClick={() => dispatch({ type: 'campaign/fireStaff', payload: { staffId: def.id } })}>
+                  Let go
+                </button>
+              ) : (
+                <button className="btn btn-sm" onClick={() => dispatch({ type: 'campaign/hireStaff', payload: { staffId: def.id } })}>
+                  Hire · {fmtUsd(def.signingBonus)} + {fmtUsd(def.weeklySalary)}/wk · 1 AP
+                </button>
+              )}
+            </div>
+          )
+        })}
+        <div className="hq-row">
+          <div className="hq-info">
+            <strong>Field offices ({offices}/{MAX_OFFICES})</strong>
+            <span>Each office adds +5% to everything you do on the ground.</span>
+          </div>
+          {offices < MAX_OFFICES && (
+            <button className="btn btn-sm" onClick={() => dispatch({ type: 'campaign/openOffice', payload: {} })}>
+              Open · {fmtUsd(nextOffice)} · 1 AP
+            </button>
+          )}
+        </div>
       </div>
     </div>
   )
@@ -190,18 +245,27 @@ function ApPips({ spent, max }: { spent: number; max: number }) {
   )
 }
 
+type View = 'trail' | 'war_room' | 'influence'
+
 export function CampaignDashboard() {
   const state = useGame((s) => s.state)
   const advanceTurn = useGame((s) => s.advanceTurn)
-  const [view, setView] = useState<'war_room' | 'influence'>('war_room')
+  const [view, setView] = useState<View>('trail')
   if (!state) return null
 
   const weeks = weeksToElection(state)
   const ap = state.campaign.actionPoints
   const maxAp = state.campaign.maxActionPoints
 
+  const TABS: Array<{ id: View; label: string }> = [
+    { id: 'trail', label: 'The Trail' },
+    { id: 'war_room', label: 'War Room' },
+    { id: 'influence', label: 'Influence Map' },
+  ]
+
   return (
     <div className="dashboard">
+      <DilemmaModal state={state} />
       <div className="dash-bar panel">
         <div className="dash-title">
           <strong>{state.election.title}</strong>
@@ -210,22 +274,17 @@ export function CampaignDashboard() {
           </span>
         </div>
         <div className="view-tabs" role="tablist" aria-label="Dashboard view">
-          <button
-            role="tab"
-            aria-selected={view === 'war_room'}
-            className={`tab ${view === 'war_room' ? 'active' : ''}`}
-            onClick={() => setView('war_room')}
-          >
-            War Room
-          </button>
-          <button
-            role="tab"
-            aria-selected={view === 'influence'}
-            className={`tab ${view === 'influence' ? 'active' : ''}`}
-            onClick={() => setView('influence')}
-          >
-            Influence Map
-          </button>
+          {TABS.map((tab) => (
+            <button
+              key={tab.id}
+              role="tab"
+              aria-selected={view === tab.id}
+              className={`tab ${view === tab.id ? 'active' : ''}`}
+              onClick={() => setView(tab.id)}
+            >
+              {tab.label}
+            </button>
+          ))}
         </div>
         <div className="dash-stats">
           <div className="stat">
@@ -241,19 +300,27 @@ export function CampaignDashboard() {
           </button>
         </div>
       </div>
-      {view === 'influence' ? (
-        <InfluenceMap state={state} />
-      ) : (
-        <div className="dash-grid">
+
+      {view === 'influence' && <InfluenceMap state={state} />}
+      {view === 'trail' && (
+        <div className="trail-grid">
+          <TrailMap state={state} />
           <div className="dash-col">
             <Actions state={state} />
           </div>
+        </div>
+      )}
+      {view === 'war_room' && (
+        <div className="dash-grid">
           <div className="dash-col">
             <Polling state={state} />
             <Standings state={state} />
           </div>
           <div className="dash-col">
+            <Hq state={state} />
             <Finance state={state} />
+          </div>
+          <div className="dash-col">
             <Log state={state} />
           </div>
         </div>

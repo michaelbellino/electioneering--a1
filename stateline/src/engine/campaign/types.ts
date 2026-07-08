@@ -53,6 +53,14 @@ export interface CampaignStrategy {
   readonly focusIssue: IssueId | null
 }
 
+/** Run-level multipliers granted by traits (and future perks). */
+export interface CampaignModifiers {
+  /** Multiplier on weekly staff salaries. */
+  readonly salaryMult: number
+  /** Multiplier on incoming scandal damage to the player. */
+  readonly scandalMult: number
+}
+
 export interface FinanceState {
   readonly cash: Cents
   readonly totalRaised: Cents
@@ -75,6 +83,7 @@ export interface CampaignState {
   readonly strategy: CampaignStrategy
   /** defId -> the day the action becomes available again. */
   readonly cooldowns: Readonly<Record<string, DayIndex>>
+  readonly modifiers: CampaignModifiers
 }
 
 /** A single ledger effect an action emits, before being lowered to a ScheduledEffect. */

@@ -20,7 +20,10 @@ export interface LowerCtx {
   readonly multiplier: number
 }
 
-export function lowerEffects(def: CampaignActionDef, ctx: LowerCtx): ScheduledEffect[] {
+export function lowerEffects(
+  def: Pick<CampaignActionDef, 'id' | 'effects'>,
+  ctx: LowerCtx,
+): ScheduledEffect[] {
   const out: ScheduledEffect[] = []
   def.effects.forEach((spec, i) => {
     const targetCandidate = spec.target === 'opponent' ? ctx.opponentId : ctx.candidateId

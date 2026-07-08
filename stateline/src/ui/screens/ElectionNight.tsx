@@ -1,9 +1,13 @@
 import { useGame } from '@ui/store/gameStore'
 import { partyColor } from '@ui/selectors'
+import { TrailMap } from '@ui/screens/TrailMap'
+import { getDifficulty } from '@data/campaign/difficulties'
+import { getTrait } from '@data/campaign/traits'
 
 export function ElectionNight() {
   const state = useGame((s) => s.state)
   const reset = useGame((s) => s.reset)
+  const rematch = useGame((s) => s.rematch)
   if (!state || !state.result) return null
 
   const result = state.result
@@ -14,6 +18,8 @@ export function ElectionNight() {
   const winnerId = result.winnerIds[0] ?? ''
   const winner = state.candidates[winnerId]
   const marginPts = (result.margin * 100).toFixed(1)
+  const difficulty = getDifficulty(state.meta.difficulty)
+  const traits = state.meta.traitIds.map((id) => getTrait(id)?.label).filter(Boolean)
 
   return (
     <div className="election-night">
@@ -23,6 +29,13 @@ export function ElectionNight() {
         <p>
           {won ? 'Won' : 'Lost'} by {marginPts} pts · turnout {(result.turnout * 100).toFixed(1)}%
         </p>
+        <ul className="run-summary">
+          <li>{difficulty.label}</li>
+          {traits.map((t) => (
+            <li key={t}>{t}</li>
+          ))}
+          <li className="num">seed {state.meta.seed}</li>
+        </ul>
       </div>
 
       <div className="panel result-bars">
@@ -39,10 +52,7 @@ export function ElectionNight() {
                 {isWinner && <span className="winner-tag">Winner</span>}
               </div>
               <div className="result-track">
-                <div
-                  className="result-fill"
-                  style={{ width: `${share}%`, background: partyColor(c?.party ?? 'I') }}
-                />
+                <div className="result-fill" style={{ width: `${share}%`, background: partyColor(c?.party ?? 'I') }} />
               </div>
               <div className="result-pct">{share.toFixed(1)}%</div>
             </div>
@@ -50,9 +60,14 @@ export function ElectionNight() {
         })}
       </div>
 
+      <TrailMap state={state} results />
+
       <div className="election-actions">
+        <button className="btn" onClick={rematch}>
+          ↻ Run it back (same seed)
+        </button>
         <button className="btn btn-primary btn-lg" onClick={reset}>
-          Run another campaign
+          New campaign
         </button>
       </div>
     </div>

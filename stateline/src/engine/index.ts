@@ -4,7 +4,7 @@
  * serialize/deserialize for save/load. The engine never imports the UI.
  */
 import { applyAction, currentProfiles, tick, type GameAction } from './reducer'
-import { createGame, type Scenario } from './scenario'
+import { createGame, type GameSetup, type Scenario } from './scenario'
 import type { GameState } from './state'
 
 export type EngineListener = (state: GameState) => void
@@ -17,8 +17,8 @@ export class Engine {
     this.state = state
   }
 
-  static create(scenario: Scenario, seed: number): Engine {
-    return new Engine(createGame(scenario, seed))
+  static create(scenario: Scenario, seed: number, setup?: GameSetup): Engine {
+    return new Engine(createGame(scenario, seed, setup))
   }
 
   static deserialize(json: string): Engine {
@@ -61,7 +61,7 @@ export class Engine {
 }
 
 export { createGame } from './scenario'
-export type { Scenario, ScenarioCandidate } from './scenario'
+export type { GameSetup, SandboxOverrides, Scenario, ScenarioCandidate } from './scenario'
 export { applyAction, tick, currentProfiles } from './reducer'
 export type { GameAction } from './reducer'
 export type { GameState, SliceElection, PollRecord } from './state'
