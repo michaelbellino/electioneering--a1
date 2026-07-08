@@ -237,8 +237,10 @@
     var mapController = null;
     var built = false;
     // "This Week" parameterized-action state (hour budget; survives re-renders).
-    var weekState = { source: 'grassroots', fundHours: 8, rallyHours: 6, selectedRegionId: null };
+    var weekState = { source: 'grassroots', fundHours: 8, rallyHours: 6, issue: null, issueHours: 8, selectedRegionId: null };
     var lastVm = null;
+    function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+    function shortLabel(s) { return String(s).replace(/^The /, '').split(' ')[0].slice(0, 8); }
 
     var KPI_DEFS = [
       { key: 'funds', icon: 'funds', label: 'War Chest', fmt: function (s) { return Util.formatMoney(s.resources.funds * 1000); }, val: function (s) { return s.resources.funds; }, color: 'var(--color-accent)', money: true },
@@ -290,6 +292,18 @@
       refs.rallyBtnLabel = h('span', null, 'Rally (national)');
       refs.rallyBtn = h('button', { type: 'button', class: 'btn btn--ghost btn--block btn--sm', onclick: function () { cbk.onRally({ hours: weekState.rallyHours, regionId: weekState.selectedRegionId }); } }, [icon('momentum', 14), refs.rallyBtnLabel]);
 
+      // Push an Issue — the network lever (issues drive segments drive you).
+      var issueNodes = ((vm.network && vm.network.nodes) || []).filter(function (n) { return n.type === 'issue'; });
+      if (!weekState.issue && issueNodes.length) weekState.issue = issueNodes[0].id;
+      refs.issueSelect = h('select', { class: 'tw-select', 'aria-label': 'Issue to champion', onchange: function () { weekState.issue = this.value; if (lastVm) updateThisWeek(lastVm); } },
+        issueNodes.map(function (n) { return h('option', { value: n.id }, n.label); }));
+      refs.issueSelect.value = weekState.issue || '';
+      refs.issueHoursVal = h('span', { class: 'tw-hrs' }, weekState.issueHours + 'h');
+      refs.issueSlider = h('input', { type: 'range', class: 'tw-range', min: '1', max: '40', value: String(weekState.issueHours), 'aria-label': 'Hours to champion the issue',
+        oninput: function () { weekState.issueHours = +this.value; if (lastVm) updateThisWeek(lastVm); } });
+      refs.issueFx = h('div', { class: 'tw-fx' });
+      refs.issueBtn = h('button', { type: 'button', class: 'btn btn--ghost btn--block btn--sm', onclick: function () { cbk.onPushIssue({ issueId: weekState.issue, hours: weekState.issueHours }); } }, [icon('flag', 14), h('span', null, 'Push Issue')]);
+
       var thisWeekPanel = h('section', { class: 'panel tw' }, [
         h('div', { class: 'panel__title' }, [icon('refresh'), h('span', null, 'This Week'), refs.twHint = h('span', { class: 'panel__hint' }, '40h to spend')]),
         h('div', { class: 'panel__body tw-body' }, [
@@ -300,6 +314,10 @@
           h('div', { class: 'tw-act' }, [
             h('div', { class: 'tw-act__h' }, [h('strong', null, 'Rally'), refs.rallyHoursVal]),
             refs.rallySlider, refs.rallyFx, refs.rallyBtn
+          ]),
+          h('div', { class: 'tw-act' }, [
+            h('div', { class: 'tw-act__h' }, [h('strong', null, 'Push an Issue'), refs.issueHoursVal]),
+            refs.issueSelect, refs.issueSlider, refs.issueFx, refs.issueBtn
           ])
         ])
       ]);
@@ -340,13 +358,26 @@
         h('div', { class: 'panel__body' }, [refs.mapMount, refs.legend, h('div', { class: 'ec-bar-wrap' }, [refs.ecBar])])
       ]);
 
+      refs.netMount = h('div', { class: 'net-mount' });
+      var networkPanel = h('section', { class: 'panel net-panel' }, [
+        h('div', { class: 'panel__title' }, [icon('target'), h('span', null, 'The Network'),
+          h('span', { class: 'panel__hint panel__hint--muted' }, 'issues → segments → you'),
+          refs.netApproval = h('span', { class: 'panel__hint' }, 'coalition +0')]),
+        h('div', { class: 'panel__body' }, [refs.netMount,
+          h('div', { class: 'net-legend' }, [
+            h('span', { class: 'net-legend__i' }, [h('span', { class: 'net-legend__ln is-help' }), 'helps you']),
+            h('span', { class: 'net-legend__i' }, [h('span', { class: 'net-legend__ln is-hurt' }), 'hurts you'])
+          ])
+        ])
+      ]);
+
       refs.chartMount = h('div', { class: 'chart' });
       var chartPanel = h('section', { class: 'panel' }, [
         h('div', { class: 'panel__title' }, [icon('chart'), h('span', null, 'Polling Trend')]),
         h('div', { class: 'panel__body' }, [refs.chartMount])
       ]);
 
-      var center = h('main', { class: 'app__center', id: 'main-content', tabindex: '-1' }, [kpiBar, mapPanel, chartPanel]);
+      var center = h('main', { class: 'app__center', id: 'main-content', tabindex: '-1' }, [kpiBar, mapPanel, networkPanel, chartPanel]);
 
       // ---- right rail: opponent watch + intel + log ----
       refs.oppBody = h('div', { class: 'panel__body' });
@@ -425,8 +456,9 @@
       mapController.setSelected(vm.selectedRegionId);
       mapController.highlightTargets(s.intel && s.intel.active ? s.intel.oppTargets : []);
 
-      // polling chart
+      // polling chart + causal network
       renderPollingChart(vm);
+      renderNetwork(vm);
 
       // region detail
       renderRegionDetail(vm);
@@ -450,18 +482,19 @@
       weekState.selectedRegionId = vm.selectedRegionId;
       setText(refs.twHint, (Math.round(hoursLeft * 10) / 10) + 'h left / 40h');
       var maxH = Math.max(1, Math.floor(hoursLeft));
-      [['fundSlider', 'fundHours', 'fundHoursVal'], ['rallySlider', 'rallyHours', 'rallyHoursVal']].forEach(function (t) {
+      [['fundSlider', 'fundHours', 'fundHoursVal'], ['rallySlider', 'rallyHours', 'rallyHoursVal'], ['issueSlider', 'issueHours', 'issueHoursVal']].forEach(function (t) {
         var sl = refs[t[0]];
         sl.max = String(maxH);
         if (+sl.value > maxH) { sl.value = String(maxH); }
         weekState[t[1]] = +sl.value;
         setText(refs[t[2]], sl.value + 'h');
       });
-      // sync the on-state of the source buttons
+      // sync the on-state of the source buttons + the issue select
       refs.fundSrcRow.querySelectorAll('.tw-src').forEach(function (n) { n.classList.toggle('is-on', n.dataset.src === weekState.source); });
+      if (refs.issueSelect && weekState.issue) refs.issueSelect.value = weekState.issue;
       var disabled = hoursLeft < 1 || vm.state.status !== 'playing';
-      refs.fundBtn.disabled = disabled; refs.rallyBtn.disabled = disabled;
-      refs.fundSlider.disabled = disabled; refs.rallySlider.disabled = disabled;
+      refs.fundBtn.disabled = disabled; refs.rallyBtn.disabled = disabled; refs.issueBtn.disabled = disabled;
+      refs.fundSlider.disabled = disabled; refs.rallySlider.disabled = disabled; refs.issueSlider.disabled = disabled;
 
       // approximate projections (mirror the engine's constants; the engine is authoritative)
       var mm = Math.max(0.6, 1 + vm.state.national.momentum / 200);
@@ -474,8 +507,54 @@
       refs.rallyFx.appendChild(h('span', { class: 'tw-chip is-good' }, '≈ +' + (Math.round(weekState.rallyHours * 0.7 * 10) / 10) + ' momentum'));
       if (weekState.rallyHours >= 12) refs.rallyFx.appendChild(h('span', { class: 'tw-chip is-bad' }, 'gaffe risk'));
 
+      // Push-an-issue projection: net coalition direction from the selected issue's
+      // links, weighted by segment size (segments that oppose it pull the other way).
+      var segSize = {};
+      ((vm.network && vm.network.segments) || []).forEach(function (s) { segSize[s.id] = s.size; });
+      var dir = 0;
+      ((vm.network && vm.network.links) || []).forEach(function (l) { if (l.from === weekState.issue) dir += l.sign * l.strength * (segSize[l.to] || 0.1); });
+      clear(refs.issueFx);
+      refs.issueFx.appendChild(h('span', { class: 'tw-chip ' + (dir >= 0 ? 'is-good' : 'is-bad') }, dir >= 0 ? '≈ + coalition' : '≈ − coalition'));
+
       var reg = weekState.selectedRegionId ? vm.state.regions.filter(function (r) { return r.id === weekState.selectedRegionId; })[0] : null;
       setText(refs.rallyBtnLabel, reg ? ('Rally in ' + reg.abbreviation) : 'Rally (national)');
+    }
+
+    // The causal network (Democracy-style): issues (outer ring) drive segments
+    // (inner ring) drive YOU (centre). Green links help, red hurt; segment radius
+    // scales with electorate share. Built as an SVG string (generated markup only;
+    // labels are game content, escaped). CSS vars go through style="" so they
+    // resolve and follow the theme.
+    function renderNetwork(vm) {
+      var net = vm.network;
+      if (!net || !refs.netMount) return;
+      var W = 520, H = 300, cx = W / 2, cy = H / 2, r1 = 88, r2 = 138;
+      var segs = net.nodes.filter(function (n) { return n.type === 'segment'; });
+      var issues = net.nodes.filter(function (n) { return n.type === 'issue'; });
+      var pos = { you: { x: cx, y: cy } };
+      segs.forEach(function (n, i) { var a = (-90 + i * 360 / segs.length) * Math.PI / 180; pos[n.id] = { x: cx + r1 * Math.cos(a), y: cy + r1 * Math.sin(a) }; });
+      issues.forEach(function (n, i) { var a = (-90 + (i + 0.5) * 360 / issues.length) * Math.PI / 180; pos[n.id] = { x: cx + r2 * Math.cos(a), y: cy + r2 * Math.sin(a) }; });
+      var parts = [];
+      net.links.forEach(function (l) {
+        var a = pos[l.from], b = pos[l.to]; if (!a || !b) return;
+        var col = l.sign > 0 ? 'var(--color-money)' : 'var(--color-bad)';
+        var w = (0.6 + (l.strength || 0.3) * 2.6).toFixed(2);
+        parts.push('<line x1="' + a.x.toFixed(1) + '" y1="' + a.y.toFixed(1) + '" x2="' + b.x.toFixed(1) + '" y2="' + b.y.toFixed(1) + '" stroke-linecap="round" style="stroke:' + col + ';stroke-width:' + w + ';opacity:.4"/>');
+      });
+      function nodeSvg(n) {
+        var p = pos[n.id]; if (!p) return '';
+        var r, fill, stroke, tcol, fs;
+        if (n.type === 'you') { r = 25; fill = 'var(--color-accent)'; stroke = 'var(--bg-panel)'; tcol = 'var(--text-on-accent)'; fs = 10; }
+        else if (n.type === 'issue') { r = 17; fill = 'var(--bg-panel)'; stroke = 'var(--color-warn)'; tcol = 'var(--text-heading)'; fs = 8; }
+        else { r = 12 + (n.size || 0.1) * 42; fill = 'var(--bg-panel)'; stroke = (n.support >= 0 ? 'var(--color-primary-bright)' : 'var(--color-opponent-bright)'); tcol = 'var(--text-heading)'; fs = 8; }
+        return '<circle cx="' + p.x.toFixed(1) + '" cy="' + p.y.toFixed(1) + '" r="' + r.toFixed(1) + '" style="fill:' + fill + ';stroke:' + stroke + ';stroke-width:2.4"/>' +
+          '<text x="' + p.x.toFixed(1) + '" y="' + (p.y + 3).toFixed(1) + '" text-anchor="middle" font-size="' + fs + '" style="fill:' + tcol + ';font-family:var(--font-mono)">' + esc(shortLabel(n.label)) + '</text>';
+      }
+      segs.forEach(function (n) { parts.push(nodeSvg(n)); });
+      issues.forEach(function (n) { parts.push(nodeSvg(n)); });
+      parts.push(nodeSvg({ id: 'you', type: 'you', label: 'YOU' }));
+      refs.netMount.innerHTML = '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" height="' + H + '" role="img" aria-label="Causal network: issues drive voter segments drive your campaign. Green links help you, red links hurt. Coalition approval ' + net.approval + '.">' + parts.join('') + '</svg>';
+      if (refs.netApproval) setText(refs.netApproval, 'coalition ' + (net.approval >= 0 ? '+' : '') + net.approval);
     }
 
     function renderPollingChart(vm) {

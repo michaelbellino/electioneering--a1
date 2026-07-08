@@ -65,6 +65,7 @@
       selectedRegionId: app.selectedRegionId,
       series: app.series,
       deltas: computeDeltas(state),
+      network: app.engine.network(),
       deps: deps
     };
   }
@@ -145,6 +146,13 @@
       autosave(); refresh();
       var res = r.result;
       UI.toast('Rally: +' + res.momentum + ' momentum' + (res.gaffe ? ' · a gaffe!' : ''), res.gaffe ? 'bad' : 'good');
+    },
+    onPushIssue: function (opts) {
+      var r = app.engine.pushIssue(opts);
+      if (!r.ok) { UI.toast(r.error || 'Cannot do that right now.', 'bad'); return; }
+      autosave(); refresh();
+      var res = r.result;
+      UI.toast('Championed the issue · coalition approval ' + (res.approval >= 0 ? '+' : '') + res.approval, res.approval >= 0 ? 'good' : 'bad');
     }
   };
 

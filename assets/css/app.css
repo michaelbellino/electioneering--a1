@@ -272,6 +272,17 @@ h1, h2, h3, .topbar__brand, .candidate-card h3, .start-section__title, .screen h
 .tw-chip.is-bad { color: var(--color-bad); }
 .btn--block { width: 100%; }
 .btn--sm { padding: 8px 12px; font-size: var(--fs-sm); }
+.tw-select { width: 100%; font-family: var(--font-mono); font-size: var(--fs-sm); padding: 7px 8px; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); background: var(--bg-panel); color: var(--text-heading); margin-bottom: var(--sp-2); cursor: pointer; }
+
+/* ===== The Network (causal graph) ===== */
+.net-mount { width: 100%; }
+.net-mount svg { display: block; margin: 0 auto; max-width: 560px; }
+.panel__hint--muted { color: var(--text-faint); font-family: var(--font-mono); margin-right: auto; }
+.net-legend { display: flex; gap: var(--sp-4); justify-content: center; margin-top: var(--sp-2); font-family: var(--font-mono); font-size: var(--fs-xs); color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; }
+.net-legend__i { display: inline-flex; align-items: center; gap: 6px; }
+.net-legend__ln { width: 16px; height: 3px; border-radius: 2px; display: inline-block; }
+.net-legend__ln.is-help { background: var(--color-money); }
+.net-legend__ln.is-hurt { background: var(--color-bad); }
 
 /* ============================ RESPONSIVE ============================ */
 @media (max-width: 1024px) {
