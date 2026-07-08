@@ -566,6 +566,189 @@ h3 {
   color: var(--bad);
 }
 
+/* ── View tabs ───────────────────────────────────────────── */
+.view-tabs {
+  display: inline-flex;
+  gap: 0.25rem;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0.25rem;
+}
+.tab {
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font-family: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 0.4rem 0.95rem;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.tab:hover {
+  color: var(--ink);
+}
+.tab.active {
+  background: var(--panel-2);
+  color: var(--ink);
+  border: 1px solid var(--border-strong);
+  padding: calc(0.4rem - 1px) calc(0.95rem - 1px);
+}
+
+/* ── Influence map ───────────────────────────────────────── */
+.influence-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+}
+.influence-tools {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+.legend-key {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.btn-sm {
+  padding: 0.3rem 0.75rem;
+  font-size: 0.8rem;
+}
+.influence-sub {
+  margin: 0.1rem 0 1rem;
+  font-size: 0.85rem;
+  max-width: 62rem;
+}
+.influence-scroll {
+  overflow-x: auto;
+  padding-bottom: 0.5rem;
+}
+.col-title {
+  fill: var(--faint);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  text-anchor: middle;
+}
+.edge {
+  transition: opacity 0.15s;
+}
+.edge-pos {
+  stroke: #3ecf94;
+}
+.edge-neg {
+  stroke: #ff9f43;
+  stroke-dasharray: 7 4;
+}
+.edge-dim {
+  opacity: 0.1;
+}
+.node {
+  cursor: pointer;
+}
+.node rect {
+  fill: var(--bg);
+  stroke: var(--border-strong);
+  transition: stroke 0.15s, fill 0.15s;
+}
+.node:hover rect {
+  stroke: var(--accent);
+}
+.node:focus-visible {
+  outline: none;
+}
+.node:focus-visible rect {
+  stroke: var(--accent);
+  stroke-width: 2;
+}
+.node-active rect {
+  stroke: var(--accent);
+  stroke-width: 2;
+  fill: #101b2a;
+}
+.node-dim {
+  opacity: 0.3;
+}
+.node-outcome rect {
+  fill: #0f2033;
+  stroke: var(--accent-2);
+}
+.node-label {
+  fill: var(--ink);
+  font-size: 12.5px;
+  font-weight: 600;
+}
+.node-value {
+  fill: var(--muted);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+.node-outcome .node-value {
+  fill: var(--accent);
+  font-weight: 700;
+}
+.influence-detail {
+  margin-top: 0.75rem;
+  border-top: 1px solid var(--border);
+  padding-top: 0.75rem;
+  font-size: 0.88rem;
+}
+.influence-detail p {
+  margin: 0.25rem 0 0.6rem;
+}
+.influence-detail ul {
+  margin: 0;
+  padding-left: 1.1rem;
+}
+.influence-detail li {
+  margin: 0.25rem 0;
+  color: var(--muted);
+}
+.influence-detail li.pos::marker {
+  color: #3ecf94;
+}
+.influence-detail li.neg::marker {
+  color: #ff9f43;
+}
+.influence-table-wrap {
+  overflow-x: auto;
+}
+.influence-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+.influence-table th,
+.influence-table td {
+  text-align: left;
+  padding: 0.45rem 0.8rem 0.45rem 0;
+  border-bottom: 1px solid #1a2230;
+}
+.influence-table th {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--faint);
+}
+.influence-table td.pos {
+  color: #3ecf94;
+  font-weight: 600;
+}
+.influence-table td.neg {
+  color: #ff9f43;
+  font-weight: 600;
+}
+
 /* ── Polling chart ───────────────────────────────────────── */
 .chart-wrap {
   position: relative;

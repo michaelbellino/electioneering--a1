@@ -1,5 +1,7 @@
+import { useState } from 'react'
 import { useGame } from '@ui/store/gameStore'
 import { LineChart } from '@ui/components/LineChart'
+import { InfluenceMap } from '@ui/screens/InfluenceMap'
 import { actionAvailability, partyColor, pollSeries, standings, weeksToElection } from '@ui/selectors'
 import { CAMPAIGN_ACTIONS } from '@data/campaign/actions'
 import type { GameState } from '@engine/index'
@@ -191,6 +193,7 @@ function ApPips({ spent, max }: { spent: number; max: number }) {
 export function CampaignDashboard() {
   const state = useGame((s) => s.state)
   const advanceTurn = useGame((s) => s.advanceTurn)
+  const [view, setView] = useState<'war_room' | 'influence'>('war_room')
   if (!state) return null
 
   const weeks = weeksToElection(state)
@@ -206,6 +209,24 @@ export function CampaignDashboard() {
             {weeks === 0 ? 'Election week' : `${weeks} week${weeks === 1 ? '' : 's'} to election day`}
           </span>
         </div>
+        <div className="view-tabs" role="tablist" aria-label="Dashboard view">
+          <button
+            role="tab"
+            aria-selected={view === 'war_room'}
+            className={`tab ${view === 'war_room' ? 'active' : ''}`}
+            onClick={() => setView('war_room')}
+          >
+            War Room
+          </button>
+          <button
+            role="tab"
+            aria-selected={view === 'influence'}
+            className={`tab ${view === 'influence' ? 'active' : ''}`}
+            onClick={() => setView('influence')}
+          >
+            Influence Map
+          </button>
+        </div>
         <div className="dash-stats">
           <div className="stat">
             <span className="stat-label">Cash</span>
@@ -220,19 +241,23 @@ export function CampaignDashboard() {
           </button>
         </div>
       </div>
-      <div className="dash-grid">
-        <div className="dash-col">
-          <Actions state={state} />
+      {view === 'influence' ? (
+        <InfluenceMap state={state} />
+      ) : (
+        <div className="dash-grid">
+          <div className="dash-col">
+            <Actions state={state} />
+          </div>
+          <div className="dash-col">
+            <Polling state={state} />
+            <Standings state={state} />
+          </div>
+          <div className="dash-col">
+            <Finance state={state} />
+            <Log state={state} />
+          </div>
         </div>
-        <div className="dash-col">
-          <Polling state={state} />
-          <Standings state={state} />
-        </div>
-        <div className="dash-col">
-          <Finance state={state} />
-          <Log state={state} />
-        </div>
-      </div>
+      )}
     </div>
   )
 }
