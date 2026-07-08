@@ -196,6 +196,7 @@ export function createGame(scenario: Scenario, seed: number, setup: GameSetup = 
     pendingDilemma: null,
     seenDilemmas: [],
     opinionShifts: {},
+    communityOpinion: {},
     pollReports: [],
     log: [
       {

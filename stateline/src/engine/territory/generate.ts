@@ -8,6 +8,7 @@
 import { forkRng, Rng, type RngState } from '../core/rng'
 import { clamp, clamp01 } from '../core/primitives'
 import type { ElectorateState } from '../electorate/types'
+import { VOTER_MODEL } from '../../data/voterModel'
 
 export type CommunityArchetype = 'urban' | 'suburban' | 'town' | 'rural'
 
@@ -24,6 +25,8 @@ export interface Community {
   readonly segmentShares: Readonly<Record<string, number>>
   /** Local partisan lean offset vs the district baseline, −1..+1 (small). */
   readonly leanOffset: number
+  /** What this place cares about most (hidden info — revealed by canvassing/polling). */
+  readonly topIssueId: string
   readonly neighbors: readonly string[]
 }
 
@@ -115,10 +118,23 @@ export function generateTerritory(
       ((segmentShares['white_noncollege'] ?? 0) - (districtShares['white_noncollege'] ?? 0))
     const leanOffset = clamp(bluish * 0.6 + rng.range(-0.05, 0.05), -0.35, 0.35)
 
+    // Local priorities: salience-weight the issues by this community's segment mix.
+    const salienceByIssue: Record<string, number> = {}
+    for (const issue of VOTER_MODEL.issues) {
+      let w = 0
+      for (const b of VOTER_MODEL.behavior) {
+        const segShare = segmentShares[b.segmentId] ?? 0
+        w += segShare * (b.issueSalience[issue.id] ?? 1) * issue.baseSalience
+      }
+      salienceByIssue[issue.id] = w
+    }
+    const topIssueId = Object.entries(salienceByIssue).sort((a, b) => b[1] - a[1])[0]![0]
+
     return {
       id: `c${i}`,
       name,
       archetype,
+      topIssueId,
       col: cell.col,
       row: cell.row,
       x: cell.col + rng.range(-0.18, 0.18),
@@ -136,6 +152,7 @@ export function generateTerritory(
     id: c.id,
     name: c.name,
     archetype: c.archetype,
+    topIssueId: c.topIssueId,
     x: c.x,
     y: c.y,
     weight: c.weight / totalW,

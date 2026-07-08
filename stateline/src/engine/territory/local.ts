@@ -7,6 +7,7 @@
 import { clamp, clamp01 } from '../core/primitives'
 import { evaluateElectorate } from '../electorate/evaluate'
 import type { CandidateProfile, ElectorateState, VoterGroup } from '../electorate/types'
+import { shiftedElectorate, type OpinionShifts } from '../electorate/opinion'
 import type { Community, TerritoryState } from './generate'
 
 /** How strongly ground presence moves local awareness (the door-knocked town knows you). */
@@ -16,6 +17,7 @@ const PRESENCE_AWARENESS = 0.5
 export function communityElectorate(
   electorate: ElectorateState,
   community: Community,
+  localOpinion?: OpinionShifts,
 ): ElectorateState {
   const groups: VoterGroup[] = electorate.groups.map((g) => {
     const localShare = community.segmentShares[g.id] ?? g.weight
@@ -26,11 +28,13 @@ export function communityElectorate(
       partisanLean: clamp(g.partisanLean + community.leanOffset, -1, 1),
     }
   })
-  return {
+  const base: ElectorateState = {
     ...electorate,
     cvap: electorate.cvap * community.weight,
     groups,
   }
+  // Per-community opinion (M2): targeted persuasion moves THIS place, not the whole district.
+  return localOpinion ? shiftedElectorate(base, localOpinion) : base
 }
 
 /** Candidate profiles as this community perceives them (presence lifts local awareness). */
@@ -62,9 +66,13 @@ export function communityStandings(
   profiles: readonly CandidateProfile[],
   playerId: string,
   territory: TerritoryState,
+  communityOpinion?: Readonly<Record<string, OpinionShifts>>,
 ): CommunityStanding[] {
   return territory.communities.map((c) => {
-    const local = evaluateElectorate(communityElectorate(electorate, c), localProfiles(profiles, playerId, c, territory))
+    const local = evaluateElectorate(
+      communityElectorate(electorate, c, communityOpinion?.[c.id]),
+      localProfiles(profiles, playerId, c, territory),
+    )
     return {
       communityId: c.id,
       playerShare: local.sharesByCandidate[playerId] ?? 0,

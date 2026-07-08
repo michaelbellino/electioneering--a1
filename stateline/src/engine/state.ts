@@ -85,6 +85,8 @@ export interface GameState {
   seenDilemmas: string[]
   /** Capped per-issue public-opinion shifts won by issue advertising (applied to the electorate). */
   opinionShifts: Record<string, number>
+  /** Per-community opinion shifts (direct mail issue campaigns) — communityId -> issue -> shift. */
+  communityOpinion: Record<string, Record<string, number>>
   /** Commissioned research reports, newest last. */
   pollReports: PollReport[]
 }

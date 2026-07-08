@@ -41,6 +41,40 @@ describe('M2: spatial elections', () => {
   })
 })
 
+describe('M2: hidden priorities & local opinion', () => {
+  it('every community has a top issue derived from its real segment mix (deterministic)', () => {
+    const t = createGame(HOUSE_SPECIAL_PA07, SEED).territory
+    for (const c of t.communities) expect(c.topIssueId).toBeTruthy()
+    const t2 = createGame(HOUSE_SPECIAL_PA07, SEED).territory
+    expect(t2.communities.map((c) => c.topIssueId)).toEqual(t.communities.map((c) => c.topIssueId))
+  })
+
+  it('a direct-mail issue campaign shifts opinion ONLY in the community it lands in', () => {
+    let s = createGame(HOUSE_SPECIAL_PA07, SEED)
+    const here = s.territory.playerLocation
+    s = applyAction(s, {
+      type: 'campaign/runAd',
+      payload: { channel: 'mail', tone: 'issue', policyId: 'public_option', budget: 2 },
+    })
+    expect(Object.keys(s.communityOpinion)).toEqual([here])
+    expect(s.communityOpinion[here]!['healthcare']).not.toBe(0)
+    expect(s.opinionShifts['healthcare'] ?? 0).toBe(0) // district-wide untouched
+  })
+
+  it("local opinion moves that community's measured support", () => {
+    let s = createGame(HOUSE_SPECIAL_PA07, SEED)
+    const here = s.territory.playerLocation
+    // canvass to measure, mail an issue campaign, re-canvass: local read should move
+    s = applyAction(s, { type: 'campaign/action', payload: { defId: 'canvass' } })
+    const before = s.territory.intel[here]!.playerShare
+    s = { ...s, communityOpinion: { [here]: { healthcare: 0.16, abortion: 0.16, climate_energy: 0.16 } } }
+    s = { ...s, territory: { ...s.territory, intel: {} }, campaign: { ...s.campaign, cooldowns: {}, actionPoints: 3 } }
+    s = applyAction(s, { type: 'campaign/action', payload: { defId: 'canvass' } })
+    const after = s.territory.intel[here]!.playerShare
+    expect(after).not.toBe(before) // pro-player opinion shift changes the local split
+  })
+})
+
 describe('M2: enthusiasm', () => {
   it('rallies build enthusiasm, which mobilizes your leaners (turnout boost grows)', () => {
     let s = createGame(HOUSE_SPECIAL_PA07, SEED)

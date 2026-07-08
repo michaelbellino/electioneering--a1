@@ -193,7 +193,7 @@ function measureCommunity(state: GameState, communityId: string, day: DayIndex):
   if (!c) return 0
   const profiles = profilesAt(state, state.ledger, day)
   const local = evaluateElectorate(
-    communityElectorate(effectiveElectorate(state), c),
+    communityElectorate(effectiveElectorate(state), c, state.communityOpinion[communityId]),
     localProfiles(profiles, state.playerCandidateId, c, state.territory),
   )
   return local.sharesByCandidate[state.playerCandidateId] ?? 0
@@ -344,6 +344,7 @@ function runAd(
   const power = budget * fatigueMult * commsAmp * digitalAmp
   const player = state.candidates[state.playerCandidateId]!
   const opp = state.candidates[opponentId(state)]!
+  let communityOpinion = state.communityOpinion
 
   const mkEffect = (target: 'self' | 'opponent', ch: 'nameRecognition' | 'favorability', mag: number, tone: number) => ({
     channel: ch as never,
@@ -379,12 +380,19 @@ function runAd(
     }
   } else if (payload.tone === 'issue' && policy) {
     const dir = Math.sign(player.positions[policy.areaId] ?? 0) || 1
-    const current = opinionShifts[policy.areaId] ?? 0
     const delta = channel.opinion * power * dir
-    const next = clamp(current + delta, -OPINION_SHIFT_CAP, OPINION_SHIFT_CAP)
-    opinionShifts = { ...opinionShifts, [policy.areaId]: next }
+    if (channel.id === 'mail') {
+      // Per-community opinion (M2): a mailer moves THIS place, hard — twice the district cap.
+      const here = state.territory.playerLocation
+      const local = { ...(communityOpinion[here] ?? {}) }
+      local[policy.areaId] = clamp((local[policy.areaId] ?? 0) + delta * 3, -OPINION_SHIFT_CAP * 2, OPINION_SHIFT_CAP * 2)
+      communityOpinion = { ...communityOpinion, [here]: local }
+    } else {
+      const current = opinionShifts[policy.areaId] ?? 0
+      opinionShifts = { ...opinionShifts, [policy.areaId]: clamp(current + delta, -OPINION_SHIFT_CAP, OPINION_SHIFT_CAP) }
+    }
     specs.push(mkEffect('self', 'favorability', channel.favorability * 0.5 * power, 0.5))
-    logMsg = `Issue campaign: ${policy.label} (${policy.proLabel === undefined ? '' : dir > 0 ? policy.proLabel : policy.conLabel}). Opinion moved.`
+    logMsg = `Issue campaign: ${policy.label} (${dir > 0 ? policy.proLabel : policy.conLabel}). Opinion moved${channel.id === 'mail' ? ' locally' : ''}.`
   }
 
   // Direct mail is LOCAL: it lands in the community you're standing in (and builds presence there).
@@ -423,6 +431,7 @@ function runAd(
     },
     territory,
     opinionShifts,
+    communityOpinion,
     ledger: [...state.ledger, ...effects],
     meta: bumpRevision(state),
     log: [...state.log, { day, kind: 'action', message: `${logMsg} (${formatUsd(cost)})` }],
@@ -451,9 +460,15 @@ function commissionPoll(state: GameState, kind: string): GameState {
       const sub: ElectorateState = { ...electorate, groups: [g], cvap: g.cvap }
       const share = evaluateElectorate(sub, profiles).sharesByCandidate[state.playerCandidateId] ?? 0
       const label = SEGMENT_DEFS.find((s) => s.id === g.id)?.label ?? g.id
-      return [label, `${(g.weight * 100).toFixed(0)}%`, `${(share * 100).toFixed(0)}%`, `${(g.turnoutPropensity * 100).toFixed(0)}%`] as const
+      // Hidden priorities, revealed: this segment's top issues by effective salience.
+      const top = [...ISSUE_DEFS]
+        .sort((a, b) => (g.issueSalience[b.id] ?? 1) - (g.issueSalience[a.id] ?? 1))
+        .slice(0, 2)
+        .map((i) => i.name)
+        .join(', ')
+      return [label, `${(g.weight * 100).toFixed(0)}%`, `${(share * 100).toFixed(0)}%`, `${(g.turnoutPropensity * 100).toFixed(0)}%`, top] as const
     })
-    report = { day, kind: 'crosstabs', title: 'Demographic crosstabs', cost, columns: ['Segment', 'Of electorate', 'With you', 'Turnout propensity'], rows }
+    report = { day, kind: 'crosstabs', title: 'Demographic crosstabs', cost, columns: ['Segment', 'Of electorate', 'With you', 'Turnout', 'Cares most about'], rows }
   } else if (kind === 'issues') {
     const rows = POLICIES.map((p) => {
       const stance = player.positions[p.areaId] ?? 0
@@ -716,7 +731,7 @@ export function tick(state: GameState): GameState {
         rng: tieRng,
         // M2: election night is the SUM of the map — ground presence is worth real votes.
         communities: state.territory.communities.map((c) => ({
-          electorate: communityElectorate(eff, c),
+          electorate: communityElectorate(eff, c, state.communityOpinion[c.id]),
           profiles: localProfiles(profiles, state.playerCandidateId, c, state.territory),
         })),
       })

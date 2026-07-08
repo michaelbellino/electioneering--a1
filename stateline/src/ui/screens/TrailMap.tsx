@@ -196,8 +196,8 @@ export function TrailMap({ state, results = false }: { state: GameState; results
           </h3>
           <p className="muted">
             {selInfo?.share !== null && selInfo
-              ? `Your canvass ${selInfo.stale ? '(stale — over 3 weeks old) ' : ''}puts you at ${Math.round((selInfo.share ?? 0) * 100)}% here.`
-              : 'No local data. Canvass here (or next door) to see how this place is really breaking.'}
+              ? `Your canvass ${selInfo.stale ? '(stale — over 3 weeks old) ' : ''}puts you at ${Math.round((selInfo.share ?? 0) * 100)}% here. Around here it's all about ${sel.topIssueId.replace('_', ' & ')}.`
+              : 'No local data. Canvass here (or next door) to learn how it breaks — and what it cares about.'}
             {(t.presence[sel.id] ?? 0) > 0.05 && ` Ground presence: ${Math.round((t.presence[sel.id] ?? 0) * 100)}%.`}
           </p>
           {!results && sel.id !== t.playerLocation && (
