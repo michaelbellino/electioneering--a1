@@ -33,6 +33,7 @@ import { areAdjacent, getCommunity, type TerritoryState } from './territory/gene
 import { communityElectorate, localProfiles } from './territory/local'
 import { evaluateElectorate } from './electorate/evaluate'
 import { runAiTurn } from './ai/agent'
+import { castVote, createGoverning, executiveAction, tickGoverning } from './governing/governing'
 import { resolveElection } from './electoral/resolve'
 import { EVENT_ELECTION_DAY, type GameState, type PollRecord } from './state'
 
@@ -47,6 +48,10 @@ export type GameAction =
   | Action<'campaign/travel', { communityId: string }>
   | Action<'campaign/runAd', { channel: string; tone: string; policyId?: string; budget: number }>
   | Action<'campaign/commissionPoll', { kind: string }>
+  | Action<'gov/takeOffice', Record<string, never>>
+  | Action<'gov/vote', { billId: string; vote: 'yea' | 'nay' }>
+  | Action<'gov/sign', { billId: string }>
+  | Action<'gov/advanceWeek', Record<string, never>>
   | Action<'core/advanceTurn', Record<string, never>>
 
 function bumpRevision(state: GameState): GameState['meta'] {
@@ -800,6 +805,50 @@ export function applyAction(state: GameState, action: GameAction): GameState {
       return runAd(state, action.payload)
     case 'campaign/commissionPoll':
       return commissionPoll(state, action.payload.kind)
+    case 'gov/takeOffice': {
+      // The campaign→legislature loop: a winner takes the seat they just won.
+      if (state.phase !== 'election_night' || state.result?.winnerIds[0] !== state.playerCandidateId)
+        return state
+      const office = state.election.title.toLowerCase().includes('governor') ? 'executive' as const : 'legislator' as const
+      return {
+        ...state,
+        phase: 'governing',
+        governing: createGoverning(state, office, state.election.title),
+        meta: bumpRevision(state),
+        log: [
+          ...state.log,
+          { day: state.calendar.dayIndex, kind: 'game_start', message: `Sworn in: ${state.election.title}. Now govern.` },
+        ],
+      }
+    }
+    case 'gov/vote': {
+      if (state.phase !== 'governing' || !state.governing || state.governing.office !== 'legislator') return state
+      return {
+        ...state,
+        governing: castVote(state, state.governing, action.payload.billId, action.payload.vote),
+        meta: bumpRevision(state),
+      }
+    }
+    case 'gov/sign': {
+      if (state.phase !== 'governing' || !state.governing || state.governing.office !== 'executive') return state
+      return {
+        ...state,
+        governing: executiveAction(state, state.governing, action.payload.billId),
+        meta: bumpRevision(state),
+      }
+    }
+    case 'gov/advanceWeek': {
+      if (state.phase !== 'governing' || !state.governing) return state
+      const gov = tickGoverning(state, state.governing)
+      const done = gov.week > gov.termWeeks
+      return {
+        ...state,
+        governing: gov,
+        phase: done ? 'ended' : 'governing',
+        calendar: advanceCalendar(state.calendar, 1),
+        meta: bumpRevision(state),
+      }
+    }
     case 'core/advanceTurn':
       return tick(state)
     default:

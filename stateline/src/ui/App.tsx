@@ -3,6 +3,7 @@ import { MainMenu } from '@ui/screens/MainMenu'
 import { CandidateCreator } from '@ui/screens/CandidateCreator'
 import { CampaignDashboard } from '@ui/screens/CampaignDashboard'
 import { ElectionNight } from '@ui/screens/ElectionNight'
+import { GoverningDashboard } from '@ui/screens/GoverningDashboard'
 import { formatDate } from '@engine/core/calendar'
 
 export function App() {
@@ -26,8 +27,9 @@ export function App() {
       <main>
         {screen === 'menu' && <MainMenu />}
         {screen === 'create' && <CandidateCreator />}
-        {screen === 'campaign' && <CampaignDashboard />}
-        {screen === 'election' && <ElectionNight />}
+        {screen === 'campaign' && state?.phase !== 'governing' && state?.phase !== 'ended' && <CampaignDashboard />}
+        {(state?.phase === 'governing' || state?.phase === 'ended') && <GoverningDashboard state={state} />}
+        {screen === 'election' && state?.phase === 'election_night' && <ElectionNight />}
       </main>
     </div>
   )

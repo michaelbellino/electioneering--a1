@@ -13,6 +13,7 @@ import type { CampaignState, CandidateState } from './campaign/types'
 import type { PendingDilemma } from './campaign/dilemmas'
 import type { TerritoryState } from './territory/generate'
 import type { AiCandidateState } from './ai/agent'
+import type { GoverningState } from './governing/governing'
 import type { AllocationResult, ElectoralMethod } from './electoral/types'
 
 export const ENGINE_VERSION = '0.1.0'
@@ -89,4 +90,6 @@ export interface GameState {
   communityOpinion: Record<string, Record<string, number>>
   /** Commissioned research reports, newest last. */
   pollReports: PollReport[]
+  /** The governing phase (in office), null while campaigning. */
+  governing: GoverningState | null
 }

@@ -17,7 +17,9 @@ import { buildElectorate } from './electorate/build'
 import type { Party } from './electorate/types'
 import { createCampaign, createCandidate } from './campaign/logic'
 import { generateTerritory } from './territory/generate'
+import { STATE_REGIONS } from '../data/datasets/paRegions'
 import type { AiCandidateState, AiPersonality } from './ai/agent'
+import { createGoverning, type OfficeKind } from './governing/governing'
 import type { CandidateAttributes } from './campaign/types'
 import type { ElectoralMethod } from './electoral/types'
 import { ENGINE_VERSION, EVENT_ELECTION_DAY, type GameState } from './state'
@@ -46,6 +48,8 @@ export interface Scenario {
   readonly startingCash: Cents
   /** How hard the AI opponent campaigns each tick (name-rec exposure units emitted per week). */
   readonly opponentIntensity: number
+  /** What kind of seat this is (drives governing gameplay). Default: legislator. */
+  readonly office?: OfficeKind
 }
 
 /** Sandbox overrides — every knob optional; set ones win over scenario + difficulty. */
@@ -63,6 +67,8 @@ export interface GameSetup {
   readonly difficultyId?: string
   readonly traitIds?: readonly string[]
   readonly sandbox?: SandboxOverrides
+  /** Skip the campaign — take office on day one (governing sandbox). */
+  readonly startInOffice?: boolean
 }
 
 const isDefined = <T>(x: T | undefined): x is T => x !== undefined
@@ -72,10 +78,12 @@ export function createGame(scenario: Scenario, seed: number, setup: GameSetup = 
   const jurisdiction = getJurisdiction(demographics, scenario.jurisdictionId)
   const electorate = buildElectorate(jurisdiction, voterModel)
 
+  const stateRegions = jurisdiction.level === 'state' ? STATE_REGIONS[jurisdiction.id] : undefined
   const territory = generateTerritory(
     electorate,
     createRng(seed ^ 0x7ae3c9d1),
-    jurisdiction.level === 'state' ? 19 : 13,
+    stateRegions ? stateRegions.length : jurisdiction.level === 'state' ? 19 : 13,
+    stateRegions,
   )
 
   const difficulty = getDifficulty(setup.difficultyId ?? 'normal')
@@ -144,7 +152,7 @@ export function createGame(scenario: Scenario, seed: number, setup: GameSetup = 
     id: `evt:election:${electionId}`,
   })
 
-  return {
+  const game: GameState = {
     meta: {
       seed,
       dataVersion: demographics.dataVersion,
@@ -198,6 +206,7 @@ export function createGame(scenario: Scenario, seed: number, setup: GameSetup = 
     opinionShifts: {},
     communityOpinion: {},
     pollReports: [],
+    governing: null,
     log: [
       {
         day: dateToDayIndex(scenario.startDate),
@@ -206,4 +215,20 @@ export function createGame(scenario: Scenario, seed: number, setup: GameSetup = 
       },
     ],
   }
+  if (setup.startInOffice) {
+    const office: OfficeKind = scenario.office ?? 'legislator'
+    return {
+      ...game,
+      phase: 'governing',
+      governing: createGoverning(game, office, scenario.title),
+      log: [
+        {
+          day: dateToDayIndex(scenario.startDate),
+          kind: 'game_start',
+          message: `You take office: ${scenario.title}. Govern well — approval is the score.`,
+        },
+      ],
+    }
+  }
+  return game
 }

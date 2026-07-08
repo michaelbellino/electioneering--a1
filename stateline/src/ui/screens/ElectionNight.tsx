@@ -8,6 +8,8 @@ export function ElectionNight() {
   const state = useGame((s) => s.state)
   const reset = useGame((s) => s.reset)
   const rematch = useGame((s) => s.rematch)
+  const dispatch = useGame((s) => s.dispatch)
+  const goTo = useGame((s) => s.goTo)
   if (!state || !state.result) return null
 
   const result = state.result
@@ -63,10 +65,21 @@ export function ElectionNight() {
       <TrailMap state={state} results />
 
       <div className="election-actions">
+        {won && (
+          <button
+            className="btn btn-primary btn-lg"
+            onClick={() => {
+              dispatch({ type: 'gov/takeOffice', payload: {} })
+              goTo('campaign')
+            }}
+          >
+            Take office →
+          </button>
+        )}
         <button className="btn" onClick={rematch}>
           ↻ Run it back (same seed)
         </button>
-        <button className="btn btn-primary btn-lg" onClick={reset}>
+        <button className={won ? 'btn' : 'btn btn-primary btn-lg'} onClick={reset}>
           New campaign
         </button>
       </div>

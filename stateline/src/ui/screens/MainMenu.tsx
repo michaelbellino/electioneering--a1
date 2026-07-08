@@ -147,6 +147,22 @@ export function MainMenu() {
             })}
           </div>
 
+          <div className="seg office-toggle" role="group" aria-label="Start mode">
+            <button
+              className={`seg-btn ${!setup.startInOffice ? 'active' : ''}`}
+              aria-pressed={!setup.startInOffice}
+              onClick={() => configure({ startInOffice: false })}
+            >
+              Run the campaign
+            </button>
+            <button
+              className={`seg-btn ${setup.startInOffice ? 'active' : ''}`}
+              aria-pressed={setup.startInOffice}
+              onClick={() => configure({ startInOffice: true })}
+            >
+              Skip to office
+            </button>
+          </div>
           <button className="sandbox-toggle" aria-expanded={sandboxOpen} onClick={toggleSandbox}>
             {sandboxOpen ? '▾' : '▸'} Sandbox options {sandboxOpen ? '(on — overrides difficulty)' : ''}
           </button>

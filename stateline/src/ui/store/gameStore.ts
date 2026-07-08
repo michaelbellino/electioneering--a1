@@ -20,6 +20,8 @@ export interface RunSetup {
   /** null = fresh random seed at launch; a number = fixed (sandbox / rematch). */
   seed: number | null
   sandbox: SandboxOverrides | null
+  /** Skip the campaign and take office on day one. */
+  startInOffice: boolean
 }
 
 interface LastRun {
@@ -52,6 +54,7 @@ const DEFAULT_SETUP: RunSetup = {
   difficultyId: 'normal',
   seed: null,
   sandbox: null,
+  startInOffice: false,
 }
 
 function launch(setup: RunSetup, seed: number, player: Partial<ScenarioCandidate>, traitIds: string[]) {
@@ -60,6 +63,7 @@ function launch(setup: RunSetup, seed: number, player: Partial<ScenarioCandidate
   return Engine.create(scenario, seed, {
     difficultyId: setup.difficultyId,
     traitIds,
+    startInOffice: setup.startInOffice,
     ...(setup.sandbox ? { sandbox: setup.sandbox } : {}),
   })
 }

@@ -115,6 +115,7 @@ export function buildPaRaces(): PaRaceMeta[] {
         opponentIntensity: 0.65,
         player: playerDefaults(pa.baselinePartisanLean),
         opponent: opponentFor(`us-pa:${office}`, pa.baselinePartisanLean, true),
+        office: office === 'Governor' ? ('executive' as const) : ('legislator' as const),
         extraOpponents: [
           {
             id: 'spoiler',

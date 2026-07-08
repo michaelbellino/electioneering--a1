@@ -62,10 +62,17 @@ const TILT: Record<CommunityArchetype, Record<string, number>> = {
 /** Population weight tendency by archetype (urban cores are dense). */
 const DENSITY: Record<CommunityArchetype, number> = { urban: 3.2, suburban: 1.8, town: 1.0, rural: 0.6 }
 
+export interface NamedRegion {
+  readonly name: string
+  readonly archetype: CommunityArchetype
+  readonly weightHint: number
+}
+
 export function generateTerritory(
   electorate: ElectorateState,
   seedRng: RngState,
   count: number,
+  regions?: readonly NamedRegion[],
 ): TerritoryState {
   const rng = new Rng(forkRng(seedRng, 'territory'))
   const cols = Math.ceil(Math.sqrt(count * 1.4))
@@ -90,16 +97,24 @@ export function generateTerritory(
     electorate.groups.map((g) => [g.id, g.weight]),
   ) as Record<string, number>
 
+  // With named regions (statewide races): heaviest regions claim the central cells; density and
+  // archetypes come from real geography instead of the synthetic gradient.
+  const sortedRegions = regions ? [...regions].sort((a, b) => b.weightHint - a.weightHint) : null
+
   const communities: Array<Community & { col: number; row: number }> = used.map((cell, i) => {
+    const region = sortedRegions?.[i]
     const dist = Math.hypot(cell.col - coreCol, cell.row - coreRow) / maxDist
     const roll = clamp01(dist + rng.range(-0.12, 0.12))
     const archetype: CommunityArchetype =
-      roll < 0.18 ? 'urban' : roll < 0.5 ? 'suburban' : roll < 0.78 ? 'town' : 'rural'
+      region?.archetype ??
+      (roll < 0.18 ? 'urban' : roll < 0.5 ? 'suburban' : roll < 0.78 ? 'town' : 'rural')
 
-    let name = ''
-    do {
-      name = `${NAME_A[rng.int(0, NAME_A.length - 1)]}${NAME_B[rng.int(0, NAME_B.length - 1)]}`
-    } while (usedNames.has(name))
+    let name = region?.name ?? ''
+    if (!name) {
+      do {
+        name = `${NAME_A[rng.int(0, NAME_A.length - 1)]}${NAME_B[rng.int(0, NAME_B.length - 1)]}`
+      } while (usedNames.has(name))
+    }
     usedNames.add(name)
 
     // Tilt the real district mix by archetype and renormalize.
@@ -139,7 +154,7 @@ export function generateTerritory(
       row: cell.row,
       x: cell.col + rng.range(-0.18, 0.18),
       y: cell.row + rng.range(-0.18, 0.18),
-      weight: DENSITY[archetype] * rng.range(0.8, 1.25),
+      weight: region ? region.weightHint * rng.range(0.95, 1.05) : DENSITY[archetype] * rng.range(0.8, 1.25),
       segmentShares,
       leanOffset,
       neighbors: [],
