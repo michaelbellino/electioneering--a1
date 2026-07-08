@@ -58,6 +58,64 @@
     pac:        { mult: 2.2, scandalPerHour: 0.12, favors: 0, approvalPerHour: 0.0,  label: 'a friendly PAC' },
     dark:       { mult: 3.4, scandalPerHour: 0.50, favors: 1, approvalPerHour: 0.0,  label: 'an untraceable super PAC' }
   };
+
+  /* ---- the causal network (Democracy-style): ISSUES drive SEGMENTS drive YOU ----
+     Issues carry a "favor" in [-100,100] = how much current conditions favour the
+     player on that issue. Each voter segment cares about issues by signed weights;
+     its support for you is baseLean + Σ(issue.favor × weight). A segment's size is
+     its share of the electorate. Championing an issue flows through these links to
+     your coalition and your approval — greens help, reds hurt. Light satire in the
+     names; a serious sim underneath. (Static defs here now; moddable later.) */
+  // MODDABLE: the whole network model is read from data.js (Data.network) so it
+  // can be edited/extended without touching engine logic. A built-in fallback
+  // keeps the engine robust if a mod omits the block.
+  var _NET = Data.network || {};
+  var _FALLBACK_ISSUES = [
+    { id: 'economy', name: 'The Economy' },
+    { id: 'culture', name: 'Culture War' },
+    { id: 'healthcare', name: 'Healthcare' },
+    { id: 'immigration', name: 'Immigration' },
+    { id: 'climate', name: 'Climate' }
+  ];
+  var _FALLBACK_SEGMENTS = [
+    { id: 'union_halls',       name: 'Union Halls',        size: 0.16, baseLean:  10, w: { economy: 0.8, healthcare: 0.5, culture: -0.2, immigration: 0.1, climate: 0.2 } },
+    { id: 'suburban_strivers', name: 'Suburban Strivers',  size: 0.22, baseLean:   0, w: { economy: 0.6, healthcare: 0.3, culture: -0.3, immigration: -0.2, climate: 0.2 } },
+    { id: 'faith_family',      name: 'Faith & Family',     size: 0.16, baseLean: -12, w: { culture: 0.7, economy: 0.3, immigration: 0.4, climate: -0.2 } },
+    { id: 'very_online',       name: 'The Very Online',    size: 0.12, baseLean:   6, w: { culture: 0.5, climate: 0.5, economy: 0.1, healthcare: 0.2 } },
+    { id: 'diner_regulars',    name: 'Diner Regulars',     size: 0.20, baseLean:  -4, w: { economy: 0.7, immigration: 0.3, culture: 0.1, climate: -0.3 } },
+    { id: 'megadonors',        name: 'Megadonors',         size: 0.04, baseLean:   0, w: { economy: 0.9, climate: -0.4 } }
+  ];
+  var ISSUE_DEFS = (_NET.issues && _NET.issues.length) ? _NET.issues : _FALLBACK_ISSUES;
+  var SEGMENT_DEFS = (_NET.segments && _NET.segments.length) ? _NET.segments : _FALLBACK_SEGMENTS;
+  var ISSUE_WEIGHT_K = typeof _NET.issueWeightK === 'number' ? _NET.issueWeightK : 0.3;
+  function freshIssues() { var o = {}; ISSUE_DEFS.forEach(function (i) { o[i.id] = 0; }); return o; }
+  function segmentSupport(state, seg) {
+    var s = seg.baseLean, issues = state.issues || {};
+    Object.keys(seg.w).forEach(function (k) { s += (issues[k] || 0) * seg.w[k] * ISSUE_WEIGHT_K; });
+    return clamp(s, -100, 100);
+  }
+  function computeSegments(state) {
+    return SEGMENT_DEFS.map(function (seg) {
+      return { id: seg.id, name: seg.name, size: seg.size, baseLean: seg.baseLean, support: Math.round(segmentSupport(state, seg) * 10) / 10 };
+    });
+  }
+  function networkApproval(state) {
+    var tot = 0, acc = 0;
+    SEGMENT_DEFS.forEach(function (seg) { tot += seg.size; acc += segmentSupport(state, seg) * seg.size; });
+    return tot ? acc / tot : 0;
+  }
+  function buildNetwork(state) {
+    var nodes = [{ id: 'you', type: 'you', label: 'You' }];
+    ISSUE_DEFS.forEach(function (i) { nodes.push({ id: i.id, type: 'issue', label: i.name, favor: Math.round(((state.issues && state.issues[i.id]) || 0) * 10) / 10 }); });
+    var segs = computeSegments(state);
+    segs.forEach(function (sg) { nodes.push({ id: sg.id, type: 'segment', label: sg.name, size: sg.size, support: sg.support }); });
+    var links = [];
+    SEGMENT_DEFS.forEach(function (seg) {
+      Object.keys(seg.w).forEach(function (k) { var wv = seg.w[k]; links.push({ from: k, to: seg.id, sign: wv >= 0 ? 1 : -1, strength: Math.abs(wv) }); });
+    });
+    segs.forEach(function (sg) { links.push({ from: sg.id, to: 'you', sign: sg.support >= 0 ? 1 : -1, strength: Math.min(1, Math.abs(sg.support) / 50) }); });
+    return { nodes: nodes, links: links, segments: segs, approval: Math.round(networkApproval(state) * 10) / 10 };
+  }
   var EVENT_CHANCE = BAL.eventChancePerTurn;          // 0.45
   var BASE_VOLATILITY = BAL.baseVolatility;           // 2.5
   var BANKRUPTCY = BAL.bankruptcyThreshold;           // 0
@@ -642,6 +700,32 @@
       syncDraws();
       return { ok: true, result: { hours: hours, momentum: momGain, lean: leanGain, gaffe: gaffe, hoursLeft: state.resources.hours } };
     }
+    // Push an Issue: champion an issue for some hours, raising its favour toward
+    // you. That flows through the network (issue -> segments -> you) and nets out
+    // to an approval swing — segments that oppose the issue pull the other way, so
+    // hammering a divisive issue can cost you as much as it gains.
+    function pushIssue(opts) {
+      opts = opts || {};
+      var hours = Math.round((opts.hours || 0) * 10) / 10;
+      var issue = null;
+      for (var i = 0; i < ISSUE_DEFS.length; i++) { if (ISSUE_DEFS[i].id === opts.issueId) { issue = ISSUE_DEFS[i]; break; } }
+      if (!issue) return { ok: false, error: 'Choose an issue to champion' };
+      var err = hoursGuard(hours);
+      if (err) return { ok: false, error: err };
+      syncDraws(); undoStack.push(snapshot());
+      var before = networkApproval(state);
+      state.issues[issue.id] = clamp((state.issues[issue.id] || 0) + hours * 1.5, -100, 100);
+      var approvalSwing = Util.round(networkApproval(state) - before, 1);
+      state.national.nationalApproval += approvalSwing;
+      state.national.mediaBuzz += hours * 0.2;
+      state.resources.hours = Util.round(state.resources.hours - hours, 1);
+      clampNational(state);
+      log(state, approvalSwing >= 0 ? 'good' : 'bad',
+        'Championed ' + issue.name + ' for ' + hours + 'h (coalition approval ' + (approvalSwing >= 0 ? '+' : '') + approvalSwing + ').');
+      syncDraws();
+      return { ok: true, result: { issue: issue.id, hours: hours, favor: state.issues[issue.id], approval: approvalSwing, hoursLeft: state.resources.hours } };
+    }
+    function network() { return buildNetwork(state); }
 
     /* ---- opponent AI ---- */
     function scoreOpponentTargets(s) {
@@ -886,6 +970,8 @@
       doAction: doAction,
       fundraise: fundraise,
       rally: rally,
+      pushIssue: pushIssue,
+      network: network,
       hoursRemaining: hoursRemaining,
       undoLastAction: undoLastAction,
       hasPendingEvent: hasPendingEvent,
@@ -973,6 +1059,7 @@
       intel: null,
       groundActionThisTurn: false,
       favorsOwed: 0,
+      issues: freshIssues(),
       endReason: null,
       endCondition: null
     };
@@ -1014,6 +1101,8 @@
     if (state.firedEvents == null) state.firedEvents = [];
     if (state.favorsOwed == null) state.favorsOwed = 0;
     if (state.resources && state.resources.hours == null) state.resources.hours = HOURS_PER_WEEK;
+    if (!state.issues || typeof state.issues !== 'object') state.issues = freshIssues();
+    else ISSUE_DEFS.forEach(function (i) { if (typeof state.issues[i.id] !== 'number' || !isFinite(state.issues[i.id])) state.issues[i.id] = 0; });
     return createInstance(state, rng, false);
   }
 

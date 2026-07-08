@@ -2769,6 +2769,30 @@
           }
         ]
       }
-    ]
+    ],
+    // MODDABLE causal-network model — read by src/engine.js as Data.network.
+    // Edit issues, voter segments, their size (share of electorate), baseLean
+    // (starting tilt: +player / -opponent) and the signed issue->segment weights;
+    // the simulation, the "Push an Issue" lever and the Network view all follow
+    // from this data with no engine changes. Add a segment or issue and it just
+    // works. issueWeightK scales how hard issues move segment support.
+    "network": {
+      "issueWeightK": 0.3,
+      "issues": [
+        { "id": "economy", "name": "The Economy" },
+        { "id": "culture", "name": "Culture War" },
+        { "id": "healthcare", "name": "Healthcare" },
+        { "id": "immigration", "name": "Immigration" },
+        { "id": "climate", "name": "Climate" }
+      ],
+      "segments": [
+        { "id": "union_halls",       "name": "Union Halls",       "size": 0.16, "baseLean":  10, "w": { "economy": 0.8, "healthcare": 0.5, "culture": -0.2, "immigration": 0.1, "climate": 0.2 } },
+        { "id": "suburban_strivers", "name": "Suburban Strivers", "size": 0.22, "baseLean":   0, "w": { "economy": 0.6, "healthcare": 0.3, "culture": -0.3, "immigration": -0.2, "climate": 0.2 } },
+        { "id": "faith_family",      "name": "Faith & Family",    "size": 0.16, "baseLean": -12, "w": { "culture": 0.7, "economy": 0.3, "immigration": 0.4, "climate": -0.2 } },
+        { "id": "very_online",       "name": "The Very Online",   "size": 0.12, "baseLean":   6, "w": { "culture": 0.5, "climate": 0.5, "economy": 0.1, "healthcare": 0.2 } },
+        { "id": "diner_regulars",    "name": "Diner Regulars",    "size": 0.20, "baseLean":  -4, "w": { "economy": 0.7, "immigration": 0.3, "culture": 0.1, "climate": -0.3 } },
+        { "id": "megadonors",        "name": "Megadonors",        "size": 0.04, "baseLean":   0, "w": { "economy": 0.9, "climate": -0.4 } }
+      ]
+    }
   };
 });

@@ -350,3 +350,48 @@ describe('hour budget + parameterized actions (tycoon redesign)', () => {
     assert.equal(g2.getState().favorsOwed, g.getState().favorsOwed);
   });
 });
+
+describe('causal network — issues -> segments -> you (moddable via Data.network)', () => {
+  it('network() exposes you + issues + segments + links from data', () => {
+    const net = newGame().network();
+    assert.ok(net.nodes.some((n) => n.id === 'you'), 'has a YOU node');
+    assert.ok(net.nodes.filter((n) => n.type === 'issue').length >= 3, 'issue nodes');
+    assert.ok(net.nodes.filter((n) => n.type === 'segment').length >= 3, 'segment nodes');
+    assert.ok(net.links.length > 0 && net.links.every((l) => l.sign === 1 || l.sign === -1), 'signed links');
+    assert.equal(typeof net.approval, 'number');
+  });
+  it('pushIssue spends hours, raises the issue favour, and swings coalition approval', () => {
+    const g = newGame(); clearEvent(g);
+    const a0 = g.getState().national.nationalApproval;
+    const r = g.pushIssue({ issueId: 'economy', hours: 12 });
+    assert.ok(r.ok && r.result.favor > 0);
+    assert.equal(g.getState().resources.hours, 28);
+    assert.ok(g.getState().national.nationalApproval > a0, 'economy is net-positive so approval rose');
+  });
+  it('championing economy raises aligned segments (Union Halls) support', () => {
+    const g = newGame(); clearEvent(g);
+    const before = g.network().segments.find((s) => s.id === 'union_halls').support;
+    g.pushIssue({ issueId: 'economy', hours: 20 });
+    assert.ok(g.network().segments.find((s) => s.id === 'union_halls').support > before);
+  });
+  it('pushIssue rejects unknown issue / overspent hours; is deterministic + undoable', () => {
+    const g = newGame(); clearEvent(g);
+    assert.equal(g.pushIssue({ issueId: 'nope', hours: 4 }).ok, false);
+    assert.equal(g.pushIssue({ issueId: 'economy', hours: 100 }).ok, false);
+    const a = newGame({ seed: 'ni' }); clearEvent(a);
+    const b = newGame({ seed: 'ni' }); clearEvent(b);
+    assert.equal(a.pushIssue({ issueId: 'culture', hours: 6 }).result.approval,
+                 b.pushIssue({ issueId: 'culture', hours: 6 }).result.approval);
+    const g2 = newGame(); clearEvent(g2);
+    g2.pushIssue({ issueId: 'economy', hours: 10 });
+    assert.ok(g2.undoLastAction().ok);
+    assert.equal(g2.getState().resources.hours, 40);
+  });
+  it('save/load round-trips issue favours', () => {
+    const g = newGame(); clearEvent(g);
+    g.pushIssue({ issueId: 'climate', hours: 8 });
+    const g2 = Engine.load(g.save());
+    assert.equal(g2.getState().issues.climate, g.getState().issues.climate);
+    assert.equal(g2.network().approval, g.network().approval);
+  });
+});
