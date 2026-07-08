@@ -24,6 +24,11 @@ import { getDilemmaOption, pickDilemma, type DilemmaDef, type DilemmaOption } fr
 import { lowerEffects } from './campaign/pipeline'
 import { canAfford, raise, spend } from './campaign/finance'
 import { deriveCandidateProfile, deriveTurnoutBoostMap } from './campaign/profile'
+import { AD_FATIGUE_RATE, ATTACK_BACKFIRE_THRESHOLD, OPINION_SHIFT_CAP, adCost, getAdChannel } from '../data/campaign/advertising'
+import { getPolicy, POLICIES } from '../data/policies'
+import { ISSUE_DEFS, SEGMENT_DEFS } from '../data/voterModel'
+import { agreementShare, shiftedElectorate } from './electorate/opinion'
+import type { ElectorateState } from './electorate/types'
 import { areAdjacent, getCommunity, type TerritoryState } from './territory/generate'
 import { communityElectorate, localProfiles } from './territory/local'
 import { evaluateElectorate } from './electorate/evaluate'
@@ -39,6 +44,8 @@ export type GameAction =
   | Action<'campaign/openOffice', Record<string, never>>
   | Action<'campaign/resolveDilemma', { optionId: string }>
   | Action<'campaign/travel', { communityId: string }>
+  | Action<'campaign/runAd', { channel: string; tone: string; policyId?: string; budget: number }>
+  | Action<'campaign/commissionPoll', { kind: string }>
   | Action<'core/advanceTurn', Record<string, never>>
 
 function bumpRevision(state: GameState): GameState['meta'] {
@@ -53,6 +60,10 @@ function opponentId(state: GameState): EntityId {
 }
 
 // --- Derived views ----------------------------------------------------------
+/** The electorate as it stands TODAY: base data + opinion shifts won by issue advertising. */
+export function effectiveElectorate(state: GameState): ElectorateState {
+  return shiftedElectorate(state.electorate, state.opinionShifts)
+}
 function profilesAt(
   state: GameState,
   ledger: readonly ScheduledEffect[],
@@ -88,7 +99,7 @@ function conductPollRecord(
   const rng = new Rng(forkRng(state.rng.polling!, `poll:${day}`))
   // A pollster on staff buys bigger samples: tighter margin of error.
   const sampleSize = Math.round(600 + 1600 * staffEffectiveness(state.campaign, 'pollster'))
-  const poll = conductPoll(state.electorate, profiles, rng, { sampleSize })
+  const poll = conductPoll(effectiveElectorate(state), profiles, rng, { sampleSize })
   return { day, shares: poll.shares, marginOfError: poll.marginOfError }
 }
 
@@ -181,7 +192,7 @@ function measureCommunity(state: GameState, communityId: string, day: DayIndex):
   if (!c) return 0
   const profiles = profilesAt(state, state.ledger, day)
   const local = evaluateElectorate(
-    communityElectorate(state.electorate, c),
+    communityElectorate(effectiveElectorate(state), c),
     localProfiles(profiles, state.playerCandidateId, c, state.territory),
   )
   return local.sharesByCandidate[state.playerCandidateId] ?? 0
@@ -232,8 +243,10 @@ function tickOpponentTerritory(state: GameState, day: DayIndex): TerritoryState 
       break
     }
   }
+  // A field director keeps the ground organization warm between visits.
+  const decayRate = staffEffectiveness(state.campaign, 'field_director') > 0 ? 0.85 : 0.75
   const decayed = (m: Readonly<Record<string, number>>) =>
-    Object.fromEntries(Object.entries(m).map(([k, v]) => [k, v * 0.75]).filter(([, v]) => (v as number) > 0.01))
+    Object.fromEntries(Object.entries(m).map(([k, v]) => [k, v * decayRate]).filter(([, v]) => (v as number) > 0.01))
   return {
     ...t,
     opponentLocation: dest,
@@ -332,6 +345,190 @@ function openOffice(state: GameState): GameState {
       ...state.log,
       { day, kind: 'action', message: `Opened field office #${owned + 1} (${formatUsd(cost)}).` },
     ],
+  }
+}
+
+// --- Advertising & polling (the media war) ------------------------------------
+function runAd(
+  state: GameState,
+  payload: { channel: string; tone: string; policyId?: string; budget: number },
+): GameState {
+  if (state.phase !== 'campaign') return state
+  const day = state.calendar.dayIndex
+  const channel = getAdChannel(payload.channel)
+  if (!channel) return blocked(state, day, 'Unknown ad channel.')
+  const budget = Math.max(1, Math.min(3, Math.round(payload.budget))) as 1 | 2 | 3
+  const policy = payload.policyId ? getPolicy(payload.policyId) : undefined
+  if ((payload.tone === 'attack' || payload.tone === 'issue') && !policy)
+    return blocked(state, day, 'Pick the policy this ad is about.')
+  const cost = Math.round(
+    adCost(channel, budget, state.electorate.cvap) *
+      (channel.id === 'digital' && staffEffectiveness(state.campaign, 'digital_director') > 0 ? 0.7 : 1),
+  )
+  if (state.campaign.actionPoints < 1) return blocked(state, day, 'No action points left this week.')
+  if (!canAfford(state.campaign.finance, cost)) return blocked(state, day, 'Not enough cash for that buy.')
+
+  const fatigueN = state.campaign.adFatigue[channel.id] ?? 0
+  const fatigueMult = 1 / (1 + AD_FATIGUE_RATE * fatigueN)
+  const commsAmp = 1 + staffEffectiveness(state.campaign, 'comms_director') * 0.35
+  const digitalAmp = channel.id === 'digital' ? 1 + staffEffectiveness(state.campaign, 'digital_director') * 0.4 : 1
+  const power = budget * fatigueMult * commsAmp * digitalAmp
+  const player = state.candidates[state.playerCandidateId]!
+  const opp = state.candidates[opponentId(state)]!
+
+  const mkEffect = (target: 'self' | 'opponent', ch: 'nameRecognition' | 'favorability', mag: number, tone: number) => ({
+    channel: ch as never,
+    target,
+    magnitude: mag,
+    rampDurationDays: 4,
+    decayHalfLifeDays: ch === 'nameRecognition' ? 25 : 20,
+    tone,
+  })
+  const specs: ReturnType<typeof mkEffect>[] = []
+  let opinionShifts = state.opinionShifts
+  let logMsg = ''
+
+  if (payload.tone === 'positive') {
+    specs.push(mkEffect('self', 'nameRecognition', channel.awareness * power, 0.6))
+    specs.push(mkEffect('self', 'favorability', channel.favorability * power, 0.7))
+    logMsg = `Ran positive ${channel.label} ads.`
+  } else if (payload.tone === 'attack' && policy) {
+    // Attacking a position the district AGREES with backfires (TPP's rule).
+    const oppStance = (opp.positions[policy.areaId] ?? 0) + 0 // opponent's area stance stands in for the policy
+    const agree = agreementShare(effectiveElectorate(state), policy.areaId, oppStance) + policy.popularOffset * Math.sign(oppStance)
+    const threshold = ATTACK_BACKFIRE_THRESHOLD + staffEffectiveness(state.campaign, 'oppo_researcher') * 0.12
+    const oppoAmp = 1 + staffEffectiveness(state.campaign, 'oppo_researcher') * 0.35
+    if (agree >= threshold) {
+      specs.push(mkEffect('opponent', 'favorability', 0.03 * budget, 0.4)) // rally-round effect
+      specs.push(mkEffect('self', 'favorability', -0.025 * budget, -0.6))
+      logMsg = `Attack ad on ${policy.label} BACKFIRED — the district agrees with them.`
+    } else {
+      specs.push(mkEffect('opponent', 'favorability', -0.05 * power * oppoAmp, -0.7))
+      specs.push(mkEffect('self', 'favorability', -0.012 * budget, -0.7))
+      specs.push(mkEffect('self', 'nameRecognition', channel.awareness * 0.3 * power, 0))
+      logMsg = `Hit ${opp.name} on ${policy.label}.`
+    }
+  } else if (payload.tone === 'issue' && policy) {
+    const dir = Math.sign(player.positions[policy.areaId] ?? 0) || 1
+    const current = opinionShifts[policy.areaId] ?? 0
+    const delta = channel.opinion * power * dir
+    const next = clamp(current + delta, -OPINION_SHIFT_CAP, OPINION_SHIFT_CAP)
+    opinionShifts = { ...opinionShifts, [policy.areaId]: next }
+    specs.push(mkEffect('self', 'favorability', channel.favorability * 0.5 * power, 0.5))
+    logMsg = `Issue campaign: ${policy.label} (${policy.proLabel === undefined ? '' : dir > 0 ? policy.proLabel : policy.conLabel}). Opinion moved.`
+  }
+
+  // Direct mail is LOCAL: it lands in the community you're standing in (and builds presence there).
+  let territory = state.territory
+  let extraMult = 1
+  if (channel.id === 'mail') {
+    extraMult = localReach(state.territory, state.territory.playerLocation)
+    territory = {
+      ...territory,
+      presence: bumpPresence(territory.presence, territory, territory.playerLocation, 0.2),
+    }
+  }
+
+  const effects = lowerEffects(
+    { id: `ad:${channel.id}:${payload.tone}:${day}`, effects: specs as never },
+    {
+      candidateId: state.playerCandidateId,
+      opponentId: opponentId(state),
+      jurisdictionId: state.election.jurisdictionId,
+      day,
+      ledgerLength: state.ledger.length,
+      multiplier: extraMult,
+    },
+  )
+  return {
+    ...state,
+    campaign: {
+      ...state.campaign,
+      finance: spend(state.campaign.finance, cost),
+      actionPoints: state.campaign.actionPoints - 1,
+      adFatigue: {
+        ...state.campaign.adFatigue,
+        [channel.id]:
+          fatigueN + (staffEffectiveness(state.campaign, 'comms_director') > 0 ? 0.7 : 1),
+      },
+    },
+    territory,
+    opinionShifts,
+    ledger: [...state.ledger, ...effects],
+    meta: bumpRevision(state),
+    log: [...state.log, { day, kind: 'action', message: `${logMsg} (${formatUsd(cost)})` }],
+  }
+}
+
+const POLL_COSTS: Record<string, number> = { crosstabs: 8_000_00, issues: 10_000_00, communities: 6_000_00, opponent: 12_000_00 }
+
+function commissionPoll(state: GameState, kind: string): GameState {
+  if (state.phase !== 'campaign') return state
+  const day = state.calendar.dayIndex
+  const base = POLL_COSTS[kind]
+  if (!base) return blocked(state, day, 'Unknown poll type.')
+  const sizeScale = Math.sqrt(Math.max(0.25, state.electorate.cvap / 560_000))
+  const cost = Math.round(base * sizeScale * (staffEffectiveness(state.campaign, 'pollster') > 0 ? 0.5 : 1))
+  if (!canAfford(state.campaign.finance, cost)) return blocked(state, day, 'Not enough cash for field work.')
+
+  const electorate = effectiveElectorate(state)
+  const profiles = profilesAt(state, state.ledger, day)
+  const player = state.candidates[state.playerCandidateId]!
+  let report: GameState['pollReports'][number]
+  let territory = state.territory
+
+  if (kind === 'crosstabs') {
+    const rows = electorate.groups.map((g) => {
+      const sub: ElectorateState = { ...electorate, groups: [g], cvap: g.cvap }
+      const share = evaluateElectorate(sub, profiles).sharesByCandidate[state.playerCandidateId] ?? 0
+      const label = SEGMENT_DEFS.find((s) => s.id === g.id)?.label ?? g.id
+      return [label, `${(g.weight * 100).toFixed(0)}%`, `${(share * 100).toFixed(0)}%`, `${(g.turnoutPropensity * 100).toFixed(0)}%`] as const
+    })
+    report = { day, kind: 'crosstabs', title: 'Demographic crosstabs', cost, columns: ['Segment', 'Of electorate', 'With you', 'Turnout propensity'], rows }
+  } else if (kind === 'issues') {
+    const rows = POLICIES.map((p) => {
+      const stance = player.positions[p.areaId] ?? 0
+      const support = agreementShare(electorate, p.areaId, stance || 1) + p.popularOffset * Math.sign(stance || 1)
+      const area = ISSUE_DEFS.find((i) => i.id === p.areaId)?.name ?? p.areaId
+      const yourSide = (stance || 1) > 0 ? p.proLabel : p.conLabel
+      return [p.label, area, yourSide, `${Math.round(Math.max(0, Math.min(1, support)) * 100)}%`] as const
+    }).sort((a, b) => parseInt(String(b[3])) - parseInt(String(a[3])))
+    report = { day, kind: 'issues', title: 'Policy sentiment', cost, columns: ['Policy', 'Area', 'Your side', 'District agreement'], rows }
+  } else if (kind === 'opponent') {
+    // Opposition research: their platform, exposed policy by policy, plus a war-chest estimate.
+    const opp = state.candidates[opponentId(state)]!
+    const rows = POLICIES.map((p) => {
+      const stance = opp.positions[p.areaId] ?? 0
+      const side = stance > 0.05 ? p.proLabel : stance < -0.05 ? p.conLabel : 'No clear position'
+      const agree = agreementShare(electorate, p.areaId, stance || 1) + p.popularOffset * Math.sign(stance || 1)
+      const vuln = stance !== 0 && agree < 0.45 ? 'VULNERABLE' : ''
+      return [p.label, side, `${Math.round(Math.max(0, Math.min(1, agree)) * 100)}% agree`, vuln] as const
+    }).sort((a, b) => (a[3] === 'VULNERABLE' ? -1 : 1) - (b[3] === 'VULNERABLE' ? -1 : 1))
+    report = { day, kind: 'issues', title: `Oppo book: ${opp.name}`, cost, columns: ['Policy', 'Their position', 'District', 'Attack?'], rows }
+  } else {
+    // Community poll: buys intel on the 5 biggest communities you haven't canvassed lately.
+    const staleBefore = day - 21
+    const targets = [...state.territory.communities]
+      .filter((c) => !state.territory.intel[c.id] || state.territory.intel[c.id]!.day < staleBefore)
+      .sort((a, b) => b.weight - a.weight)
+      .slice(0, 5)
+    const intel = { ...state.territory.intel }
+    const rows = targets.map((c) => {
+      const share = measureCommunity(state, c.id, day)
+      intel[c.id] = { day, playerShare: share }
+      return [c.name, `${(c.weight * 100).toFixed(0)}%`, `${Math.round(share * 100)}%`] as const
+    })
+    territory = { ...state.territory, intel }
+    report = { day, kind: 'communities', title: 'Community tracking poll', cost, columns: ['Community', 'Of voters', 'With you'], rows }
+  }
+
+  return {
+    ...state,
+    campaign: { ...state.campaign, finance: spend(state.campaign.finance, cost) },
+    territory,
+    pollReports: [...state.pollReports, report],
+    meta: bumpRevision(state),
+    log: [...state.log, { day, kind: 'action', message: `Commissioned ${report.title.toLowerCase()} (${formatUsd(cost)}).` }],
   }
 }
 
@@ -499,6 +696,16 @@ export function tick(state: GameState): GameState {
 
   // Player upkeep + opponent campaigning.
   const tickRes = tickCampaign(state.campaign, candidate, calendar.daysPerTick)
+  // A digital director converts name recognition into a weekly online-donation stream.
+  const digitalEff = staffEffectiveness(state.campaign, 'digital_director')
+  const awarenessNow = profilesAt(state, state.ledger, state.calendar.dayIndex).find(
+    (p) => p.candidateId === state.playerCandidateId,
+  )!.awareness
+  const onlineRaise = digitalEff > 0 ? Math.round(60000 * digitalEff * awarenessNow) : 0
+  const campaignAfterUpkeep =
+    onlineRaise > 0
+      ? { ...tickRes.campaign, finance: raise(tickRes.campaign.finance, onlineRaise) }
+      : tickRes.campaign
   let ledger = [...state.ledger, ...opponentEffects(state, day)]
 
   // Fire due events (election day).
@@ -511,7 +718,7 @@ export function tick(state: GameState): GameState {
       const profiles = profilesAt(state, ledger, day)
       const boost = turnoutBoostAt(state, profiles, ledger, day)
       const tieRng = new Rng(forkRng(state.rng.events!, `tie:${day}`))
-      result = resolveElection(state.electorate, profiles, state.election.method, {
+      result = resolveElection(effectiveElectorate(state), profiles, state.election.method, {
         turnoutBoost: boost,
         rng: tieRng,
       })
@@ -532,7 +739,7 @@ export function tick(state: GameState): GameState {
     ...state,
     calendar,
     territory: tickOpponentTerritory(state, day),
-    campaign: tickRes.campaign,
+    campaign: campaignAfterUpkeep,
     ledger,
     eventQueue,
     result,
@@ -545,8 +752,24 @@ export function tick(state: GameState): GameState {
       ...extraLogs,
     ],
   }
+  // The opposition is a live agent: report where they spent their week (they're trackable).
+  const oppTerr = advanced.territory
+  const oppTown = getCommunity(oppTerr, oppTerr.opponentLocation)
+  const withOppNews: GameState = oppTown
+    ? {
+        ...advanced,
+        log: [
+          ...advanced.log,
+          {
+            day,
+            kind: 'opposition',
+            message: `${advanced.candidates[opponentId(advanced)]?.name ?? 'Your opponent'} campaigned in ${oppTown.name} this week.`,
+          },
+        ],
+      }
+    : advanced
   // Dilemmas: auto-resolve last week's ignored one, then maybe land a new one on the desk.
-  return tickDilemmas(advanced, day)
+  return tickDilemmas(withOppNews, day)
 }
 
 export function applyAction(state: GameState, action: GameAction): GameState {
@@ -575,6 +798,10 @@ export function applyAction(state: GameState, action: GameAction): GameState {
       return resolveDilemmaAction(state, action.payload.optionId)
     case 'campaign/travel':
       return travel(state, action.payload.communityId)
+    case 'campaign/runAd':
+      return runAd(state, action.payload)
+    case 'campaign/commissionPoll':
+      return commissionPoll(state, action.payload.kind)
     case 'core/advanceTurn':
       return tick(state)
     default:

@@ -4,6 +4,7 @@ import { LineChart } from '@ui/components/LineChart'
 import { InfluenceMap } from '@ui/screens/InfluenceMap'
 import { TrailMap } from '@ui/screens/TrailMap'
 import { DilemmaModal } from '@ui/screens/DilemmaModal'
+import { MediaDesk } from '@ui/screens/MediaDesk'
 import { actionAvailability, partyColor, pollSeries, standings, weeksToElection } from '@ui/selectors'
 import { CAMPAIGN_ACTIONS } from '@data/campaign/actions'
 import { STAFF_POOL, MAX_OFFICES, officeCost } from '@data/campaign/staff'
@@ -245,7 +246,7 @@ function ApPips({ spent, max }: { spent: number; max: number }) {
   )
 }
 
-type View = 'trail' | 'war_room' | 'influence'
+type View = 'trail' | 'media' | 'war_room' | 'influence'
 
 export function CampaignDashboard() {
   const state = useGame((s) => s.state)
@@ -259,6 +260,7 @@ export function CampaignDashboard() {
 
   const TABS: Array<{ id: View; label: string }> = [
     { id: 'trail', label: 'The Trail' },
+    { id: 'media', label: 'Media & Polling' },
     { id: 'war_room', label: 'War Room' },
     { id: 'influence', label: 'Influence Map' },
   ]
@@ -302,6 +304,7 @@ export function CampaignDashboard() {
       </div>
 
       {view === 'influence' && <InfluenceMap state={state} />}
+      {view === 'media' && <MediaDesk state={state} />}
       {view === 'trail' && (
         <div className="trail-grid">
           <TrailMap state={state} />

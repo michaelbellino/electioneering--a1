@@ -7,6 +7,7 @@ import { getDifficulty, attributeCost, totalAttributeCost } from '@data/campaign
 import { MAX_TRAITS, TRAITS } from '@data/campaign/traits'
 import { getScenario, SCENARIOS } from '@data/scenarios/index'
 import type { Party } from '@engine/electorate/types'
+import { aggregateToAreas, ideologyLabel, ideologyOf, policiesForArea, stancesFromAreas, type PolicyStances } from '@data/policies'
 import { fmtPosition } from '@ui/format'
 
 const PARTIES: { id: Party; label: string }[] = [
@@ -51,7 +52,9 @@ export function CandidateCreator() {
     fundraising: 4,
   })
   const [traitIds, setTraitIds] = useState<string[]>([])
-  const [positions, setPositions] = useState<Record<IssueId, number>>(zeroPositions)
+  const [stances, setStances] = useState<PolicyStances>(() => stancesFromAreas(zeroPositions()))
+  const positions = aggregateToAreas(stances)
+  const ideology = ideologyOf(stances)
 
   const spent = useMemo(() => totalAttributeCost(Object.values(steps)), [steps])
   const budget = difficulty.pointBudget
@@ -79,7 +82,13 @@ export function CandidateCreator() {
       prev.includes(id) ? prev.filter((t) => t !== id) : prev.length < MAX_TRAITS ? [...prev, id] : prev,
     )
 
-  const setPos = (id: IssueId) => (v: number) => setPositions((p) => ({ ...p, [id]: v }))
+  const setArea = (id: IssueId) => (v: number) =>
+    setStances((prev) => {
+      const next = { ...prev }
+      for (const p of policiesForArea(id)) next[p.id] = v
+      return next
+    })
+  const setStance = (pid: string) => (v: number) => setStances((prev) => ({ ...prev, [pid]: v }))
 
   const submit = () => {
     startGame(
@@ -182,23 +191,45 @@ export function CandidateCreator() {
         </div>
 
         <div className="panel">
-          <h3>Platform</h3>
+          <h3>
+            Platform
+            <span className="h3-aside">
+              Fiscal: {ideologyLabel(ideology.fiscal)} · Social: {ideologyLabel(ideology.social)}
+            </span>
+          </h3>
           <p className="muted" style={{ marginTop: 0 }}>
-            Where you stand on each issue — drag left toward the conservative pole, right toward the
-            progressive pole. Events on the trail can move these later.
+            Your platform is {policiesForArea('taxes_spending').length * 8} concrete policy stances.
+            Set an area broadly, or open it and take positions policy by policy — voters judge the
+            specifics, and so do attack ads.
           </p>
           {ISSUE_DEFS.map((issue) => (
-            <Slider
-              key={issue.id}
-              label={issue.name}
-              value={positions[issue.id]}
-              min={-1}
-              max={1}
-              format={fmtPosition}
-              onChange={setPos(issue.id)}
-              leftPole={issue.leftPole}
-              rightPole={issue.rightPole}
-            />
+            <div key={issue.id} className="area-block">
+              <Slider
+                label={issue.name}
+                value={positions[issue.id] ?? 0}
+                min={-1}
+                max={1}
+                format={fmtPosition}
+                onChange={setArea(issue.id)}
+                leftPole={issue.leftPole}
+                rightPole={issue.rightPole}
+              />
+              <details className="policy-details">
+                <summary>Fine-tune {policiesForArea(issue.id).length} policies</summary>
+                {policiesForArea(issue.id).map((p) => (
+                  <div key={p.id} className="policy-row">
+                    <Slider
+                      label={p.label}
+                      value={stances[p.id] ?? 0}
+                      min={-1}
+                      max={1}
+                      format={(v) => (Math.abs(v) < 0.05 ? 'No position' : v > 0 ? p.proLabel : p.conLabel)}
+                      onChange={setStance(p.id)}
+                    />
+                  </div>
+                ))}
+              </details>
+            </div>
           ))}
           <div className="creator-actions">
             <button className="btn" onClick={() => goTo('menu')}>

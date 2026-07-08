@@ -5,6 +5,7 @@
  * party in the creator and an uphill race becomes a layup — that's the sandbox.
  */
 import type { Scenario } from '../../engine/scenario'
+import { buildPaRaces } from './pa'
 import { HOUSE_SPECIAL_PA07 } from './houseSpecial'
 import { TX13_OPEN_SEAT } from './txPanhandle'
 import { NY13_PRIMARY_CHALLENGE } from './nyMachine'
@@ -49,6 +50,13 @@ export const SCENARIOS: readonly ScenarioMeta[] = [
   },
 ] as const
 
+/** The full Pennsylvania slate: every congressional district + Governor + US Senate. */
+export const PA_RACES = buildPaRaces()
+
 export function getScenario(id: string): Scenario {
-  return SCENARIOS.find((s) => s.scenario.id === id)?.scenario ?? HOUSE_SPECIAL_PA07
+  return (
+    SCENARIOS.find((s) => s.scenario.id === id)?.scenario ??
+    PA_RACES.find((r) => r.scenario.id === id)?.scenario ??
+    HOUSE_SPECIAL_PA07
+  )
 }

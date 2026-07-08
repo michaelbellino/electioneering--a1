@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useGame } from '@ui/store/gameStore'
-import { SCENARIOS } from '@data/scenarios/index'
+import { PA_RACES, SCENARIOS } from '@data/scenarios/index'
 import { DIFFICULTIES } from '@data/campaign/difficulties'
 import { dateToDayIndex } from '@engine/core/calendar'
 import { fmtUsd } from '@ui/format'
@@ -47,7 +47,31 @@ export function MainMenu() {
 
       <div className="setup-grid">
         <section className="setup-section">
-          <h3 className="setup-title">Choose your race</h3>
+          <h3 className="setup-title">Pennsylvania — run any seat</h3>
+          <label className="sandbox-field pa-picker">
+            <select
+              aria-label="Pennsylvania race"
+              value={PA_RACES.some((r) => r.scenario.id === setup.scenarioId) ? setup.scenarioId : ''}
+              onChange={(e) => e.target.value && configure({ scenarioId: e.target.value })}
+            >
+              <option value="">Pick any Pennsylvania race…</option>
+              <optgroup label="Statewide">
+                {PA_RACES.filter((r) => r.group === 'statewide').map((r) => (
+                  <option key={r.scenario.id} value={r.scenario.id}>
+                    {r.scenario.title} · {'★'.repeat(r.stars)}
+                  </option>
+                ))}
+              </optgroup>
+              <optgroup label="US House — all 17 districts">
+                {PA_RACES.filter((r) => r.group === 'district').map((r) => (
+                  <option key={r.scenario.id} value={r.scenario.id}>
+                    {r.scenario.title} · {'★'.repeat(r.stars)}
+                  </option>
+                ))}
+              </optgroup>
+            </select>
+          </label>
+          <h3 className="setup-title" style={{ marginTop: '1rem' }}>Featured scenarios</h3>
           <div className="scenario-grid" role="radiogroup" aria-label="Scenario">
             {SCENARIOS.map((meta) => {
               const active = meta.scenario.id === setup.scenarioId

@@ -35,7 +35,14 @@ export interface CandidateState {
   readonly scandalLoad: Unit01
 }
 
-export type StaffRole = 'manager' | 'fundraiser' | 'field_director' | 'comms_director' | 'pollster'
+export type StaffRole =
+  | 'manager'
+  | 'fundraiser'
+  | 'field_director'
+  | 'comms_director'
+  | 'pollster'
+  | 'oppo_researcher'
+  | 'digital_director'
 
 export interface StaffMember {
   readonly id: EntityId
@@ -84,6 +91,8 @@ export interface CampaignState {
   /** defId -> the day the action becomes available again. */
   readonly cooldowns: Readonly<Record<string, DayIndex>>
   readonly modifiers: CampaignModifiers
+  /** Ad buys per channel this campaign (drives diminishing returns). */
+  readonly adFatigue: Readonly<Record<string, number>>
 }
 
 /** A single ledger effect an action emits, before being lowered to a ScheduledEffect. */

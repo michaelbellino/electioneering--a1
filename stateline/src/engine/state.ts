@@ -47,6 +47,17 @@ export interface PollRecord {
   readonly marginOfError: number
 }
 
+/** A commissioned research product (crosstabs, issue sentiment, community canvass). */
+export interface PollReport {
+  readonly day: DayIndex
+  readonly kind: 'crosstabs' | 'issues' | 'communities'
+  readonly title: string
+  readonly cost: number
+  /** Generic tabular payload the UI renders as-is. */
+  readonly columns: readonly string[]
+  readonly rows: readonly (readonly (string | number)[])[]
+}
+
 export interface GameState {
   meta: GameMeta
   phase: GamePhase
@@ -69,4 +80,8 @@ export interface GameState {
   pendingDilemma: PendingDilemma | null
   /** Dilemma defs already drawn this run (each fires at most once). */
   seenDilemmas: string[]
+  /** Capped per-issue public-opinion shifts won by issue advertising (applied to the electorate). */
+  opinionShifts: Record<string, number>
+  /** Commissioned research reports, newest last. */
+  pollReports: PollReport[]
 }

@@ -177,6 +177,8 @@ export function createGame(scenario: Scenario, seed: number, setup: GameSetup = 
     polls: [],
     pendingDilemma: null,
     seenDilemmas: [],
+    opinionShifts: {},
+    pollReports: [],
     log: [
       {
         day: dateToDayIndex(scenario.startDate),

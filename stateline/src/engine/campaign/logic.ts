@@ -84,6 +84,7 @@ export function createCampaign(input: CreateCampaignInput): CampaignState {
       salaryMult: input.modifiers?.salaryMult ?? 1,
       scandalMult: input.modifiers?.scandalMult ?? 1,
     },
+    adFatigue: {},
   }
 }
 
@@ -175,11 +176,16 @@ export function applyCampaignAction(
     multiplier,
   })
 
+  // A campaign manager runs a tighter calendar: cooldowns come back faster.
+  const cooldownScale = campaign.staff.some((s) => s.role === 'manager') ? 0.75 : 1
   const next: CampaignState = {
     ...campaign,
     finance,
     actionPoints: campaign.actionPoints - def.actionPointCost,
-    cooldowns: { ...campaign.cooldowns, [def.id]: ctx.day + def.cooldownDays },
+    cooldowns: {
+      ...campaign.cooldowns,
+      [def.id]: ctx.day + Math.round(def.cooldownDays * cooldownScale),
+    },
   }
   return { ok: true, errors: [], campaign: next, newEffects, raised }
 }
@@ -202,7 +208,12 @@ export function tickCampaign(
     campaign.staff.reduce((a, s) => a + s.weeklySalary, 0) * weeks * campaign.modifiers.salaryMult,
   )
   if (salaries > 0) finance = spend(finance, salaries)
-  const trickle = Math.round((20000 + 80000 * candidate.attributes.fundraising) * weeks)
+  // A finance director keeps small-dollar money flowing between events.
+  const trickle = Math.round(
+    (20000 + 80000 * candidate.attributes.fundraising) *
+      weeks *
+      (1 + staffEffectiveness(campaign, 'fundraiser') * 0.5),
+  )
   if (trickle > 0) finance = raise(finance, trickle)
 
   return {

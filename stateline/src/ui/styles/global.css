@@ -1577,3 +1577,66 @@ h3 {
     order: 3;
   }
 }
+
+/* ── Media desk & PA picker (expansion) ─────────────────── */
+.pa-picker select,
+.policy-select {
+  width: 100%;
+  background: var(--bg);
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  color: var(--ink);
+  padding: 0.55rem 0.7rem;
+  font-family: inherit;
+  font-size: 0.9rem;
+}
+.media-grid {
+  grid-template-columns: 1.1fr 1fr 1.2fr;
+}
+.ad-summary {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  font-weight: 700;
+  margin: 0.6rem 0 0.8rem;
+}
+.report summary {
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.88rem;
+  padding: 0.4rem 0;
+}
+.report[open] summary {
+  color: var(--accent);
+}
+.policy-details {
+  margin: -0.35rem 0 0.9rem;
+}
+.policy-details summary {
+  cursor: pointer;
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: var(--faint);
+}
+.policy-details summary:hover {
+  color: var(--muted);
+}
+.policy-row {
+  padding-left: 0.9rem;
+  border-left: 2px solid var(--border);
+  margin: 0.2rem 0;
+}
+.policy-row .slider-head {
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+.log .log-opposition {
+  color: var(--muted);
+  border-left-color: var(--bad);
+}
+@media (max-width: 1020px) {
+  .media-grid {
+    grid-template-columns: 1fr;
+  }
+}
