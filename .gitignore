@@ -1,0 +1,22 @@
+# Python bytecode (from the vendored ui-ux-pro-max skill scripts)
+__pycache__/
+*.pyc
+*.pyo
+
+# Node
+node_modules/
+npm-debug.log*
+
+# Electron / electron-builder output (installers + unpacked binaries)
+dist/
+release/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/
+
+# Local game saves / scratch
+*.local.json
