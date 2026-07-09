@@ -1,12 +1,32 @@
 # Fixes — tracker
 
+> ## ⚠️ Reconciliation (important) — `stateline/` is now the FULL build
+>
+> The `electiongames.zip` in this repo only ever contained an **early, simpler slice** of Stateline
+> (PA‑07 only, 91 tests, no traits / trail map / influence graph / governing / saves). The **real,
+> rich build** — the one that was published as an artifact and actually played — lived on branch
+> **`claude/ux-ui-critical-pass-t5rb45`** (HEAD *"Game-feel pass: motion system, living map,
+> cinematic moments"*, Jul 8).
+>
+> That full source has now been **restored into `stateline/`** on this branch, replacing the slice.
+> It verifies **typecheck clean · 146 tests passing**, and builds to the playable
+> `stateline-play.html` (and the hosted artifact). The as-you-played-it compiled snapshot is also
+> preserved at `stateline-campaign-simulator.html`.
+>
+> **Consequence for the sections below:** the §1–§3 creator/dashboard fixes and the deferred items
+> (D1–D4, K3) were written against the *slice* and are largely **superseded** — the full build
+> already has candidate **traits** ("Background"), point‑buy attributes with hints, a difficulty
+> system, **multiple races** (PA‑07, NY‑13 primary, TX‑13, PA Senate, + a full PA slate), an opinion
+> model, a causal/influence graph, governing, dilemmas, and saves. The Campaign Trail notes (CT1–CT6)
+> and the analysis of the *zip contents* in `ANALYSIS.md` remain accurate for that snapshot.
+
 Tracks fixes derived from [`ANALYSIS.md`](ANALYSIS.md). Scope note: the runnable game
 (**Stateline**) was materialized from `electiongames.zip` into `stateline/` so fixes are real,
 reviewable diffs. The zip is kept as the untouched original snapshot. Campaign Trail is not
 runnable, so its issues are tracked here rather than guessed at.
 
-**Verification baseline:** `npm run typecheck` clean · `npm test` = **91/91 passing**, before and
-after every change below.
+**Verification baseline (slice):** `npm run typecheck` clean · `npm test` = **91/91 passing**,
+before and after every change below. *(The restored full build: typecheck clean · 146 passing.)*
 
 ---
 

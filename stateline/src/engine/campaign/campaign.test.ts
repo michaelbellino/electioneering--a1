@@ -70,13 +70,13 @@ describe('campaign — action gating (no partial mutation)', () => {
 
   it('enforces cooldowns', () => {
     const c = camp()
-    const speech = getCampaignAction('speech')! // 3-day cooldown
+    const speech = getCampaignAction('speech')! // 5-day cooldown
     const first = applyCampaignAction(c, cand(), speech, { day: 0, ledgerLength: 0 })
     expect(first.ok).toBe(true)
     const tooSoon = applyCampaignAction(first.campaign, cand(), speech, { day: 1, ledgerLength: 0 })
     expect(tooSoon.ok).toBe(false)
     expect(tooSoon.errors[0]?.code).toBe('on_cooldown')
-    const later = applyCampaignAction(first.campaign, cand(), speech, { day: 3, ledgerLength: 0 })
+    const later = applyCampaignAction(first.campaign, cand(), speech, { day: 5, ledgerLength: 0 })
     expect(later.ok).toBe(true)
   })
 })

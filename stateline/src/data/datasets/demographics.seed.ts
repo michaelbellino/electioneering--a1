@@ -10,6 +10,7 @@
  * Congressional-district populations are ~761k (2020 apportionment). Segment shares are of CVAP.
  */
 import type { DemographicsDataset } from '../schema'
+import { PA_DISTRICTS } from './paDistricts'
 
 export const DEMOGRAPHICS_SEED: DemographicsDataset = {
   dataVersion: 'seed-0.1.0',
@@ -112,5 +113,6 @@ export const DEMOGRAPHICS_SEED: DemographicsDataset = {
       baselineTurnout: 0.56,
       provisional: true,
     },
+    ...PA_DISTRICTS,
   ],
 }

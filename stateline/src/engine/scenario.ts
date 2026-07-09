@@ -7,13 +7,19 @@ import type { CalendarDate } from './core/calendar'
 import { createCalendar, dateToDayIndex, formatDate } from './core/calendar'
 import { createRng } from './core/rng'
 import { createEventQueue, scheduleEvent } from './core/events'
-import type { Cents, EntityId, Signed1 } from './core/primitives'
+import { clamp, clamp01, type Cents, type EntityId, type Signed1 } from './core/primitives'
 import type { IssueId } from '../data/schema'
+import { getDifficulty } from '../data/campaign/difficulties'
+import { getTrait, MAX_TRAITS } from '../data/campaign/traits'
 import { loadContent } from '../data/loader'
 import { getJurisdiction } from '../data/loader'
 import { buildElectorate } from './electorate/build'
 import type { Party } from './electorate/types'
 import { createCampaign, createCandidate } from './campaign/logic'
+import { generateTerritory } from './territory/generate'
+import { STATE_REGIONS } from '../data/datasets/paRegions'
+import type { AiCandidateState, AiPersonality } from './ai/agent'
+import { createGoverning, type OfficeKind } from './governing/governing'
 import type { CandidateAttributes } from './campaign/types'
 import type { ElectoralMethod } from './electoral/types'
 import { ENGINE_VERSION, EVENT_ELECTION_DAY, type GameState } from './state'
@@ -37,30 +43,105 @@ export interface Scenario {
   readonly method: ElectoralMethod
   readonly player: ScenarioCandidate
   readonly opponent: ScenarioCandidate
+  /** Additional rivals (three-way races, spoilers, primary fields). */
+  readonly extraOpponents?: readonly ScenarioCandidate[]
   readonly startingCash: Cents
   /** How hard the AI opponent campaigns each tick (name-rec exposure units emitted per week). */
   readonly opponentIntensity: number
+  /** What kind of seat this is (drives governing gameplay). Default: legislator. */
+  readonly office?: OfficeKind
 }
 
-export function createGame(scenario: Scenario, seed: number): GameState {
+/** Sandbox overrides — every knob optional; set ones win over scenario + difficulty. */
+export interface SandboxOverrides {
+  readonly startingCash?: Cents
+  /** 0..1: how hard the AI opponent campaigns. */
+  readonly opponentIntensity?: number
+  readonly maxActionPoints?: number
+  /** Override race length; election day becomes startDate + weeks×7. */
+  readonly weeks?: number
+}
+
+/** Run configuration beyond the scenario itself: difficulty, traits, sandbox knobs. */
+export interface GameSetup {
+  readonly difficultyId?: string
+  readonly traitIds?: readonly string[]
+  readonly sandbox?: SandboxOverrides
+  /** Skip the campaign — take office on day one (governing sandbox). */
+  readonly startInOffice?: boolean
+}
+
+const isDefined = <T>(x: T | undefined): x is T => x !== undefined
+
+export function createGame(scenario: Scenario, seed: number, setup: GameSetup = {}): GameState {
   const { voterModel, demographics } = loadContent()
   const jurisdiction = getJurisdiction(demographics, scenario.jurisdictionId)
   const electorate = buildElectorate(jurisdiction, voterModel)
 
-  const player = createCandidate({ ...scenario.player })
-  const opponent = createCandidate({ ...scenario.opponent })
+  const stateRegions = jurisdiction.level === 'state' ? STATE_REGIONS[jurisdiction.id] : undefined
+  const territory = generateTerritory(
+    electorate,
+    createRng(seed ^ 0x7ae3c9d1),
+    stateRegions ? stateRegions.length : jurisdiction.level === 'state' ? 19 : 13,
+    stateRegions,
+  )
 
-  const electionDay = dateToDayIndex(scenario.electionDate)
+  const difficulty = getDifficulty(setup.difficultyId ?? 'normal')
+  const traits = (setup.traitIds ?? []).slice(0, MAX_TRAITS).map(getTrait).filter(isDefined)
+
+  // Traits modify the player's raw candidate inputs before creation.
+  const traitAttr = (k: keyof CandidateAttributes): number =>
+    traits.reduce((a, t) => a + (t.attributes?.[k] ?? 0), 0)
+  const basePlayer = scenario.player
+  const player = createCandidate({
+    ...basePlayer,
+    attributes: {
+      charisma: clamp01((basePlayer.attributes?.charisma ?? 0.5) + traitAttr('charisma')),
+      competence: clamp01((basePlayer.attributes?.competence ?? 0.5) + traitAttr('competence')),
+      integrity: clamp01((basePlayer.attributes?.integrity ?? 0.5) + traitAttr('integrity')),
+      fundraising: clamp01((basePlayer.attributes?.fundraising ?? 0.5) + traitAttr('fundraising')),
+    },
+    baseExposure:
+      (basePlayer.baseExposure ?? 0.15) + traits.reduce((a, t) => a + (t.baseExposure ?? 0), 0),
+    baseFavorability: clamp(
+      (basePlayer.baseFavorability ?? 0) + traits.reduce((a, t) => a + (t.baseFavorability ?? 0), 0),
+      -1,
+      1,
+    ),
+  })
+  const opponents = [scenario.opponent, ...(scenario.extraOpponents ?? [])].map((o, i) =>
+    createCandidate({ ...o, id: o.id === 'opponent' && i > 0 ? `opponent${i + 1}` : o.id }),
+  )
+
+  const startDay = dateToDayIndex(scenario.startDate)
+  const electionDay =
+    setup.sandbox?.weeks !== undefined
+      ? startDay + Math.max(4, Math.round(setup.sandbox.weeks)) * 7
+      : dateToDayIndex(scenario.electionDate)
   const electionId = `election:${scenario.id}`
+
+  const startingCash =
+    setup.sandbox?.startingCash ??
+    Math.round(scenario.startingCash * difficulty.cashMult) +
+      traits.reduce((a, t) => a + (t.cashDelta ?? 0), 0)
+  const maxActionPoints = Math.max(
+    1,
+    (setup.sandbox?.maxActionPoints ?? difficulty.maxActionPoints) +
+      traits.reduce((a, t) => a + (t.apDelta ?? 0), 0),
+  )
 
   const campaign = createCampaign({
     id: `campaign:${scenario.id}`,
     candidateId: player.id,
     electionId,
     jurisdictionId: scenario.jurisdictionId,
-    opponentIds: [opponent.id],
-    startingCash: scenario.startingCash,
-    maxActionPoints: 3,
+    opponentIds: opponents.map((o) => o.id),
+    startingCash,
+    maxActionPoints,
+    modifiers: {
+      salaryMult: traits.reduce((a, t) => a * (t.salaryMult ?? 1), 1),
+      scandalMult: traits.reduce((a, t) => a * (t.scandalMult ?? 1), 1),
+    },
   })
 
   let eventQueue = createEventQueue()
@@ -71,13 +152,15 @@ export function createGame(scenario: Scenario, seed: number): GameState {
     id: `evt:election:${electionId}`,
   })
 
-  return {
+  const game: GameState = {
     meta: {
       seed,
       dataVersion: demographics.dataVersion,
       engineVersion: ENGINE_VERSION,
       revision: 0,
       scenarioId: scenario.id,
+      difficulty: difficulty.id,
+      traitIds: traits.map((t) => t.id),
     },
     phase: 'campaign',
     calendar: createCalendar(scenario.startDate, 7),
@@ -94,15 +177,36 @@ export function createGame(scenario: Scenario, seed: number): GameState {
       title: scenario.title,
       electionDay,
       method: scenario.method,
-      candidateIds: [player.id, opponent.id],
+      candidateIds: [player.id, ...opponents.map((o) => o.id)],
     },
     electorate,
-    candidates: { [player.id]: player, [opponent.id]: opponent },
+    territory,
+    candidates: Object.fromEntries([[player.id, player], ...opponents.map((o) => [o.id, o])]),
+    aiCandidates: Object.fromEntries(
+      opponents.map((o, i) => {
+        const personality: AiPersonality =
+          i > 0 ? 'insurgent' : (o.baseExposure ?? 0) > 0.5 ? 'frontrunner' : 'attack_dog'
+        const ai: AiCandidateState = {
+          candidateId: o.id,
+          personality,
+          cash: Math.round(startingCash * (0.8 + (o.attributes?.fundraising ?? 0.5))),
+          location: territory.playerLocation,
+        }
+        return [o.id, ai]
+      }),
+    ),
     playerCandidateId: player.id,
-    aiOpponentIntensity: scenario.opponentIntensity,
+    aiOpponentIntensity:
+      setup.sandbox?.opponentIntensity ?? scenario.opponentIntensity * difficulty.opponentMult,
     campaign,
     result: null,
     polls: [],
+    pendingDilemma: null,
+    seenDilemmas: [],
+    opinionShifts: {},
+    communityOpinion: {},
+    pollReports: [],
+    governing: null,
     log: [
       {
         day: dateToDayIndex(scenario.startDate),
@@ -111,4 +215,20 @@ export function createGame(scenario: Scenario, seed: number): GameState {
       },
     ],
   }
+  if (setup.startInOffice) {
+    const office: OfficeKind = scenario.office ?? 'legislator'
+    return {
+      ...game,
+      phase: 'governing',
+      governing: createGoverning(game, office, scenario.title),
+      log: [
+        {
+          day: dateToDayIndex(scenario.startDate),
+          kind: 'game_start',
+          message: `You take office: ${scenario.title}. Govern well — approval is the score.`,
+        },
+      ],
+    }
+  }
+  return game
 }

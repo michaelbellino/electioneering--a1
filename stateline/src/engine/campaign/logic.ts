@@ -62,6 +62,7 @@ export interface CreateCampaignInput {
   readonly maxActionPoints?: number
   readonly staff?: readonly StaffMember[]
   readonly offices?: number
+  readonly modifiers?: Partial<CampaignState['modifiers']>
 }
 
 export function createCampaign(input: CreateCampaignInput): CampaignState {
@@ -79,10 +80,16 @@ export function createCampaign(input: CreateCampaignInput): CampaignState {
     offices: input.offices ?? 0,
     strategy: { tone: 0, focusIssue: null },
     cooldowns: {},
+    modifiers: {
+      salaryMult: input.modifiers?.salaryMult ?? 1,
+      scandalMult: input.modifiers?.scandalMult ?? 1,
+    },
+    adFatigue: {},
+    fundraiserUses: 0,
   }
 }
 
-function staffEffectiveness(campaign: CampaignState, role: StaffRole): number {
+export function staffEffectiveness(campaign: CampaignState, role: StaffRole): number {
   return Math.min(
     1.5,
     campaign.staff.filter((s) => s.role === role).reduce((a, s) => a + s.effectiveness, 0),
@@ -123,6 +130,8 @@ export interface ApplyActionCtx {
   readonly day: DayIndex
   /** Current ledger length, used as a nonce for deterministic effect ids. */
   readonly ledgerLength: number
+  /** Additional multiplier from context (e.g. WHERE the action happens on the map). */
+  readonly extraMultiplier?: number
 }
 
 /**
@@ -153,12 +162,16 @@ export function applyCampaignAction(
 
   let finance = spend(campaign.finance, def.cashCost)
   let raised = 0
+  let fundraiserUses = campaign.fundraiserUses
   if (def.fundraising) {
-    raised = Math.round(def.fundraising.baseAmount * fundraiseMultiplier(campaign, candidate))
+    // Donor fatigue: the same rolodex yields less every time you shake it.
+    const fatigue = 1 / (1 + 0.22 * fundraiserUses)
+    raised = Math.round(def.fundraising.baseAmount * fundraiseMultiplier(campaign, candidate) * fatigue)
     finance = raise(finance, raised)
+    fundraiserUses += 1
   }
 
-  const multiplier = actionMultiplier(campaign, candidate, def)
+  const multiplier = actionMultiplier(campaign, candidate, def) * (ctx.extraMultiplier ?? 1)
   const newEffects = lowerEffects(def, {
     candidateId: candidate.id,
     opponentId: campaign.opponentIds[0] ?? null,
@@ -168,11 +181,17 @@ export function applyCampaignAction(
     multiplier,
   })
 
+  // A campaign manager runs a tighter calendar: cooldowns come back faster.
+  const cooldownScale = campaign.staff.some((s) => s.role === 'manager') ? 0.75 : 1
   const next: CampaignState = {
     ...campaign,
     finance,
+    fundraiserUses,
     actionPoints: campaign.actionPoints - def.actionPointCost,
-    cooldowns: { ...campaign.cooldowns, [def.id]: ctx.day + def.cooldownDays },
+    cooldowns: {
+      ...campaign.cooldowns,
+      [def.id]: ctx.day + Math.round(def.cooldownDays * cooldownScale),
+    },
   }
   return { ok: true, errors: [], campaign: next, newEffects, raised }
 }
@@ -191,9 +210,16 @@ export function tickCampaign(
 ): TickResult {
   const weeks = daysPerTick / 7
   let finance = campaign.finance
-  const salaries = Math.round(campaign.staff.reduce((a, s) => a + s.weeklySalary, 0) * weeks)
+  const salaries = Math.round(
+    campaign.staff.reduce((a, s) => a + s.weeklySalary, 0) * weeks * campaign.modifiers.salaryMult,
+  )
   if (salaries > 0) finance = spend(finance, salaries)
-  const trickle = Math.round((20000 + 80000 * candidate.attributes.fundraising) * weeks)
+  // A finance director keeps small-dollar money flowing between events.
+  const trickle = Math.round(
+    (20000 + 80000 * candidate.attributes.fundraising) *
+      weeks *
+      (1 + staffEffectiveness(campaign, 'fundraiser') * 0.5),
+  )
   if (trickle > 0) finance = raise(finance, trickle)
 
   return {

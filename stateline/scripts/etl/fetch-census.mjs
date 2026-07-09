@@ -21,17 +21,12 @@ import { dirname, join } from 'node:path'
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const OUT = join(__dirname, '..', '..', 'src', 'data', 'datasets', 'demographics.generated.json')
 
-const KEY = process.env.CENSUS_API_KEY
+const KEY = process.env.CENSUS_API_KEY ?? '' // keyless works at low volume; a key removes rate limits
 const YEAR = process.env.ACS_YEAR ?? '2022'
 const BASE = `https://api.census.gov/data/${YEAR}/acs/acs5`
 
 if (!KEY) {
-  console.error(
-    'ERROR: CENSUS_API_KEY is not set.\n' +
-      'Get a free key at https://api.census.gov/data/key_signup.html and run:\n' +
-      '  CENSUS_API_KEY=xxxx node scripts/etl/fetch-census.mjs',
-  )
-  process.exit(1)
+  console.warn('CENSUS_API_KEY not set — running keyless (rate-limited; fine for one refresh).')
 }
 
 // --- ACS variable map -------------------------------------------------------
@@ -86,7 +81,7 @@ const GEOS = [
 
 async function fetchGeo(geo) {
   const url =
-    `${BASE}?get=NAME,${GET}&for=${geo.for}` + (geo.in ? `&in=${geo.in}` : '') + `&key=${KEY}`
+    `${BASE}?get=NAME,${GET}&for=${geo.for}` + (geo.in ? `&in=${geo.in}` : '') + (KEY ? `&key=${KEY}` : '')
   const res = await fetch(url)
   if (!res.ok) throw new Error(`Census ${res.status} for ${geo.id}: ${await res.text()}`)
   const rows = await res.json() // [header, dataRow]

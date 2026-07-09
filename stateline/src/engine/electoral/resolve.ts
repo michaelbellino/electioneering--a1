@@ -15,6 +15,15 @@ export interface ResolveOptions {
   readonly turnoutBoost?: Readonly<Record<string, number>>
   /** Seeded rng for breaking an exact tie. */
   readonly rng?: Rng
+  /**
+   * SPATIAL resolution (M2): instead of one district-wide evaluation, sum the votes of each
+   * community's own electorate with locally-adjusted candidate profiles (ground presence is real
+   * votes). Supply the per-community electorates+profiles; district totals = the sum of places.
+   */
+  readonly communities?: ReadonlyArray<{
+    readonly electorate: ElectorateState
+    readonly profiles: readonly CandidateProfile[]
+  }>
 }
 
 export function resolveElection(
@@ -23,17 +32,36 @@ export function resolveElection(
   method: ElectoralMethod,
   opts: ResolveOptions = {},
 ): AllocationResult {
-  const evalResult = evaluateElectorate(electorate, candidates, { turnoutBoost: opts.turnoutBoost })
+  // Spatial mode: the district result IS the sum of its communities.
+  let votesByCandidate: Record<EntityId, number> = {}
+  let turnout: number
+  if (opts.communities && opts.communities.length > 0) {
+    let turnedOut = 0
+    let cvap = 0
+    for (const unit of opts.communities) {
+      const local = evaluateElectorate(unit.electorate, unit.profiles, { turnoutBoost: opts.turnoutBoost })
+      for (const [id, v] of Object.entries(local.votesByCandidate)) {
+        votesByCandidate[id] = (votesByCandidate[id] ?? 0) + v
+      }
+      turnedOut += local.turnout * unit.electorate.cvap
+      cvap += unit.electorate.cvap
+    }
+    turnout = cvap > 0 ? turnedOut / cvap : 0
+  } else {
+    const evalResult = evaluateElectorate(electorate, candidates, { turnoutBoost: opts.turnoutBoost })
+    votesByCandidate = { ...evalResult.votesByCandidate }
+    turnout = evalResult.turnout
+  }
   // Round modelled votes to whole ballots.
   const votes: Record<EntityId, number> = {}
   for (const c of candidates) {
-    votes[c.candidateId] = Math.round(evalResult.votesByCandidate[c.candidateId] ?? 0)
+    votes[c.candidateId] = Math.round(votesByCandidate[c.candidateId] ?? 0)
   }
 
   switch (method) {
     case 'fptp':
     default:
       // Other methods fall back to FPTP for the slice; extension point for two-round/RCV/EC.
-      return allocateFPTP(votes, { turnout: evalResult.turnout, rng: opts.rng })
+      return allocateFPTP(votes, { turnout, rng: opts.rng })
   }
 }

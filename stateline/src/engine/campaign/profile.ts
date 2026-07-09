@@ -7,27 +7,17 @@ import type { DayIndex } from '../core/calendar'
 import { sumElectorateChannel, type ScheduledEffect } from '../core/ledger'
 import { clamp, clamp01, type EntityId } from '../core/primitives'
 import type { CandidateProfile } from '../electorate/types'
-import type { CandidateAttributes, CandidateState } from './types'
-
-/**
- * Candidate quality as seen by voters, computed straight from attributes (minus scandal drag).
- * Pure and dependency-light so the candidate-creator UI can preview the exact same number the
- * electorate will use — no duplicated formula. Charisma dominates (0.4), then competence (0.3),
- * then integrity (0.1); floor 0.3, saturates at 1.
- */
-export function valenceFrom(attributes: CandidateAttributes, scandalLoad = 0): number {
-  return clamp01(
-    0.3 +
-      0.4 * attributes.charisma +
-      0.3 * attributes.competence +
-      0.1 * attributes.integrity -
-      0.25 * scandalLoad,
-  )
-}
+import type { CandidateState } from './types'
 
 /** Candidate quality as seen by voters, from attributes (minus scandal drag). */
 export function valenceOf(c: CandidateState): number {
-  return valenceFrom(c.attributes, c.scandalLoad)
+  return clamp01(
+    0.3 +
+      0.4 * c.attributes.charisma +
+      0.3 * c.attributes.competence +
+      0.1 * c.attributes.integrity -
+      0.25 * c.scandalLoad,
+  )
 }
 
 export function deriveCandidateProfile(
@@ -84,11 +74,18 @@ export function deriveTurnoutBoostMap(
 ): Record<string, number> {
   const boost: Record<string, number> = {}
   for (const cand of candidates) {
-    const mag = sumElectorateChannel(ledger, day, {
+    const gotv = sumElectorateChannel(ledger, day, {
       jurisdictionId,
       candidateId: cand.candidateId,
       channel: 'turnout',
     })
+    // Enthusiasm (M2): excitement turns out your own leaners — persuasion's separate currency.
+    const enthusiasm = sumElectorateChannel(ledger, day, {
+      jurisdictionId,
+      candidateId: cand.candidateId,
+      channel: 'enthusiasm',
+    })
+    const mag = gotv + Math.max(0, enthusiasm) * 0.4
     if (mag <= 0) continue
     const dir = partyDir(cand.party)
     for (const g of groups) {

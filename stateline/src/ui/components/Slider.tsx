@@ -8,8 +8,18 @@ interface SliderProps {
   format?: (v: number) => string
   leftPole?: string
   rightPole?: string
-  /** Optional one-line explanation of what this slider actually does in the sim. */
-  hint?: string
+}
+
+/** Filled-track background: bipolar ranges (min < 0) fill outward from center, others from left. */
+function trackFill(value: number, min: number, max: number): string {
+  const pct = ((value - min) / (max - min)) * 100
+  const track = 'var(--bg-2)'
+  const fill = 'rgb(74 163 255 / 0.55)'
+  if (min < 0) {
+    const [a, b] = pct < 50 ? [pct, 50] : [50, pct]
+    return `linear-gradient(to right, ${track} ${a}%, ${fill} ${a}%, ${fill} ${b}%, ${track} ${b}%)`
+  }
+  return `linear-gradient(to right, ${fill} ${pct}%, ${track} ${pct}%)`
 }
 
 export function Slider({
@@ -22,7 +32,6 @@ export function Slider({
   format,
   leftPole,
   rightPole,
-  hint,
 }: SliderProps) {
   return (
     <label className="slider">
@@ -36,6 +45,7 @@ export function Slider({
         max={max}
         step={step}
         value={value}
+        style={{ background: trackFill(value, min, max) }}
         onChange={(e) => onChange(parseFloat(e.target.value))}
       />
       {(leftPole || rightPole) && (
@@ -44,7 +54,6 @@ export function Slider({
           <span>{rightPole}</span>
         </div>
       )}
-      {hint && <div className="slider-hint">{hint}</div>}
     </label>
   )
 }

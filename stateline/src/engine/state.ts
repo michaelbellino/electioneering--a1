@@ -10,6 +10,10 @@ import type { ScheduledEffect } from './core/ledger'
 import type { EntityId, GamePhase, LogEntry } from './core/primitives'
 import type { ElectorateState } from './electorate/types'
 import type { CampaignState, CandidateState } from './campaign/types'
+import type { PendingDilemma } from './campaign/dilemmas'
+import type { TerritoryState } from './territory/generate'
+import type { AiCandidateState } from './ai/agent'
+import type { GoverningState } from './governing/governing'
 import type { AllocationResult, ElectoralMethod } from './electoral/types'
 
 export const ENGINE_VERSION = '0.1.0'
@@ -24,6 +28,10 @@ export interface GameMeta {
   /** Bumped exactly once per applyAction/tick so UI selectors can memoize on it. */
   readonly revision: number
   readonly scenarioId: string
+  /** Difficulty level id this run was created with (see data/campaign/difficulties). */
+  readonly difficulty: string
+  /** Background traits picked at creation (see data/campaign/traits). */
+  readonly traitIds: readonly string[]
 }
 
 export interface SliceElection {
@@ -41,6 +49,17 @@ export interface PollRecord {
   readonly marginOfError: number
 }
 
+/** A commissioned research product (crosstabs, issue sentiment, community canvass). */
+export interface PollReport {
+  readonly day: DayIndex
+  readonly kind: 'crosstabs' | 'issues' | 'communities'
+  readonly title: string
+  readonly cost: number
+  /** Generic tabular payload the UI renders as-is. */
+  readonly columns: readonly string[]
+  readonly rows: readonly (readonly (string | number)[])[]
+}
+
 export interface GameState {
   meta: GameMeta
   phase: GamePhase
@@ -50,11 +69,27 @@ export interface GameState {
   ledger: ScheduledEffect[]
   election: SliceElection
   electorate: ElectorateState
+  /** The semi-open-world map: communities, locations, presence, fog-of-war intel. */
+  territory: TerritoryState
   candidates: Record<EntityId, CandidateState>
+  /** Live AI state for every non-player candidate: war chest, personality, map location. */
+  aiCandidates: Record<EntityId, AiCandidateState>
   playerCandidateId: EntityId
   aiOpponentIntensity: number
   campaign: CampaignState
   result: AllocationResult | null
   polls: PollRecord[]
   log: LogEntry[]
+  /** Dilemma awaiting a decision (auto-resolves to its default if the week advances). */
+  pendingDilemma: PendingDilemma | null
+  /** Dilemma defs already drawn this run (each fires at most once). */
+  seenDilemmas: string[]
+  /** Capped per-issue public-opinion shifts won by issue advertising (applied to the electorate). */
+  opinionShifts: Record<string, number>
+  /** Per-community opinion shifts (direct mail issue campaigns) — communityId -> issue -> shift. */
+  communityOpinion: Record<string, Record<string, number>>
+  /** Commissioned research reports, newest last. */
+  pollReports: PollReport[]
+  /** The governing phase (in office), null while campaigning. */
+  governing: GoverningState | null
 }
