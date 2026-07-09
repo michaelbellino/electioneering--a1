@@ -9,6 +9,8 @@ import { getScenario, SCENARIOS } from '@data/scenarios/index'
 import type { Party } from '@engine/electorate/types'
 import { aggregateToAreas, ideologyLabel, ideologyOf, policiesForArea, stancesFromAreas, type PolicyStances } from '@data/policies'
 import { fmtPosition } from '@ui/format'
+import { Info } from '@ui/components/Info'
+import { BRIEF, traitEffectLine } from '@ui/briefings'
 
 const PARTIES: { id: Party; label: string }[] = [
   { id: 'D', label: 'Democrat' },
@@ -59,6 +61,11 @@ export function CandidateCreator() {
   const spent = useMemo(() => totalAttributeCost(Object.values(steps)), [steps])
   const budget = difficulty.pointBudget
   const remaining = budget - spent
+
+  // Live preview of the exact Quality (valence) number the electorate will use.
+  const quality = Math.round(
+    Math.max(0, Math.min(1, 0.3 + 0.04 * steps.charisma + 0.03 * steps.competence + 0.01 * steps.integrity)) * 100,
+  )
 
   const setStep = (k: AttrKey) => (raw: number) => {
     const target = Math.round(raw)
@@ -130,7 +137,7 @@ export function CandidateCreator() {
             <input value={name} onChange={(e) => setName(e.target.value)} />
           </label>
           <div className="field">
-            <span>Party</span>
+            <span>Party <Info label="Party" side="bottom">{BRIEF.party}</Info></span>
             <div className="seg" role="group" aria-label="Party">
               {PARTIES.map((p) => (
                 <button
@@ -145,7 +152,9 @@ export function CandidateCreator() {
             </div>
           </div>
 
-          <h4 className="subhead">Attributes — spend your points</h4>
+          <h4 className="subhead">
+            Attributes — spend your points <Info label="Attributes">{BRIEF.attributes}</Info>
+          </h4>
           <div className="budget-bar" aria-hidden="true">
             <div
               className={`budget-fill ${remaining === 0 ? 'maxed' : ''}`}
@@ -168,7 +177,8 @@ export function CandidateCreator() {
           ))}
 
           <h4 className="subhead">
-            Background <span className="muted">(pick up to {MAX_TRAITS})</span>
+            Background <span className="muted">(pick up to {MAX_TRAITS})</span>{' '}
+            <Info label="Background traits">{BRIEF.background}</Info>
           </h4>
           <div className="trait-grid">
             {TRAITS.map((t) => {
@@ -184,15 +194,26 @@ export function CandidateCreator() {
                 >
                   <strong>{t.label}</strong>
                   <span>{t.description}</span>
+                  <span className="trait-fx num">{traitEffectLine(t)}</span>
                 </button>
               )
             })}
+          </div>
+
+          <div className="creator-quality">
+            <span>
+              Candidate Quality <Info label="Quality">{BRIEF.quality}</Info>
+            </span>
+            <strong className="num">
+              {quality}
+              <span className="q-unit">/100</span>
+            </strong>
           </div>
         </div>
 
         <div className="panel">
           <h3>
-            Platform
+            Platform <Info label="Platform">{BRIEF.platform}</Info>
             <span className="h3-aside">
               Fiscal: {ideologyLabel(ideology.fiscal)} · Social: {ideologyLabel(ideology.social)}
             </span>

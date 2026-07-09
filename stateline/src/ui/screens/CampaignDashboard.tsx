@@ -12,12 +12,14 @@ import { getCommunity } from '@engine/territory/generate'
 import type { GameState } from '@engine/index'
 import { fmtUsd, fmtUsdDelta } from '@ui/format'
 import { CashValue, FloatingDeltas, WeekSweep } from '@ui/juice'
+import { Info } from '@ui/components/Info'
+import { BRIEF } from '@ui/briefings'
 
 function Standings({ state }: { state: GameState }) {
   const rows = standings(state)
   return (
     <div className="panel">
-      <h3>The Race</h3>
+      <h3>The Race <Info label="Name rec. &amp; favorability">{BRIEF.nameRec}</Info></h3>
       {rows.map((s) => (
         <div className="standing" key={s.candidateId}>
           <div className="standing-name">
@@ -63,7 +65,8 @@ function Polling({ state }: { state: GameState }) {
   return (
     <div className="panel">
       <h3>
-        Polling {hasPolls && <span className="h3-aside">margin of error ±{moe} pts</span>}
+        Polling <Info label="Polls">{BRIEF.polling}</Info>
+        {hasPolls && <span className="h3-aside">margin of error ±{moe} pts</span>}
       </h3>
       {!hasPolls ? (
         <div className="chart-empty">No polls yet — advance a week to get your first numbers.</div>
@@ -97,7 +100,7 @@ function RaceWire({ state }: { state: GameState }) {
   const all = pollSeriesAll(state)
   return (
     <div className="panel">
-      <h3>Race Wire</h3>
+      <h3>Race Wire <Info label="Reading the field">{BRIEF.raceWire}</Info></h3>
       {Object.values(state.aiCandidates).map((ai) => {
         const c = state.candidates[ai.candidateId]!
         const series = all.find((x) => x.candidateId === ai.candidateId)?.points ?? []
@@ -134,7 +137,7 @@ function Actions({ state }: { state: GameState }) {
   return (
     <div className="panel">
       <h3>
-        Campaign Actions
+        Campaign Actions <Info label="Actions">{BRIEF.actions}</Info>
         {here && <span className="h3-aside">on the ground in {here.name}</span>}
       </h3>
       <div className="actions">
@@ -178,7 +181,7 @@ function Hq({ state }: { state: GameState }) {
   return (
     <div className="panel">
       <h3>
-        The Team
+        The Team <Info label="Staff &amp; offices">{BRIEF.team}</Info>
         <span className="h3-aside">
           payroll {fmtUsd(Math.round(state.campaign.staff.reduce((a, s) => a + s.weeklySalary, 0) * state.campaign.modifiers.salaryMult))}/wk
         </span>
@@ -224,7 +227,7 @@ function Finance({ state }: { state: GameState }) {
   const f = state.campaign.finance
   return (
     <div className="panel">
-      <h3>War Chest</h3>
+      <h3>War Chest <Info label="Money">{BRIEF.warChest}</Info></h3>
       <div className="finance-row big">
         <span>Cash on hand</span>
         <strong className={f.cash < 0 ? 'neg' : ''}>{fmtUsd(f.cash)}</strong>

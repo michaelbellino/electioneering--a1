@@ -1,26 +1,49 @@
 :root {
   color-scheme: dark;
-  --bg: #0a0d13;
-  --bg-2: #10141d;
-  --panel: #141a24;
-  --panel-2: #1a2230;
-  --border: #263041;
-  --border-strong: #35415589;
-  --ink: #e9eef5;
-  --muted: #9aa7b8;
-  --faint: #6b7889;
+
+  /* Ink ground — indigo-biased, chosen not defaulted */
+  --bg: #070a11;
+  --bg-2: #0c1019;
+  --panel: #121826;
+  --panel-2: #19202f;
+  --border: #243040;
+  --border-strong: #3a465c99;
+  --ink: #eef3fa;
+  --muted: #97a4b7;
+  --faint: #64717f;
+
+  /* Structural / interactive accent (blue = signal, not party) */
   --accent: #4aa3ff;
   --accent-2: #2d7dd2;
+
+  /* Broadcast gold — the ONE reserved emphasis: CTAs, LIVE, the call */
+  --gold: #f5c451;
+  --gold-2: #d99a2b;
+  --gold-ink: #221904;
+
+  /* Semantic (kept aligned to existing translucent glows) */
   --good: #3ecf94;
+  --warn: #f2b23e;
   --bad: #ff7070;
-  --gold: #f2c14e;
+
+  /* Party identity */
   --dem: #4aa3ff;
   --gop: #ff7070;
   --ind: #b388ff;
+
+  /* Situation-room precinct grid tint */
+  --grid: rgb(96 128 178 / 0.05);
+
   --radius: 12px;
   --radius-sm: 8px;
-  --shadow: 0 1px 2px rgb(0 0 0 / 0.4), 0 8px 24px -12px rgb(0 0 0 / 0.5);
-  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --shadow: 0 1px 2px rgb(0 0 0 / 0.45), 0 14px 34px -18px rgb(0 0 0 / 0.66);
+
+  /* Type system: editorial serif display · clean UI sans · tabular mono for the data desk */
+  --font-display: ui-serif, 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, 'Times New Roman', serif;
+  --font-ui: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: ui-monospace, 'SF Mono', 'JetBrains Mono', Menlo, Consolas, monospace;
+
+  font-family: var(--font-ui);
 }
 
 * {
@@ -1843,3 +1866,286 @@ body::before {
 .ap-pip { transition: background 0.25s, box-shadow 0.25s, transform 0.25s; }
 .ap-pip:not(.spent) { animation: pipPop 0.35s cubic-bezier(0.3, 1.5, 0.4, 1); }
 @keyframes pipPop { from { transform: scale(0.4); } }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   REVITALIZATION — "ELECTION NIGHT, LIVE"
+   A broadcast / situation-room identity over the base system: an editorial
+   serif display, a single reserved broadcast-gold emphasis (kept distinct from
+   party blue/red), an ink ground with a faint precinct grid, and live motion.
+   Appended last so it wins the cascade; the class contract is unchanged.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Ground: ink wash + faint drifting precinct grid, above the aurora ────── */
+body {
+  background:
+    linear-gradient(180deg, rgb(255 255 255 / 0.016), transparent 26%),
+    radial-gradient(1200px 620px at 50% -10%, rgb(74 163 255 / 0.06), transparent 72%),
+    var(--bg);
+}
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image:
+    linear-gradient(var(--grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size: 46px 46px;
+  -webkit-mask-image: radial-gradient(125% 95% at 50% -5%, #000 42%, transparent 82%);
+  mask-image: radial-gradient(125% 95% at 50% -5%, #000 42%, transparent 82%);
+  animation: gridDrift 60s linear infinite;
+}
+@keyframes gridDrift { to { background-position: 46px 46px, 46px 46px; } }
+
+/* ── Editorial serif for the headline moments; mono for the whole data desk ─ */
+.brand,
+.hero h1,
+.hero-title,
+.scenario-card h2,
+.page-head h2,
+.dilemma-card h2,
+.result-banner h1 {
+  font-family: var(--font-display);
+  letter-spacing: -0.018em;
+}
+.hero h1,
+.hero-title,
+.result-banner h1 {
+  font-weight: 700;
+  letter-spacing: -0.028em;
+}
+.brand {
+  font-weight: 700;
+  letter-spacing: 0;
+}
+.num,
+.stat-value,
+.slider-val,
+.meter-val,
+.result-pct,
+.finance-row,
+.scenario-facts li,
+.topbar-meta,
+.poll-margin,
+.legend-item .legend-val,
+.dash-title .muted {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+/* Eyebrows keep the UI sans, tightened tracking for a lower-third feel */
+.hero-kicker,
+.kicker,
+.setup-title,
+.scenario-tag,
+.result-kicker,
+.dilemma-kicker,
+.stat-label,
+.panel > h3 {
+  font-family: var(--font-ui);
+  letter-spacing: 0.13em;
+}
+
+/* ── Gilded brand star + a LIVE indicator on the phase pill ────────────────── */
+.brand::before { color: var(--gold); }
+.topbar { border-bottom-color: rgb(255 255 255 / 0.07); }
+.phase-pill {
+  position: relative;
+  padding-left: 1.45rem;
+  border-color: rgb(245 196 81 / 0.3);
+}
+.phase-pill::before {
+  content: '';
+  position: absolute;
+  left: 0.6rem;
+  top: 50%;
+  width: 7px;
+  height: 7px;
+  margin-top: -3.5px;
+  border-radius: 50%;
+  background: var(--gold);
+  animation: livePulse 1.9s ease-out infinite;
+}
+@keyframes livePulse {
+  0% { box-shadow: 0 0 0 0 rgb(245 196 81 / 0.55); }
+  70% { box-shadow: 0 0 0 7px rgb(245 196 81 / 0); }
+  100% { box-shadow: 0 0 0 0 rgb(245 196 81 / 0); }
+}
+
+/* ── The primary CTA is the only gilded button — the "call it" moment ──────── */
+.btn-primary {
+  background: linear-gradient(180deg, var(--gold), var(--gold-2));
+  color: var(--gold-ink);
+  border-color: transparent;
+  box-shadow: 0 1px 0 rgb(255 255 255 / 0.28) inset, 0 8px 20px -10px rgb(245 196 81 / 0.6);
+}
+.btn-primary:hover {
+  background: linear-gradient(180deg, #ffd569, #e2a836);
+  border-color: transparent;
+}
+
+/* ── Panels: glassier, a hairline of inner light, deeper lift ──────────────── */
+.panel {
+  border-color: rgb(255 255 255 / 0.06);
+  box-shadow: var(--shadow), inset 0 1px 0 rgb(255 255 255 / 0.03);
+}
+.panel > h3 { letter-spacing: 0.14em; }
+
+/* ── Selection glows read as "targeted" ───────────────────────────────────── */
+.scenario-tile.active,
+.difficulty-tile.active,
+.trait-card.active {
+  box-shadow: 0 0 0 1px var(--accent), 0 12px 30px -16px rgb(74 163 255 / 0.55);
+}
+
+/* ── Meters & result bars get a broadcast sheen ───────────────────────────── */
+.meter-track,
+.result-track { position: relative; }
+.meter-fill,
+.result-fill { position: relative; overflow: hidden; }
+.meter-fill::after,
+.result-fill::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(180deg, rgb(255 255 255 / 0.28), transparent 55%);
+  pointer-events: none;
+}
+
+/* ── Election night: gild the winner, warm the room ───────────────────────── */
+.result-banner.win {
+  box-shadow: var(--shadow), 0 0 70px -22px rgb(245 196 81 / 0.5);
+}
+.winner-tag {
+  color: var(--gold);
+  border-color: rgb(245 196 81 / 0.5);
+}
+
+/* ── A faint scanline crawl on the top bar — the "we're on air" tell ───────── */
+.topbar { position: relative; overflow: hidden; }
+.topbar::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: -1px;
+  height: 1px;
+  width: 42%;
+  background: linear-gradient(90deg, transparent, var(--gold), transparent);
+  opacity: 0.5;
+  animation: wire 6.5s ease-in-out infinite;
+}
+@keyframes wire {
+  0% { transform: translateX(-30%); opacity: 0; }
+  25% { opacity: 0.55; }
+  75% { opacity: 0.55; }
+  100% { transform: translateX(240%); opacity: 0; }
+}
+
+@media (max-width: 720px) {
+  body::after { background-size: 34px 34px; }
+}
+
+/* ── Info affordance: reveals the sim's hidden mechanics on hover / focus ──── */
+.info-wrap { position: relative; display: inline-flex; vertical-align: middle; }
+.info-dot {
+  width: 15px;
+  height: 15px;
+  line-height: 14px;
+  border-radius: 50%;
+  border: 1px solid var(--border-strong);
+  background: var(--panel-2);
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  font-style: italic;
+  text-align: center;
+  padding: 0;
+  cursor: help;
+  transition: color 0.15s, background 0.15s, border-color 0.15s;
+}
+.info-wrap:hover .info-dot,
+.info-wrap:focus-within .info-dot {
+  color: var(--gold-ink);
+  background: var(--gold);
+  border-color: var(--gold);
+}
+.info-pop {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 9px);
+  transform: translateX(-50%) translateY(4px);
+  width: min(19rem, 74vw);
+  z-index: 40;
+  background: linear-gradient(180deg, var(--panel-2), var(--panel));
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+  padding: 0.6rem 0.72rem;
+  box-shadow: var(--shadow);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.14s ease, transform 0.14s ease;
+  pointer-events: none;
+  text-align: left;
+  text-transform: none;
+  letter-spacing: normal;
+  font-weight: 400;
+}
+.info-pop--bottom { bottom: auto; top: calc(100% + 9px); }
+.info-wrap:hover .info-pop,
+.info-wrap:focus-within .info-pop {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(-50%) translateY(0);
+}
+.info-pop strong {
+  display: block;
+  font-family: var(--font-ui);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--gold);
+  margin-bottom: 0.28rem;
+}
+.info-body {
+  display: block;
+  font-size: 0.8rem;
+  line-height: 1.5;
+  color: var(--ink);
+  font-variant-numeric: normal;
+}
+.info-pop::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  margin-left: -5px;
+  border: 5px solid transparent;
+}
+.info-pop:not(.info-pop--bottom)::after { top: 100%; border-top-color: var(--border-strong); }
+.info-pop--bottom::after { bottom: 100%; border-bottom-color: var(--border-strong); }
+
+/* ── Trait cards show their exact effects; live Quality readout ────────────── */
+.trait-fx {
+  display: block;
+  margin-top: 0.4rem;
+  font-size: 0.72rem;
+  color: var(--gold);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.35;
+}
+.trait-card:disabled .trait-fx { color: var(--faint); }
+.creator-quality {
+  margin-top: 1rem;
+  padding: 0.7rem 0.9rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+.creator-quality > span { font-weight: 600; }
+.creator-quality > strong { font-size: 1.55rem; color: var(--gold); }
+.creator-quality .q-unit { font-size: 0.85rem; color: var(--muted); font-weight: 400; margin-left: 1px; }
