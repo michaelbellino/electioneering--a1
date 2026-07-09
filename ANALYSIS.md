@@ -42,6 +42,18 @@ Trail).
    RNG, helpers, SVG chart/map renderers, and the content data shipped. The whole simulation lives
    as *prose* inside `data.js` (§6). Its "Pre-Delivery Checklist" is all ✅ for an app that can't open.
 
+6. **Campaign Trail's numbers don't reconcile** (§8.3). Each region ships **two** electoral-vote
+   fields (one summing to 328, one to 538); the regression-to-baseline mechanic reads a
+   `regionBaseline` field **that isn't in the data**; and the balance notes say the player starts at
+   ~235 EV when the actual board puts them at **295 EV — already past 270 at turn 0** — with **zero**
+   "safe" (lean ≥ 40) regions despite the tutorial telling you to ignore them.
+
+7. **The inert fields are footprints of a much bigger design.** Stateline ships a raw multi-agent
+   design spec (`docs/design/architecture-fanout.raw.json`) describing opinion dynamics, an effects
+   graph, an economy, and a whole legislature — the built slice is a simplified subset, and the dead
+   scaffolding is what's left of the rest (§9). One concrete gap: the roadmap lists "diminishing
+   returns" as a done Phase-1 feature, but the code has none (ad spam stacks linearly).
+
 ---
 
 ## 1. What's in the box
@@ -301,7 +313,122 @@ reasons**, which is the interesting part:
   implemented.** Every formula, action, event, and archetype modifier is specified in `data.js`/docs,
   and there is no engine to run any of it.
 
-## 8. Suggested next steps (if you want to act on this)
+## 8. Campaign Trail — the full mechanics that never run
+
+Everything below is real content in `src/data.js` that the (absent) engine was meant to execute.
+It's worth cataloguing because it shows how *complete* the design is and how *inconsistent* some of
+the numbers are — inconsistencies no runtime ever forced anyone to reconcile.
+
+### 8.1 The 16 actions (exact costs & effects)
+
+| Action | Funds | AP | Target | Core effect (from `effectSummary`) |
+|---|---:|---:|---|---|
+| TV / Social Ad Blitz | 180 | 1 | region | lean `+12 · (1+momentum/200) · (1−max(0,scandal−30)·0.005)`, floor +3; **4th+ buy in a region = 60%** |
+| Attack Ad | 140 | 1 | region | lean `+9·momMult`; opp momentum −6, opp scandal +5; **your scandal +3** |
+| Build Field Office | 120 | 2 | region | lean +6 now **+ passive +3/turn** (×volunteers/10), "organized" (regresses 50% slower); +3 volunteers |
+| Volunteer Canvass | 40 | 1 | region | lean `+(5 + volunteers·0.6)·momMult`, "organized"; +1 approval |
+| Recruit Volunteers | 150 | 1 | national | +8 volunteers (+2 if buzz>40); +0.4 passive lean/turn to already-winning regions |
+| Campaign Rally | 90 | 2 | region | lean +6·momMult; momentum `+10+buzz·0.05`, buzz +8; **viral roll `0.10+buzz·0.003`** doubles gains; **12% gaffe → scandal +3** |
+| Major Fundraiser | 0 | 2 | national | funds `+round((220 + momentum·2 + approval·3)·(1+buzz·0.01))`, floor 150; momentum −3 |
+| Opposition Research | 110 | 2 | national | **75% success**: opp scandal +18, opp momentum −8; **backfire: your scandal +12** |
+| Damage Control | 80 | 1 | national | scandal `−20`; buzz −4; if scandal was >50 also momentum +4 |
+| Debate / Media | 100 | 2 | national | if scandal<40: approval +5, momentum +6, buzz +16; else 45% chance scandal +10 & momentum −5 |
+| Counter-Messaging | 100 | 1 | national | opp momentum −12 (+50% if it was >40); your momentum +3, buzz +2 |
+| Polling Consultant | 100 | 1 | national | reveals opponent targets + region baselines; next region action +25%; no stat effect |
+
+(`funds` are in $1,000s; starting war chest 1,200 = $1.2M. 5 AP/turn × 12 = **60 lifetime AP**, never banked.)
+
+### 8.2 Win / fail thresholds (all hardcoded in data, none enforced by code)
+
+- **Win:** hold ≥270 of 538 EV on turn 12; **early clinch** if lean≥40 regions ≥270 and opponent can't
+  reach 270; **opponent collapse** if `opponentScandal ≥ 90 AND opponentMomentum ≤ −40`.
+- **Fail:** <270 on election day; **bankruptcy** if `funds ≤ 0 AND volunteers < 3 AND momentum < 0`
+  (grace-protected); **scandal collapse** at `scandalLevel ≥ 80`.
+- **Difficulty** (`strengthMultiplier`): easy ×0.7 budget/×0.8 gains; normal ×1; hard ×1.3 budget/×1.15
+  gains, +5 opponent lean in 4 high-value regions, aggressive oppo-research.
+
+### 8.3 Concrete data inconsistencies (found by summing the actual rows)
+
+These are the kind of "unseen details" that only surface when you total the numbers:
+
+1. **Two electoral-vote fields per region.** Each region carries both `baseElectoralVotes` (the
+   original synthetic values, which sum to **328**) and `electoralVotes` (scaled ×`538/328 ≈ 1.64`,
+   which sum to exactly **538**). A single mis-referenced field (base vs scaled) silently breaks the
+   270/538 math. The header note ("regions originally summed to 328; scaled to 538") is accurate — but
+   both numbers ship on every region with nothing marking which one is live.
+2. **The regression target doesn't exist in the data.** Turn upkeep and the win check both regress /
+   read `regionBaseline` (the structural lean each region drifts toward), but **no region row contains
+   a `baseLean`/`baseline`/`regionBaseline` field** — only `initialLean`. The central
+   regression-to-mean mechanic has no data to read.
+3. **Field names don't match the documented state model.** `ARCHITECTURE.md`'s `GameState.regions[]`
+   uses `lean` + `baseLean`; the data uses `initialLean` and no baseline. An engine would have to
+   translate between spec and data that were never reconciled.
+4. **The balance prose contradicts the shipped board.** `balance.notes` says the player *"begins
+   around 235 projected EV"* and that there are *"~5 safe-player regions (lean +25..+40, ~120 EV)."*
+   Summing the actual `initialLean` values: the player leads (lean>0) in regions worth **exactly 295
+   EV** (matching `meta.projectedStart`, not 235) — i.e. **already past 270 at turn 0** — and **zero**
+   regions start at lean ≥ 40. So the `win_early_clinch` rule and the tutorial's *"Safe regions (lean
+   over +40) don't need your money"* describe a state that does not exist at kickoff.
+5. **One region is 90 EV** (Calforna) — 16.7% of the whole college in a single tile, larger than any
+   real state — an artifact of forcing 18 regions to sum to 538. Texano is 62.
+6. **Per-region `volatility` (0.15–0.2) vs global `baseVolatility` (2.5)** are never reconciled; the
+   upkeep text applies a flat `±2.5·N(0)` and ignores the per-region field.
+
+## 9. The grand-design-vs-slice gap (why the dead code exists)
+
+Stateline ships a raw multi-agent design artifact: `docs/design/architecture-fanout.raw.json`. It
+specifies a system **far** larger than the built slice — and reading it explains almost every inert
+field flagged in §4. The spec calls for:
+
+- **Opinion dynamics** with exponential smoothing/inertia (favorability drifting toward targets driven
+  by ad tone, media diet, endorsements, scandals; thermostatic mood).
+- A **Democracy-4-style effects graph** (`SimNode`/`SimEdge` with transfer functions and feedback
+  damping) — the real ledger is a flat additive list instead.
+- **Economic indicators** + partisan motivated reasoning; **hazard-rolled scandals**; fatigue /
+  stamina / morale; scheduled-vs-instant actions; per-segment ad reach; diminishing-returns history;
+  identity & incumbency bonuses.
+- A full **governing/legislature** subsystem (state-machine process, AI legislators, whip counts,
+  logrolling) and **RCV / two-round / party-list / Electoral College** allocators.
+
+The built engine implements a clean, simplified subset. The leftover type fields — `persuasion`,
+`segmentWeights`, `incumbent`, `scandalLoad`, `strategy.tone/focusIssue`, the `governing` phase, the
+richly-featured event queue used for one event, the third `ai` RNG stream — are the **footprints of
+that spec**, stubbed into the slice as forward-hooks for roadmap Phases 2–3. So the "dead code" is
+deliberate scaffolding, not bugs — but nothing in the app tells a reader that.
+
+### 9.1 Two concrete doc-vs-code discrepancies
+
+- **"Diminishing returns" is claimed but not implemented.** `roadmap.md` lists Phase-1 actions as
+  having *"cash/action-point costs, cooldowns, diminishing returns."* Cooldowns exist; **diminishing
+  returns do not** — `pipeline.ts` computes `magnitude = spec.magnitude · multiplier` with no
+  per-action buy history, and positive TV ads have a **0-day cooldown**, so ad spam stacks perfectly
+  linearly. (Ironically, Campaign Trail's data *specifies* diminishing returns — "4th+ blitz at 60%" —
+  but has no engine to apply them. Neither game actually runs the feature.)
+- **Unused math helpers.** `primitives.ts` exports `sigmoid` and `softmax`, but the vote model rolls
+  its own inline awareness-gated softmax and never calls either; both are dead utilities.
+
+### 9.2 Where the docs *are* honest
+
+Worth stating plainly: Stateline's **deep** docs do disclose the caveats the UI hides.
+`docs/data-pipeline.md` says the snapshot is provisional and *"not real data"* until a keyed ETL run,
+and the design fan-out states the polling layer exists *"so the player never sees ground truth"* while
+*"utility/turnout/share math is fully deterministic."* The honesty gap is between the **top-level
+README / in-app UI** ("built on real Census demographics", unlabeled sliders) and the **buried design
+docs** — not a contradiction inside the docs themselves.
+
+## 10. Provenance — these games were generated by the bundled studio
+
+The third subproject, `claude-code-game-studios/` (CCGS), is a 49-agent / 73-skill Claude Code
+"studio" (creative-director, economy-designer, engine specialists, QA, etc.). Both games carry its
+fingerprints: Campaign Trail's `data.js` header credits a *"judge-panel of 3 proposals → synthesis →
+parallel content generation"* workflow, Stateline ships the raw *architecture-fanout* design artifact,
+and Campaign Trail vendors a `ui-ux-pro-max` skill whose design system produced its (genuinely
+polished) CSS. This is why both games look like *the plan is more finished than the game*: the
+generation pipeline produced exhaustive design + content + a tuned visual system, and the actual
+runtime is whichever slice got implemented before the run ended — fully (Stateline) or barely
+(Campaign Trail).
+
+## 11. Suggested next steps (if you want to act on this)
 
 - **Stateline — surface the model.** Show valence and a "platform fit / spatial" readout in the
   creator; add tooltips to each slider; expose turnout-boost and a "true vs polled" toggle. Cheap,
