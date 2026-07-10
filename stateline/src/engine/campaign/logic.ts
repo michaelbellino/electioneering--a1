@@ -86,7 +86,19 @@ export function createCampaign(input: CreateCampaignInput): CampaignState {
     },
     adFatigue: {},
     fundraiserUses: 0,
+    actionUses: {},
   }
+}
+
+/** Repeating the same action lands softer every time — voters tune out a one-note campaign. */
+export const ACTION_REPEAT_FATIGUE = 0.15
+
+/** Field offices carry rent and phone bills every week they're open (cents/week/office). */
+export const OFFICE_WEEKLY_UPKEEP = 80_000
+
+export function actionUseFatigue(campaign: CampaignState, defId: string): number {
+  const uses = campaign.actionUses?.[defId] ?? 0
+  return 1 / (1 + ACTION_REPEAT_FATIGUE * uses)
 }
 
 export function staffEffectiveness(campaign: CampaignState, role: StaffRole): number {
@@ -132,6 +144,8 @@ export interface ApplyActionCtx {
   readonly ledgerLength: number
   /** Additional multiplier from context (e.g. WHERE the action happens on the map). */
   readonly extraMultiplier?: number
+  /** Multiplier on the action's cash cost (e.g. late-race airtime scarcity). */
+  readonly costMultiplier?: number
 }
 
 /**
@@ -146,10 +160,11 @@ export function applyCampaignAction(
   ctx: ApplyActionCtx,
 ): ApplyActionResult {
   const errors: ActionError[] = []
+  const cashCost = Math.round(def.cashCost * (ctx.costMultiplier ?? 1))
   if (campaign.actionPoints < def.actionPointCost) {
     errors.push({ code: 'no_ap', message: 'Not enough action points this week.' })
   }
-  if (!canAfford(campaign.finance, def.cashCost)) {
+  if (!canAfford(campaign.finance, cashCost)) {
     errors.push({ code: 'insufficient_funds', message: 'Not enough cash on hand.' })
   }
   const availableOn = campaign.cooldowns[def.id]
@@ -160,7 +175,7 @@ export function applyCampaignAction(
     return { ok: false, errors, campaign, newEffects: [], raised: 0 }
   }
 
-  let finance = spend(campaign.finance, def.cashCost)
+  let finance = spend(campaign.finance, cashCost)
   let raised = 0
   let fundraiserUses = campaign.fundraiserUses
   if (def.fundraising) {
@@ -171,7 +186,10 @@ export function applyCampaignAction(
     fundraiserUses += 1
   }
 
-  const multiplier = actionMultiplier(campaign, candidate, def) * (ctx.extraMultiplier ?? 1)
+  const multiplier =
+    actionMultiplier(campaign, candidate, def) *
+    (ctx.extraMultiplier ?? 1) *
+    actionUseFatigue(campaign, def.id)
   const newEffects = lowerEffects(def, {
     candidateId: candidate.id,
     opponentId: campaign.opponentIds[0] ?? null,
@@ -192,6 +210,10 @@ export function applyCampaignAction(
       ...campaign.cooldowns,
       [def.id]: ctx.day + Math.round(def.cooldownDays * cooldownScale),
     },
+    actionUses: {
+      ...(campaign.actionUses ?? {}),
+      [def.id]: (campaign.actionUses?.[def.id] ?? 0) + 1,
+    },
   }
   return { ok: true, errors: [], campaign: next, newEffects, raised }
 }
@@ -211,7 +233,9 @@ export function tickCampaign(
   const weeks = daysPerTick / 7
   let finance = campaign.finance
   const salaries = Math.round(
-    campaign.staff.reduce((a, s) => a + s.weeklySalary, 0) * weeks * campaign.modifiers.salaryMult,
+    (campaign.staff.reduce((a, s) => a + s.weeklySalary, 0) * campaign.modifiers.salaryMult +
+      campaign.offices * OFFICE_WEEKLY_UPKEEP) *
+      weeks,
   )
   if (salaries > 0) finance = spend(finance, salaries)
   // A finance director keeps small-dollar money flowing between events.

@@ -29,7 +29,7 @@ export const BRIEF: Record<string, string> = {
   raceWire:
     'Your read on the field. War-chest figures are rounded estimates — commission an opponent poll to sharpen them and reveal a rival’s playbook. You can always see where rivals are standing, but not a town’s real numbers until you canvass it.',
   polling:
-    'A sampled estimate of the true race, with real sampling noise — the margin of error shrinks with a Pollster’s bigger samples. The underlying result is deterministic; the wobble you see is the poll, not the electorate.',
+    'A sampled likely-voter estimate of the true race, with real sampling noise — the margin of error shrinks with a Pollster’s bigger samples. It prices in the turnout picture too, so canvassing and enthusiasm show up here. The wobble you see is the poll, not the electorate.',
 }
 
 const ATTR_NAME: Record<string, string> = {

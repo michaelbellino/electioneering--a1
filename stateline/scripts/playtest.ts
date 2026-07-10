@@ -38,6 +38,7 @@ export type BotId =
   | 'media_mix'
   | 'quick_attacker'
   | 'desk_attacker'
+  | 'mixed_attacker'
   | 'machine'
   | 'machine_no_gotv'
   | 'machine_no_staff'
@@ -98,6 +99,13 @@ function botWeek(bot: BotId, s: GameState, week: number): Act[] {
       return poor
         ? [A('fundraiser'), AD('radio', 'attack', 1, target), A('speech')]
         : [A('fundraiser'), AD('tv', 'attack', 2, target), AD('radio', 'attack', 1, target)]
+    }
+    case 'mixed_attacker': {
+      // Attacks as a COMPONENT: build your own base, spend one weekly buy going negative.
+      const target = bestAttackPolicy(s)
+      return poor
+        ? [A('fundraiser'), A('rally'), A('speech')]
+        : [A('rally'), AD('radio', 'attack', 1, target), A('fundraiser'), A('speech')]
     }
     case 'machine':
     case 'machine_no_gotv':
@@ -191,7 +199,7 @@ function seeds(n: number): number[] {
 
 function expMatrix(n: number): void {
   console.log(`\n=== MATRIX: win rate (mean margin, pts) — PA-07, ${n} seeds/cell ===`)
-  const bots: BotId[] = ['idle', 'grinder', 'ground_game', 'tv_spam', 'media_mix', 'quick_attacker', 'desk_attacker', 'machine']
+  const bots: BotId[] = ['idle', 'grinder', 'ground_game', 'tv_spam', 'media_mix', 'quick_attacker', 'desk_attacker', 'mixed_attacker', 'machine']
   console.log(['bot'.padEnd(16), ...DIFFICULTIES.map((d) => d.id.padEnd(14))].join(''))
   for (const bot of bots) {
     const row = DIFFICULTIES.map((d) => cell(seeds(n).map((s) => playBot(bot, d.id, s))))
@@ -269,27 +277,32 @@ function expAttacks(n: number): void {
 
 function expGoverning(n: number): void {
   console.log(`\n=== GOVERNING autoplay: 24-week legislator term, ${n} seeds ===`)
-  type GovBot = 'aligned' | 'contrarian' | 'absent'
+  type GovBot = 'follow_estimate' | 'oracle' | 'spender' | 'contrarian' | 'absent'
   const play = (bot: GovBot, seed: number): number => {
     let s = createGame(HOUSE_SPECIAL_PA07, seed, { startInOffice: true })
     for (let w = 0; w < 30 && s.phase === 'governing'; w++) {
       if (bot !== 'absent') {
         for (const bill of s.governing!.docket) {
-          const yeaSent = policySentiment(s, bill.policyId, bill.direction)
-          const vote = bot === 'aligned' ? (yeaSent > 0.5 ? 'yea' : 'nay') : yeaSent > 0.5 ? 'nay' : 'yea'
+          const truth = policySentiment(s, bill.policyId, bill.direction)
+          const seen = bot === 'oracle' ? truth : (bill.estimate ?? 0.5)
+          const vote =
+            bot === 'contrarian' ? (seen > 0.5 ? 'nay' : 'yea') : seen > 0.5 ? 'yea' : 'nay'
           s = applyAction(s, { type: 'gov/vote', payload: { billId: bill.id, vote } })
+        }
+        if (bot === 'spender' && s.governing!.capital >= 5) {
+          s = applyAction(s, { type: 'gov/spendCapital', payload: { kind: 'district_grant' } })
         }
       }
       s = applyAction(s, { type: 'gov/advanceWeek', payload: {} })
     }
     return s.governing!.approval
   }
-  for (const bot of ['aligned', 'contrarian', 'absent'] as GovBot[]) {
+  for (const bot of ['follow_estimate', 'oracle', 'spender', 'contrarian', 'absent'] as GovBot[]) {
     const finals = seeds(n).map((s) => play(bot, s))
     const mean = finals.reduce((a, b) => a + b, 0) / finals.length
     const min = Math.min(...finals)
     const max = Math.max(...finals)
-    console.log(`${bot.padEnd(12)} mean approval ${pct(mean)}  range ${pct(min)}–${pct(max)}`)
+    console.log(`${bot.padEnd(16)} mean approval ${pct(mean)}  range ${pct(min)}–${pct(max)}`)
   }
 }
 
@@ -332,18 +345,21 @@ function expFollowup(n: number): void {
   }
 }
 
-// --- CLI ----------------------------------------------------------------------
+// --- CLI (skipped under vitest import) ------------------------------------------
 
-const exp = process.argv[2] ?? 'all'
-const n = parseInt(process.argv[3] ?? '40', 10)
-const t0 = Date.now()
-if (exp === 'matrix' || exp === 'all') expMatrix(n)
-if (exp === 'scenarios' || exp === 'all') expScenarios(Math.min(n, 25))
-if (exp === 'gotv' || exp === 'all') expGotv(n)
-if (exp === 'traits' || exp === 'all') expTraits(Math.min(n, 30))
-if (exp === 'adspam' || exp === 'all') expAdSpam()
-if (exp === 'attacks' || exp === 'all') expAttacks(n)
-if (exp === 'governing' || exp === 'all') expGoverning(Math.min(n, 30))
-if (exp === 'drama' || exp === 'all') expDrama(n)
-if (exp === 'followup') expFollowup(Math.min(n, 30))
-console.log(`\n(${((Date.now() - t0) / 1000).toFixed(1)}s)`)
+const isCli = typeof process !== 'undefined' && process.argv[1]?.endsWith('playtest.ts')
+if (isCli) {
+  const exp = process.argv[2] ?? 'all'
+  const n = parseInt(process.argv[3] ?? '40', 10)
+  const t0 = Date.now()
+  if (exp === 'matrix' || exp === 'all') expMatrix(n)
+  if (exp === 'scenarios' || exp === 'all') expScenarios(Math.min(n, 25))
+  if (exp === 'gotv' || exp === 'all') expGotv(n)
+  if (exp === 'traits' || exp === 'all') expTraits(Math.min(n, 30))
+  if (exp === 'adspam' || exp === 'all') expAdSpam()
+  if (exp === 'attacks' || exp === 'all') expAttacks(n)
+  if (exp === 'governing' || exp === 'all') expGoverning(Math.min(n, 30))
+  if (exp === 'drama' || exp === 'all') expDrama(n)
+  if (exp === 'followup') expFollowup(Math.min(n, 30))
+  console.log(`\n(${((Date.now() - t0) / 1000).toFixed(1)}s)`)
+}

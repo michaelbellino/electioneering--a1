@@ -26,6 +26,11 @@ export interface BillItem {
   readonly policyId: string
   /** +1 = the bill advances the progressive side of the policy, −1 the conservative side. */
   readonly direction: 1 | -1
+  /**
+   * Your staff's read on district support for the bill's direction (0..1) — a NOISY estimate,
+   * not the truth. The roll-call reaction tells you what the district really thought.
+   */
+  readonly estimate: number
 }
 
 export interface RecordEntry {
@@ -70,7 +75,15 @@ function drawDocket(state: GameState, week: number, count: number): BillItem[] {
     const idx = rng.int(0, pool.length - 1)
     const p = pool.splice(idx, 1)[0]!
     const direction: 1 | -1 = rng.bool(0.5) ? 1 : -1
-    picks.push({ id: `bill:${week}:${p.id}`, title: billTitle(p, direction), policyId: p.id, direction })
+    // The staff whip estimate: right on average, off by enough to make close calls real decisions.
+    const estimate = clamp01(policySentiment(state, p.id, direction) + rng.normal(0, 0.07))
+    picks.push({
+      id: `bill:${week}:${p.id}`,
+      title: billTitle(p, direction),
+      policyId: p.id,
+      direction,
+      estimate,
+    })
   }
   return picks
 }
@@ -114,8 +127,14 @@ export function castVote(
   if (!bill) return gov
   const dir = vote === 'yea' ? bill.direction : (-bill.direction as 1 | -1)
   const sentiment = policySentiment(state, bill.policyId, dir)
-  const delta = (sentiment - 0.5) * salienceOf(bill.policyId) * 0.25
+  let delta = (sentiment - 0.5) * salienceOf(bill.policyId) * 0.25
   const aligned = sentiment > 0.55
+  // Conviction: voting against the platform you RAN on angers the base — flip-flops carry a
+  // cost on top of whatever the district thinks of the vote itself.
+  const areaId = getPolicy(bill.policyId)?.areaId
+  const ownStance = areaId ? (state.candidates[state.playerCandidateId]?.positions[areaId] ?? 0) : 0
+  const flipFlop = Math.abs(ownStance) >= 0.25 && Math.sign(ownStance) !== Math.sign(dir)
+  if (flipFlop) delta -= 0.012
   return {
     ...gov,
     approval: clamp01(gov.approval + delta),
@@ -125,10 +144,41 @@ export function castVote(
       ...gov.record,
       {
         week: gov.week,
-        text: `Voted ${vote.toUpperCase()} on "${bill.title}" (${Math.round(sentiment * 100)}% of the district agrees).`,
+        text: `Voted ${vote.toUpperCase()} on "${bill.title}" (${Math.round(sentiment * 100)}% of the district agrees${flipFlop ? ' — but your base calls it a betrayal of your platform' : ''}).`,
         delta,
       },
     ],
+  }
+}
+
+/** Political-capital spends — the currency finally buys something. */
+export const CAPITAL_SPENDS = {
+  town_hall: {
+    cost: 3,
+    approval: 0.012,
+    label: 'Hold a town hall',
+    blurb: 'Face the district, take the heat, bank a little goodwill.',
+    record: 'Held a town hall — showed up, took questions, won some respect.',
+  },
+  district_grant: {
+    cost: 5,
+    approval: 0.022,
+    label: 'Steer a district grant',
+    blurb: 'Call in favors to land a project back home. Expensive, memorable.',
+    record: 'Steered a state grant into the district — ribbon cuttings make friends.',
+  },
+} as const
+export type CapitalSpendKind = keyof typeof CAPITAL_SPENDS
+
+/** Spend banked political capital on the district. No-op if you can't afford it. */
+export function spendCapital(gov: GoverningState, kind: CapitalSpendKind): GoverningState {
+  const spec = CAPITAL_SPENDS[kind]
+  if (!spec || gov.capital < spec.cost) return gov
+  return {
+    ...gov,
+    capital: gov.capital - spec.cost,
+    approval: clamp01(gov.approval + spec.approval),
+    record: [...gov.record, { week: gov.week, text: spec.record, delta: spec.approval }],
   }
 }
 

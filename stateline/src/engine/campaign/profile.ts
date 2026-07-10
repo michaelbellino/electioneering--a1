@@ -6,7 +6,9 @@
 import type { DayIndex } from '../core/calendar'
 import { sumElectorateChannel, type ScheduledEffect } from '../core/ledger'
 import { clamp, clamp01, type EntityId } from '../core/primitives'
-import type { CandidateProfile } from '../electorate/types'
+import { groupUtility } from '../electorate/evaluate'
+import { MODEL_WEIGHTS } from '../electorate/model'
+import type { CandidateProfile, VoterGroup } from '../electorate/types'
 import type { CandidateState } from './types'
 
 /** Candidate quality as seen by voters, from attributes (minus scandal drag). */
@@ -57,22 +59,53 @@ export function deriveCandidateProfile(
   }
 }
 
-function partyDir(party: CandidateProfile['party']): number {
-  return party === 'D' ? 1 : party === 'R' ? -1 : 0
+export interface TurnoutBoostOptions {
+  /** Needed to resolve an Independent's favorable groups (see below). */
+  readonly calibrationOffset?: number
+  /**
+   * Complacency: per-candidate drag (0..1) on that candidate's OWN mobilization — a runaway
+   * leader's supporters stay home. Computed by the caller from current shares.
+   */
+  readonly complacency?: Readonly<Record<EntityId, number>>
 }
 
 /**
- * GOTV/turnout effects are targeted: a candidate's ground game boosts turnout among groups that lean
- * their way. Returns a per-group additive turnout boost map for {@link evaluateElectorate}.
+ * GOTV/turnout effects are targeted: you can only mobilize your own supporters, so a candidate's
+ * ground game raises turnout in each group IN PROPORTION TO THEIR SUPPORT within it (the group's
+ * awareness-gated softmax share). One rule for everyone — partisans emergently concentrate on
+ * their party's groups, Independents mobilize wherever they've actually won people over, and in
+ * same-party races (primaries) GOTV no longer leaks wholesale to your rival.
+ * Negative enthusiasm (attack-ad suppression) subtracts: demoralized supporters stay home.
+ * Returns a per-group additive turnout boost map for {@link evaluateElectorate}.
  */
 export function deriveTurnoutBoostMap(
   ledger: readonly ScheduledEffect[],
   day: DayIndex,
   jurisdictionId: EntityId,
-  groups: readonly { id: string; partisanLean: number }[],
-  candidates: readonly { candidateId: EntityId; party: CandidateProfile['party'] }[],
+  groups: readonly VoterGroup[],
+  candidates: readonly CandidateProfile[],
+  opts: TurnoutBoostOptions = {},
 ): Record<string, number> {
   const boost: Record<string, number> = {}
+  // Within-group support shares (computed lazily once): share(g, c) over all candidates.
+  let shares: Record<string, Record<EntityId, number>> | null = null
+  const sharesOf = (): Record<string, Record<EntityId, number>> => {
+    if (shares) return shares
+    const offset = opts.calibrationOffset ?? 0
+    const tau = MODEL_WEIGHTS.tau
+    shares = {}
+    for (const g of groups) {
+      const raws = candidates.map((c) => c.awareness * Math.exp(groupUtility(g, c, offset) / tau))
+      const total = raws.reduce((a, b) => a + b, 0)
+      const row: Record<EntityId, number> = {}
+      candidates.forEach((c, i) => {
+        row[c.candidateId] = total > 0 ? (raws[i] as number) / total : 0
+      })
+      shares[g.id] = row
+    }
+    return shares
+  }
+
   for (const cand of candidates) {
     const gotv = sumElectorateChannel(ledger, day, {
       jurisdictionId,
@@ -80,18 +113,19 @@ export function deriveTurnoutBoostMap(
       channel: 'turnout',
     })
     // Enthusiasm (M2): excitement turns out your own leaners — persuasion's separate currency.
+    // It can go NEGATIVE (attack ads demoralize), suppressing the target's turnout instead.
     const enthusiasm = sumElectorateChannel(ledger, day, {
       jurisdictionId,
       candidateId: cand.candidateId,
       channel: 'enthusiasm',
     })
-    const mag = gotv + Math.max(0, enthusiasm) * 0.4
-    if (mag <= 0) continue
-    const dir = partyDir(cand.party)
+    let mag = gotv + enthusiasm * 0.4
+    if (mag > 0) mag *= 1 - clamp01(opts.complacency?.[cand.candidateId] ?? 0)
+    if (mag === 0) continue
     for (const g of groups) {
-      // Boost groups that lean toward this candidate (same sign of lean as the candidate's party).
-      if (dir !== 0 && Math.sign(g.partisanLean) === dir) {
-        boost[g.id] = (boost[g.id] ?? 0) + mag
+      const support = sharesOf()[g.id]?.[cand.candidateId] ?? 0
+      if (support > 0) {
+        boost[g.id] = (boost[g.id] ?? 0) + mag * support
       }
     }
   }

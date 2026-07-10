@@ -26,6 +26,16 @@ export interface PollOptions {
   readonly sampleSize?: number
   /** Per-candidate additive house effect (bias), candidateId -> share points. */
   readonly houseEffects?: Readonly<Record<EntityId, number>>
+  /**
+   * Likely-voter model: the same per-group turnout boost election night applies (GOTV/enthusiasm).
+   * Without it a ground-game campaign polls systematically below its true position all race.
+   */
+  readonly turnoutBoost?: Readonly<Record<string, number>>
+  /**
+   * Precomputed true shares to sample around (e.g. the spatial community-sum election night uses).
+   * When provided, the poll skips its own district-wide evaluation.
+   */
+  readonly trueShares?: Readonly<Record<EntityId, number>>
 }
 
 /** 95% margin of error for a proportion near 0.5 at the given sample size. */
@@ -41,10 +51,13 @@ export function conductPoll(
   opts: PollOptions = {},
 ): Poll {
   const sampleSize = opts.sampleSize ?? 600
-  const truth = evaluateElectorate(electorate, candidates)
+  const truth =
+    opts.trueShares ??
+    evaluateElectorate(electorate, candidates, { turnoutBoost: opts.turnoutBoost })
+      .sharesByCandidate
   const noisy: Record<EntityId, number> = {}
   for (const c of candidates) {
-    const p = truth.sharesByCandidate[c.candidateId] ?? 0
+    const p = truth[c.candidateId] ?? 0
     const se = Math.sqrt(Math.max(p * (1 - p), 1e-6) / sampleSize)
     const house = opts.houseEffects?.[c.candidateId] ?? 0
     noisy[c.candidateId] = Math.max(0, p + rng.normal(0, se) + house)

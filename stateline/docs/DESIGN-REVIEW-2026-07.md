@@ -319,6 +319,33 @@ Every item names its acceptance test in harness terms. Run
 
 ---
 
+## Appendix — implementation status (2026-07-10, same branch)
+
+P0, P1, and a scoped P2.11 were implemented and tuned against this harness in the follow-up
+commit. Measured before → after (same seeds):
+
+| Item | Result |
+|---|---|
+| P0.1 Honest polls | ✅ Polls use the likely-voter turnout model **and** sample the same spatial community-sum as election night. Result − final poll: **+14.6 pts → −0.1 pts** (machine bot). |
+| P0.2 One ad-fatigue pool | ✅ Quick `tv_ad_*` actions share the Media desk's per-channel fatigue (`adChannel` on the action def). tv_spam on normal: **68% → 5%**. |
+| P0.3 Bug fixes | ✅ Field Director no longer preserves opponent presence; AI war chest scales from the scenario baseline × `opponentMult` (player cashMult/trait deltas no longer leak). |
+| P0.4 NY-13 repaired | ✅ Now a true D-vs-D machine primary, plus **share-weighted GOTV targeting** for everyone (you mobilize groups in proportion to your support within them — also fixes same-party GOTV leakage and gives Independents working turnout ops). NY-13: **0% at every difficulty → 40% grinder / 48–56% machine** on normal. |
+| P0.5 Stars | ✅ Monotone with measured win rates **without relabeling** — fixed by repairing NY-13 and giving PA Senate a Governor-grade AI (intensity 0.68). Order: PA-07 (60/96) > NY-13 (40/56) > PA Senate (0/48) > TX-13 (0/0). |
+| P1.6 Anti-grind | ✅ Per-action repeat fatigue (`actionUses`, 1/(1+0.15n)) + complacency (a >10-pt poll leader's mobilization decays, up to −60%). |
+| P1.7 Smarter AI | ✅ Hard+ AIs aim attacks at your weakest stance, demobilize your base (negative enthusiasm), shadow your strongest ground-game community, and brutal gets a 5th weekly move. |
+| P1.8 Attacks rehab | ✅ All attacks now suppress target enthusiasm and earn the attacker coverage. `mixed_attacker` (attacks as a component) lands **within 15 pts of the grinder** on normal (38% vs 53%); attack-only correctly still loses. |
+| P1.9 Economy | ◐ Airtime scarcity (ad costs up to ~1.7× in the final 6 weeks) + weekly office upkeep. The optimized line is now cash-tight (**$12k unspent of ~$400k raised**). Passive-line slack (grinder ~$275k) remains — needs real money *sinks*, deferred to M1's multi-race economy rather than income nerfs that would starve hard/brutal. |
+| P1.10 Traits | ✅ All single-trait win-rate deltas within ±8 on normal; Grassroots Army's cash cost now scales with the difficulty wallet (best brutal trait instead of the worst); Firebrand's price is scandal risk (live currency) instead of dead integrity; Outsider pays in name recognition. |
+| P2.11 Governing | ✅ (scoped) Bills show a **noisy staff estimate** instead of the answer; flip-flopping against your own platform costs approval; **political capital is spendable** (town hall / district grant). Strategy spread: estimate-follower 64% (52–77) vs spender 81% vs contrarian 3% — decisions exist. Full whip/party-pressure layer still future work. |
+| P2.12 Term → re-election | ⬜ Not attempted (needs UI-flow design input). |
+| CI gates | ✅ `src/engine/rebalance.test.ts`: 16 tests — mechanics regressions (fatigue pools, honest polls, wallet decoupling, conviction, capital) + deterministic win-rate **bands** over fixed seeds. Suite: 162 tests. |
+
+**Ladder recalibration note.** The blunt "machine bot at 75/50/30/10" target was replaced with a
+per-audience ladder, which playtests better: easy = anyone wins (grinder 95%), normal = competent
+play wins about half (grinder 53%), hard = optimized play wins about half (machine 53%, grinder 5%),
+brutal = optimized play rarely survives (machine 3%). Races also tightened overall: mean |final
+margin| **13.7 → 7.0 pts**; races decided by <3 pts **5/40 → 11/40**.
+
 *Reproduce everything: `cd stateline && npx tsx scripts/playtest.ts all 40` (≈6s), or per
 experiment: `matrix | scenarios | gotv | traits | adspam | attacks | governing | drama | followup`.
 UI pass: `npm run dev`, then drive Chromium with Playwright (screenshots in the session record).*

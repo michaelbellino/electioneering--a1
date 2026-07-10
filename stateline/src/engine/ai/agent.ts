@@ -10,9 +10,11 @@ import { clamp01 } from '../core/primitives'
 import type { DayIndex } from '../core/calendar'
 import { forkRng, Rng } from '../core/rng'
 import type { ScheduledEffect } from '../core/ledger'
-import type { CandidateProfile } from '../electorate/types'
+import { agreementShare } from '../electorate/opinion'
+import type { CandidateProfile, ElectorateState } from '../electorate/types'
 import type { TerritoryState } from '../territory/generate'
 import { getCommunity } from '../territory/generate'
+import { ISSUE_IDS } from '../../data/schema'
 
 export type AiPersonality = 'frontrunner' | 'attack_dog' | 'insurgent'
 
@@ -41,6 +43,8 @@ interface AiTurnCtx {
   readonly profiles: readonly CandidateProfile[]
   readonly shares: Readonly<Record<EntityId, number>>
   readonly rngBase: Parameters<typeof forkRng>[0]
+  /** When provided, the AI aims its attacks at the rival's least-popular stance. */
+  readonly electorate?: ElectorateState
 }
 
 const USD = (d: number): Cents => Math.round(d * 100)
@@ -50,7 +54,7 @@ function eff(
   who: EntityId,
   target: EntityId,
   n: number,
-  channel: 'nameRecognition' | 'favorability',
+  channel: 'nameRecognition' | 'favorability' | 'enthusiasm',
   magnitude: number,
   decay: number,
   tone: number,
@@ -105,7 +109,22 @@ export function runAiTurn(ai: AiCandidateState, ctx: AiTurnCtx): AiTurnResult {
     wGround + desperation * 0.1,
   ]
 
-  const moves = ctx.intensity > 0.65 ? 4 : 3 // hard/brutal opponents simply work harder
+  // Where is the rival's platform weakest with THIS electorate? (Smart targeting — hard+ AIs.)
+  const rivalProfile = ctx.profiles.find((p) => p.candidateId === rivalId)
+  let attackAim = 1
+  if (ctx.electorate && rivalProfile && ctx.intensity > 0.65) {
+    let worstAgree = 1
+    for (const issue of ISSUE_IDS) {
+      const stance = rivalProfile.positions[issue] ?? 0
+      if (Math.abs(stance) < 0.05) continue
+      const agree = agreementShare(ctx.electorate, issue, stance)
+      if (agree < worstAgree) worstAgree = agree
+    }
+    attackAim = 0.6 + (1 - worstAgree) // ≈1.1 vs a sturdy platform, up to ~1.6 vs a weak one
+  }
+
+  // Harder opponents simply work harder: 3 moves, 4 on hard, 5 on brutal.
+  const moves = ctx.intensity > 0.85 ? 5 : ctx.intensity > 0.65 ? 4 : 3
   for (let m = 0; m < moves; m++) {
     const total = weights.reduce((a, b) => a + b, 0)
     let x = rng.float() * total
@@ -129,15 +148,23 @@ export function runAiTurn(ai: AiCandidateState, ctx: AiTurnCtx): AiTurnResult {
       did.push('ran positive ads')
     } else if (pick === 2 && cash >= USD(12_000)) {
       cash -= USD(12_000)
-      effects.push(eff(ctx, ai.candidateId, rivalId, n++, 'favorability', -0.07 * ctx.intensity * 3.4, 20, -0.7))
+      effects.push(eff(ctx, ai.candidateId, rivalId, n++, 'favorability', -0.07 * ctx.intensity * 3.4 * attackAim, 20, -0.7))
+      // Demobilization: attacks keep the rival's voters home, and being on offense earns coverage.
+      effects.push(eff(ctx, ai.candidateId, rivalId, n++, 'enthusiasm', -0.03 * ctx.intensity * 3.4 * attackAim, 21, -0.7))
+      effects.push(eff(ctx, ai.candidateId, ai.candidateId, n++, 'nameRecognition', 0.12 * ctx.intensity * 3.4, 22, 0))
       effects.push(eff(ctx, ai.candidateId, ai.candidateId, n++, 'favorability', -0.01, 14, -0.7))
       did.push(`attacked ${rivalId === ctx.profiles[0]?.candidateId ? 'you' : 'a rival'}`)
     } else {
-      // Ground game: hop the map (weighted toward big communities) and rally there.
+      // Ground game: hop the map (weighted toward big communities) and rally there. Hard+ AIs
+      // shadow the player half the time — contesting the places you've organized hardest.
       const here = getCommunity(ctx.territory, location)
-      const pool = rng.bool(0.25)
-        ? ctx.territory.communities.map((c) => c.id)
-        : [location, ...(here?.neighbors ?? [])]
+      const playerStronghold = Object.entries(ctx.territory.presence).sort((a, b) => b[1] - a[1])[0]?.[0]
+      const pool =
+        ctx.intensity > 0.65 && playerStronghold && rng.bool(0.5)
+          ? [playerStronghold]
+          : rng.bool(0.25)
+            ? ctx.territory.communities.map((c) => c.id)
+            : [location, ...(here?.neighbors ?? [])]
       const ws = pool.map((id) => getCommunity(ctx.territory, id)?.weight ?? 0.01)
       const tw = ws.reduce((a, b) => a + b, 0)
       let y = rng.float() * tw

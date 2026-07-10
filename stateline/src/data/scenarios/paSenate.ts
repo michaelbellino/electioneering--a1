@@ -15,7 +15,9 @@ export const PA_SENATE_SPRINT: Scenario = {
   electionDate: { year: 2026, month: 9, day: 8 },
   method: 'fptp',
   startingCash: USD(120_000),
-  opponentIntensity: 0.55,
+  // A sitting-Governor-grade operation: fast, targeted, everywhere. (≥0.65 on normal unlocks the
+  // AI's smart targeting — this opponent is supposed to out-organize a merely competent campaign.)
+  opponentIntensity: 0.68,
   player: {
     id: 'player',
     name: 'Your Candidate',

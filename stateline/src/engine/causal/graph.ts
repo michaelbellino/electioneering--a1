@@ -61,6 +61,7 @@ function makeContext(state: GameState): EvalContext {
     state.election.jurisdictionId,
     state.electorate.groups,
     profiles,
+    { calibrationOffset: state.electorate.calibrationOffset },
   )
   return {
     electorate: state.electorate,

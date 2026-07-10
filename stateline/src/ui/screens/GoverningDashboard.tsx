@@ -1,6 +1,6 @@
 import { useGame } from '@ui/store/gameStore'
 import type { GameState } from '@engine/index'
-import { policySentiment, termVerdict } from '@engine/governing/governing'
+import { CAPITAL_SPENDS, termVerdict } from '@engine/governing/governing'
 import { getPolicy } from '@data/policies'
 import { useCountUp } from '@ui/juice'
 
@@ -91,16 +91,16 @@ export function GoverningDashboard({ state }: { state: GameState }) {
             ) : (
               <div className="actions">
                 {gov.docket.map((b) => {
-                  const yea = policySentiment(state, b.policyId, b.direction)
+                  const est = b.estimate ?? 0.5
                   const p = getPolicy(b.policyId)
                   return (
                     <div key={b.id} className="action-card bill-card">
                       <div className="action-top">
                         <span className="action-label">{b.title}</span>
-                        <span className="action-cost num">{Math.round(yea * 100)}% back it</span>
+                        <span className="action-cost num">staff est. ~{Math.round(est * 100)}% back it</span>
                       </div>
                       <div className="action-desc">
-                        {p ? `${p.label}: ${b.direction > 0 ? p.proLabel : p.conLabel}. District support shown — salience decides how much it matters.` : ''}
+                        {p ? `${p.label}: ${b.direction > 0 ? p.proLabel : p.conLabel}. Staff estimate only — the roll-call reaction tells you the truth. Salience decides how much it matters, and votes against your own platform anger your base.` : ''}
                       </div>
                       <div className="bill-actions">
                         {isLeg ? (
@@ -141,6 +141,28 @@ export function GoverningDashboard({ state }: { state: GameState }) {
           </div>
         </div>
         <div className="dash-col">
+          <div className="panel">
+            <h3>Political capital · {gov.capital}</h3>
+            <p className="muted" style={{ fontSize: '0.78rem' }}>
+              Earned by popular votes and delivered programs. Spend it on the district:
+            </p>
+            <div className="actions">
+              {(Object.entries(CAPITAL_SPENDS) as Array<[string, (typeof CAPITAL_SPENDS)[keyof typeof CAPITAL_SPENDS]]>).map(([kind, spec]) => (
+                <button
+                  key={kind}
+                  className="action-card"
+                  disabled={gov.capital < spec.cost}
+                  onClick={() => dispatch({ type: 'gov/spendCapital', payload: { kind } })}
+                >
+                  <div className="action-top">
+                    <span className="action-label">{spec.label}</span>
+                    <span className="action-cost num">{spec.cost} capital</span>
+                  </div>
+                  <div className="action-desc">{spec.blurb}</div>
+                </button>
+              ))}
+            </div>
+          </div>
           <div className="panel">
             <h3>The record</h3>
             <ul className="log">

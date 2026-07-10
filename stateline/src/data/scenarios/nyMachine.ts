@@ -1,7 +1,9 @@
 /**
  * NY-13 — Upper Manhattan / the Bronx. Deep-blue seat where the real fight is the machine's chosen
- * successor: an Independent-labeled insurgency against a Democrat with every endorsement. High
- * awareness gap, low-turnout electorate — a persuasion-and-mobilization puzzle, not a base race.
+ * successor: a Democratic primary-style insurgency against the party's heir apparent, with a token
+ * Republican far behind. Both front-runners share the D base, so the partisan term washes between
+ * them — the race is awareness, favorability, platform, and the ground game. High awareness gap,
+ * low-turnout electorate: a persuasion-and-mobilization puzzle, not a base race.
  */
 import type { Scenario } from '../../engine/scenario'
 
@@ -15,11 +17,11 @@ export const NY13_PRIMARY_CHALLENGE: Scenario = {
   electionDate: { year: 2026, month: 9, day: 8 },
   method: 'fptp',
   startingCash: USD(40_000),
-  opponentIntensity: 0.45,
+  opponentIntensity: 0.52,
   player: {
     id: 'player',
     name: 'Your Candidate',
-    party: 'I',
+    party: 'D',
     attributes: { charisma: 0.6, competence: 0.6, integrity: 0.6, fundraising: 0.5 },
     positions: {
       taxes_spending: 0.5,

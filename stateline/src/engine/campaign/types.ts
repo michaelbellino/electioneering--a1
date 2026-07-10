@@ -95,6 +95,11 @@ export interface CampaignState {
   readonly adFatigue: Readonly<Record<string, number>>
   /** Fundraisers held this campaign — donors tire (diminishing hauls). */
   readonly fundraiserUses: number
+  /**
+   * Times each action has been performed this campaign (defId -> count). The same move lands
+   * softer every repeat — voters tune out a one-note campaign (anti-grind pressure).
+   */
+  readonly actionUses: Readonly<Record<string, number>>
 }
 
 /** A single ledger effect an action emits, before being lowered to a ScheduledEffect. */
@@ -136,4 +141,9 @@ export interface CampaignActionDef {
   }
   /** Which staff role amplifies this action (effectiveness scales magnitudes / yield). */
   readonly amplifiedBy?: StaffRole
+  /**
+   * If set, this action is an ad buy on that channel: it draws from and adds to the campaign's
+   * per-channel ad fatigue pool (shared with the Media desk), so repeat buys diminish.
+   */
+  readonly adChannel?: string
 }

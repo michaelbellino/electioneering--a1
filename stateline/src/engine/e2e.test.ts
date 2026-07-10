@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest'
 import { HOUSE_SPECIAL_PA07 } from '../data/scenarios/houseSpecial'
 import { Engine } from './index'
 
-const WEEKLY_PLAN = ['tv_ad_positive', 'speech', 'fundraiser'] as const
+// A competent MIXED weekly plan. (One-note plans — e.g. spamming TV ads — now fatigue and are
+// deliberately not enough; see actionUseFatigue / ad fatigue.)
+const WEEKLY_PLAN = ['rally', 'speech', 'fundraiser'] as const
 
 function playWeek(engine: Engine): void {
   for (const defId of WEEKLY_PLAN) {

@@ -120,10 +120,14 @@ export function createGame(scenario: Scenario, seed: number, setup: GameSetup = 
       : dateToDayIndex(scenario.electionDate)
   const electionId = `election:${scenario.id}`
 
+  // Trait cash deltas apply BEFORE the difficulty multiplier, so a flat-dollar trait scales with
+  // the wallet it lands in (Grassroots Army must not eat half a Sacrificial Lamb's war chest).
   const startingCash =
     setup.sandbox?.startingCash ??
-    Math.round(scenario.startingCash * difficulty.cashMult) +
-      traits.reduce((a, t) => a + (t.cashDelta ?? 0), 0)
+    Math.round(
+      (scenario.startingCash + traits.reduce((a, t) => a + (t.cashDelta ?? 0), 0)) *
+        difficulty.cashMult,
+    )
   const maxActionPoints = Math.max(
     1,
     (setup.sandbox?.maxActionPoints ?? difficulty.maxActionPoints) +
@@ -186,10 +190,17 @@ export function createGame(scenario: Scenario, seed: number, setup: GameSetup = 
       opponents.map((o, i) => {
         const personality: AiPersonality =
           i > 0 ? 'insurgent' : (o.baseExposure ?? 0) > 0.5 ? 'frontrunner' : 'attack_dog'
+        // The AI's war chest is its own: scaled from the SCENARIO's baseline by the AI's
+        // fundraising and the difficulty's opponent knob — never by the player's cash
+        // multiplier or trait deltas (easy must not enrich your opponent).
         const ai: AiCandidateState = {
           candidateId: o.id,
           personality,
-          cash: Math.round(startingCash * (0.8 + (o.attributes?.fundraising ?? 0.5))),
+          cash: Math.round(
+            scenario.startingCash *
+              (0.8 + (o.attributes?.fundraising ?? 0.5)) *
+              difficulty.opponentMult,
+          ),
           location: territory.playerLocation,
         }
         return [o.id, ai]

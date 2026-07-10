@@ -29,11 +29,13 @@ export const CAMPAIGN_ACTIONS: readonly CampaignActionDef[] = [
     id: 'tv_ad_positive',
     label: 'Run a Positive TV Ad',
     category: 'advertising',
-    description: 'Buy a positive ad buy. Strong reach for name recognition and favorability.',
+    description:
+      'Buy a positive ad buy. Strong reach for name recognition and favorability — but airtime tires: repeat TV buys land softer.',
     cashCost: USD(25000),
     actionPointCost: 1,
     cooldownDays: 0,
     amplifiedBy: 'comms_director',
+    adChannel: 'tv',
     effects: [
       { channel: 'nameRecognition', target: 'self', magnitude: 0.7, rampDurationDays: 5, decayHalfLifeDays: 25 },
       { channel: 'favorability', target: 'self', magnitude: 0.08, rampDurationDays: 5, decayHalfLifeDays: 20, tone: 0.8 },
@@ -43,13 +45,17 @@ export const CAMPAIGN_ACTIONS: readonly CampaignActionDef[] = [
     id: 'tv_ad_attack',
     label: 'Run an Attack Ad',
     category: 'advertising',
-    description: 'Hit your opponent. Drives their favorability down — but risks a little blowback.',
+    description:
+      'Hit your opponent. Dents their favorability, demoralizes their base a little, and keeps your name in the fight — with some blowback.',
     cashCost: USD(20000),
     actionPointCost: 1,
     cooldownDays: 0,
     amplifiedBy: 'comms_director',
+    adChannel: 'tv',
     effects: [
       { channel: 'favorability', target: 'opponent', magnitude: -0.12, rampDurationDays: 5, decayHalfLifeDays: 20, tone: -0.8 },
+      { channel: 'enthusiasm', target: 'opponent', magnitude: -0.04, rampDurationDays: 5, decayHalfLifeDays: 21, tone: -0.8 },
+      { channel: 'nameRecognition', target: 'self', magnitude: 0.28, rampDurationDays: 5, decayHalfLifeDays: 22 },
       { channel: 'favorability', target: 'self', magnitude: -0.02, rampDurationDays: 4, decayHalfLifeDays: 14, tone: -0.8 },
     ],
   },

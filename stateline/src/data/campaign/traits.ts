@@ -32,9 +32,9 @@ export const TRAITS: readonly TraitDef[] = [
   {
     id: 'hometown_hero',
     label: 'Hometown Hero',
-    description: 'Everyone already knows your name — and your baggage.',
-    baseExposure: 0.25,
-    baseFavorability: -0.05,
+    description: 'Everyone already knows your name — and a little of your baggage.',
+    baseExposure: 0.3,
+    baseFavorability: -0.03,
   },
   {
     id: 'self_funder',
@@ -53,9 +53,9 @@ export const TRAITS: readonly TraitDef[] = [
   {
     id: 'teflon',
     label: 'Teflon',
-    description: 'Scandals slide right off. Charisma was the price.',
+    description: 'Scandals slide right off. A little charisma was the price.',
     scandalMult: 0.4,
-    attributes: { charisma: -0.1 },
+    attributes: { charisma: -0.05 },
   },
   {
     id: 'party_insider',
@@ -67,8 +67,10 @@ export const TRAITS: readonly TraitDef[] = [
   {
     id: 'outsider',
     label: 'Outsider',
-    description: 'Voters like that you’re not one of them. Professionals charge you extra.',
+    description:
+      'Voters like that you’re not one of them — once they’ve heard of you. Professionals charge you extra.',
     baseFavorability: 0.08,
+    baseExposure: -0.05,
     salaryMult: 1.35,
   },
   {
@@ -80,8 +82,9 @@ export const TRAITS: readonly TraitDef[] = [
   {
     id: 'firebrand',
     label: 'Firebrand',
-    description: 'You light up a room — sometimes with the room still in it.',
-    attributes: { charisma: 0.15, integrity: -0.1 },
+    description: 'You light up a room — sometimes with the room still in it. Scandals burn hotter.',
+    attributes: { charisma: 0.15 },
+    scandalMult: 1.3,
   },
 ] as const
 

@@ -33,7 +33,7 @@ import { areAdjacent, getCommunity, type TerritoryState } from './territory/gene
 import { communityElectorate, localProfiles } from './territory/local'
 import { evaluateElectorate } from './electorate/evaluate'
 import { runAiTurn } from './ai/agent'
-import { castVote, createGoverning, executiveAction, tickGoverning } from './governing/governing'
+import { castVote, createGoverning, executiveAction, spendCapital, tickGoverning, type CapitalSpendKind } from './governing/governing'
 import { resolveElection } from './electoral/resolve'
 import { EVENT_ELECTION_DAY, type GameState, type PollRecord } from './state'
 
@@ -51,6 +51,7 @@ export type GameAction =
   | Action<'gov/takeOffice', Record<string, never>>
   | Action<'gov/vote', { billId: string; vote: 'yea' | 'nay' }>
   | Action<'gov/sign', { billId: string }>
+  | Action<'gov/spendCapital', { kind: string }>
   | Action<'gov/advanceWeek', Record<string, never>>
   | Action<'core/advanceTurn', Record<string, never>>
 
@@ -81,6 +82,20 @@ function profilesAt(
   })
 }
 
+/** Complacency: a runaway leader's supporters stay home. Drag on the leader's mobilization. */
+function complacencyOf(
+  state: GameState,
+  profiles: readonly CandidateProfile[],
+): Record<string, number> {
+  const shares = evaluateElectorate(effectiveElectorate(state), profiles).sharesByCandidate
+  const sorted = Object.entries(shares).sort((a, b) => b[1] - a[1])
+  if (sorted.length < 2) return {}
+  const margin = sorted[0]![1] - sorted[1]![1]
+  if (margin <= COMPLACENCY_THRESHOLD) return {}
+  return { [sorted[0]![0]]: Math.min(0.6, (margin - COMPLACENCY_THRESHOLD) * 2.5) }
+}
+const COMPLACENCY_THRESHOLD = 0.1
+
 function turnoutBoostAt(
   state: GameState,
   profiles: readonly CandidateProfile[],
@@ -93,6 +108,10 @@ function turnoutBoostAt(
     state.election.jurisdictionId,
     state.electorate.groups,
     profiles,
+    {
+      calibrationOffset: state.electorate.calibrationOffset,
+      complacency: complacencyOf(state, profiles),
+    },
   )
 }
 
@@ -105,7 +124,23 @@ function conductPollRecord(
   const rng = new Rng(forkRng(state.rng.polling!, `poll:${day}`))
   // A pollster on staff buys bigger samples: tighter margin of error.
   const sampleSize = Math.round(600 + 1600 * staffEffectiveness(state.campaign, 'pollster'))
-  const poll = conductPoll(effectiveElectorate(state), profiles, rng, { sampleSize })
+  // The tracking poll samples the SAME race election night resolves: likely-voter turnout model
+  // plus the community-by-community ground game. An unbiased poll of the real thing — the wobble
+  // is sampling noise, not a hidden gap.
+  const eff = effectiveElectorate(state)
+  const boost = turnoutBoostAt(state, profiles, ledger, day)
+  const truth = resolveElection(eff, profiles, 'fptp', {
+    turnoutBoost: boost,
+    communities: state.territory.communities.map((c) => ({
+      electorate: communityElectorate(eff, c, state.communityOpinion[c.id]),
+      profiles: localProfiles(profiles, state.playerCandidateId, c, state.territory),
+    })),
+  })
+  const poll = conductPoll(eff, profiles, rng, {
+    sampleSize,
+    turnoutBoost: boost,
+    trueShares: truth.sharesByCandidate,
+  })
   return { day, shares: poll.shares, marginOfError: poll.marginOfError }
 }
 
@@ -123,16 +158,32 @@ function applyCampaignActionType(
   const day = state.calendar.dayIndex
   const here = state.territory.playerLocation
   const isLocal = LOCAL_CATEGORIES.has(def.category)
+  // Quick ad buys share the SAME per-channel fatigue pool as the Media desk: audiences tire of
+  // your ads no matter which button bought them (closes the fatigue-free ad-spam exploit).
+  const fatigueN = def.adChannel ? (state.campaign.adFatigue[def.adChannel] ?? 0) : 0
+  const fatigueMult = def.adChannel ? 1 / (1 + AD_FATIGUE_RATE * fatigueN) : 1
   const res = applyCampaignAction(state.campaign, candidate, def, {
     day,
     ledgerLength: state.ledger.length,
-    extraMultiplier: isLocal ? localReach(state.territory, here) : 1,
+    extraMultiplier: (isLocal ? localReach(state.territory, here) : 1) * fatigueMult,
+    costMultiplier: def.adChannel ? airtimeScarcity(state) : 1,
   })
   if (!res.ok) {
     return {
       ...state,
       meta: bumpRevision(state),
       log: [...state.log, { day, kind: 'action_blocked', message: res.errors[0]?.message ?? 'Blocked.' }],
+    }
+  }
+  let campaignAfter = res.campaign
+  if (def.adChannel) {
+    campaignAfter = {
+      ...campaignAfter,
+      adFatigue: {
+        ...campaignAfter.adFatigue,
+        [def.adChannel]:
+          fatigueN + (staffEffectiveness(state.campaign, 'comms_director') > 0 ? 0.7 : 1),
+      },
     }
   }
 
@@ -155,7 +206,7 @@ function applyCampaignActionType(
   const raisedNote = res.raised > 0 ? ` (raised ${formatUsd(res.raised)})` : ''
   return {
     ...state,
-    campaign: res.campaign,
+    campaign: campaignAfter,
     territory,
     ledger: [...state.ledger, ...res.newEffects],
     meta: bumpRevision(state),
@@ -169,6 +220,15 @@ function applyCampaignActionType(
 // --- Territory (the map layer) -----------------------------------------------
 /** Local categories happen WHERE the candidate stands; broadcast categories don't care. */
 const LOCAL_CATEGORIES = new Set(['event', 'ground_game', 'message'])
+
+/**
+ * Airtime scarcity: ad inventory gets bid up as election day closes in. Inside the final six
+ * weeks every ad buy — quick action or Media desk — costs up to ~1.7× its early-race rate.
+ */
+function airtimeScarcity(state: GameState): number {
+  const weeksLeft = (state.election.electionDay - state.calendar.dayIndex) / 7
+  return weeksLeft >= 6 ? 1 : 1 + (6 - Math.max(0, weeksLeft)) * 0.12
+}
 
 /** Reach multiplier for acting in a community: a rally downtown beats a rally at a crossroads. */
 function localReach(territory: TerritoryState, communityId: string): number {
@@ -337,6 +397,7 @@ function runAd(
     return blocked(state, day, 'Pick the policy this ad is about.')
   const cost = Math.round(
     adCost(channel, budget, state.electorate.cvap) *
+      airtimeScarcity(state) *
       (channel.id === 'digital' && staffEffectiveness(state.campaign, 'digital_director') > 0 ? 0.7 : 1),
   )
   if (state.campaign.actionPoints < 1) return blocked(state, day, 'No action points left this week.')
@@ -351,7 +412,7 @@ function runAd(
   const opp = state.candidates[opponentId(state)]!
   let communityOpinion = state.communityOpinion
 
-  const mkEffect = (target: 'self' | 'opponent', ch: 'nameRecognition' | 'favorability', mag: number, tone: number) => ({
+  const mkEffect = (target: 'self' | 'opponent', ch: 'nameRecognition' | 'favorability' | 'enthusiasm', mag: number, tone: number) => ({
     channel: ch as never,
     target,
     magnitude: mag,
@@ -379,8 +440,11 @@ function runAd(
       logMsg = `Attack ad on ${policy.label} BACKFIRED — the district agrees with them.`
     } else {
       specs.push(mkEffect('opponent', 'favorability', -0.05 * power * oppoAmp, -0.7))
+      // Demobilization: a well-aimed attack also keeps the other side's voters home.
+      specs.push(mkEffect('opponent', 'enthusiasm', -0.03 * power * oppoAmp, -0.7))
       specs.push(mkEffect('self', 'favorability', -0.012 * budget, -0.7))
-      specs.push(mkEffect('self', 'nameRecognition', channel.awareness * 0.3 * power, 0))
+      // Going on the attack earns coverage — a challenger stays in the story.
+      specs.push(mkEffect('self', 'nameRecognition', channel.awareness * 0.55 * power, 0))
       logMsg = `Hit ${opp.name} on ${policy.label}.`
     }
   } else if (payload.tone === 'issue' && policy) {
@@ -667,10 +731,11 @@ export function tick(state: GameState): GameState {
   // AI candidates take their turns FIRST (they read last week's race, like the player did).
   const preProfiles = profilesAt(state, state.ledger, state.calendar.dayIndex)
   const preShares = evaluateElectorate(effectiveElectorate(state), preProfiles).sharesByCandidate
-  const decayRate = staffEffectiveness(state.campaign, 'field_director') > 0 ? 0.85 : 0.75
-  const decayMap = (m: Readonly<Record<string, number>>) =>
-    Object.fromEntries(Object.entries(m).map(([k, v]) => [k, v * decayRate]).filter(([, v]) => (v as number) > 0.01))
-  let oppPresence = decayMap(state.territory.oppPresence)
+  // YOUR Field Director preserves YOUR ground presence; rivals decay at the base rate.
+  const decayMap = (m: Readonly<Record<string, number>>, rate: number) =>
+    Object.fromEntries(Object.entries(m).map(([k, v]) => [k, v * rate]).filter(([, v]) => (v as number) > 0.01))
+  const playerDecayRate = staffEffectiveness(state.campaign, 'field_director') > 0 ? 0.85 : 0.75
+  const oppPresence = decayMap(state.territory.oppPresence, 0.75)
   const aiCandidates: GameState['aiCandidates'] = { ...state.aiCandidates }
   const aiEffects: ScheduledEffect[] = []
   const aiLogs: GameState['log'] = []
@@ -685,6 +750,7 @@ export function tick(state: GameState): GameState {
       profiles: preProfiles,
       shares: preShares,
       rngBase: state.rng.ai!,
+      electorate: effectiveElectorate(state),
     })
     aiCandidates[id] = res.ai
     aiEffects.push(...res.effects)
@@ -701,7 +767,7 @@ export function tick(state: GameState): GameState {
   const primaryOpp = state.election.candidateIds.find((id) => id !== state.playerCandidateId)
   const territoryAfterAi = {
     ...state.territory,
-    presence: decayMap(state.territory.presence),
+    presence: decayMap(state.territory.presence, playerDecayRate),
     oppPresence,
     opponentLocation: primaryOpp ? (aiCandidates[primaryOpp]?.location ?? state.territory.opponentLocation) : state.territory.opponentLocation,
   }
@@ -834,6 +900,14 @@ export function applyAction(state: GameState, action: GameAction): GameState {
       return {
         ...state,
         governing: executiveAction(state, state.governing, action.payload.billId),
+        meta: bumpRevision(state),
+      }
+    }
+    case 'gov/spendCapital': {
+      if (state.phase !== 'governing' || !state.governing) return state
+      return {
+        ...state,
+        governing: spendCapital(state.governing, action.payload.kind as CapitalSpendKind),
         meta: bumpRevision(state),
       }
     }
