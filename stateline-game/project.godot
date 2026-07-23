@@ -1,0 +1,56 @@
+; Stateline: Campaign Trail — Godot 4.7 project
+; A deep, deterministic US political-campaign simulation game.
+
+config_version=5
+
+[application]
+
+config/name="Stateline: Campaign Trail"
+config/description="A deep US political & electoral campaign simulation."
+config/version="0.1.0-alpha"
+run/main_scene="res://scenes/Main.tscn"
+config/features=PackedStringArray("4.7", "GL Compatibility")
+config/icon="res://assets/icon.svg"
+boot_splash/show_image=false
+boot_splash/bg_color=Color(0.027, 0.039, 0.067, 1)
+
+[autoload]
+
+Palette="*res://scripts/Palette.gd"
+Content="*res://scripts/Content.gd"
+Sim="*res://scripts/Sim.gd"
+Audio="*res://scripts/AudioBus.gd"
+Game="*res://scripts/Game.gd"
+
+[display]
+
+window/size/viewport_width=1280
+window/size/viewport_height=800
+window/size/window_width_override=1280
+window/size/window_height_override=800
+window/stretch/mode="canvas_items"
+window/stretch/aspect="expand"
+window/energy_saving/keep_screen_on=false
+
+[dotnet]
+
+project/assembly_name="Stateline"
+
+[input_devices]
+
+pointing/emulate_touch_from_mouse=true
+
+[rendering]
+
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"
+textures/canvas_textures/default_texture_filter=1
+2d/snap/snap_2d_transforms_to_pixel=false
+environment/defaults/default_clear_color=Color(0.027, 0.039, 0.067, 1)
+
+[file_customization]
+
+folder_colors={
+"res://data/": "teal",
+"res://scripts/": "blue"
+}

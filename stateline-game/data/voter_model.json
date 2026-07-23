@@ -1,0 +1,44 @@
+{
+  "modelVersion": "0.1.0",
+  "methodology": "Hand-authored priors grounded in published US voting patterns (education/racial diploma divide, differential turnout, issue salience by group). Per-jurisdiction calibration fits the modelled baseline to each race's lean. A game model, not a voter file.",
+  "segments": [
+    { "id": "white_college",    "label": "White, college-educated" },
+    { "id": "white_noncollege", "label": "White, no college degree" },
+    { "id": "black",            "label": "Black" },
+    { "id": "hispanic",         "label": "Hispanic / Latino" },
+    { "id": "asian",            "label": "Asian" },
+    { "id": "other",            "label": "Other / Multiracial / Native" }
+  ],
+  "behavior": [
+    {
+      "segmentId": "white_college", "partisanLean": 0.08, "partisanStrength": 0.42, "turnoutPropensity": 0.80,
+      "issuePositions": { "taxes_spending": 0.10, "healthcare": 0.15, "immigration": 0.20, "guns": 0.25, "abortion": 0.40, "climate_energy": 0.45, "crime_policing": 0.10, "social_culture": 0.35 },
+      "issueSalience":  { "taxes_spending": 0.90, "healthcare": 1.00, "immigration": 1.00, "guns": 1.00, "abortion": 1.30, "climate_energy": 1.30, "crime_policing": 1.00, "social_culture": 1.20 }
+    },
+    {
+      "segmentId": "white_noncollege", "partisanLean": -0.36, "partisanStrength": 0.55, "turnoutPropensity": 0.63,
+      "issuePositions": { "taxes_spending": -0.20, "healthcare": -0.05, "immigration": -0.45, "guns": -0.40, "abortion": -0.20, "climate_energy": -0.25, "crime_policing": -0.35, "social_culture": -0.40 },
+      "issueSalience":  { "taxes_spending": 1.00, "healthcare": 1.00, "immigration": 1.40, "guns": 1.30, "abortion": 1.00, "climate_energy": 1.00, "crime_policing": 1.20, "social_culture": 1.20 }
+    },
+    {
+      "segmentId": "black", "partisanLean": 0.74, "partisanStrength": 0.78, "turnoutPropensity": 0.62,
+      "issuePositions": { "taxes_spending": 0.40, "healthcare": 0.50, "immigration": 0.25, "guns": 0.30, "abortion": 0.25, "climate_energy": 0.30, "crime_policing": 0.45, "social_culture": 0.20 },
+      "issueSalience":  { "taxes_spending": 1.10, "healthcare": 1.30, "immigration": 1.00, "guns": 1.00, "abortion": 1.00, "climate_energy": 1.00, "crime_policing": 1.40, "social_culture": 1.00 }
+    },
+    {
+      "segmentId": "hispanic", "partisanLean": 0.28, "partisanStrength": 0.42, "turnoutPropensity": 0.48,
+      "issuePositions": { "taxes_spending": 0.25, "healthcare": 0.35, "immigration": 0.35, "guns": 0.10, "abortion": 0.05, "climate_energy": 0.20, "crime_policing": 0.10, "social_culture": 0.00 },
+      "issueSalience":  { "taxes_spending": 1.10, "healthcare": 1.20, "immigration": 1.40, "guns": 1.00, "abortion": 1.00, "climate_energy": 1.00, "crime_policing": 1.00, "social_culture": 1.00 }
+    },
+    {
+      "segmentId": "asian", "partisanLean": 0.34, "partisanStrength": 0.40, "turnoutPropensity": 0.55,
+      "issuePositions": { "taxes_spending": 0.15, "healthcare": 0.30, "immigration": 0.30, "guns": 0.25, "abortion": 0.30, "climate_energy": 0.30, "crime_policing": 0.05, "social_culture": 0.20 },
+      "issueSalience":  { "taxes_spending": 1.00, "healthcare": 1.20, "immigration": 1.20, "guns": 1.00, "abortion": 1.00, "climate_energy": 1.00, "crime_policing": 1.00, "social_culture": 1.00 }
+    },
+    {
+      "segmentId": "other", "partisanLean": 0.16, "partisanStrength": 0.40, "turnoutPropensity": 0.50,
+      "issuePositions": { "taxes_spending": 0.20, "healthcare": 0.30, "immigration": 0.20, "guns": 0.15, "abortion": 0.20, "climate_energy": 0.30, "crime_policing": 0.30, "social_culture": 0.15 },
+      "issueSalience":  { "taxes_spending": 1.00, "healthcare": 1.10, "immigration": 1.00, "guns": 1.00, "abortion": 1.00, "climate_energy": 1.10, "crime_policing": 1.00, "social_culture": 1.00 }
+    }
+  ]
+}

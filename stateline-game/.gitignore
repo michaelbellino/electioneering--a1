@@ -1,0 +1,11 @@
+# Godot 4 import cache & editor state (regenerated on import)
+.godot/
+
+# Exported builds / packaged artifacts
+/build/
+*.exe
+*.pck
+*.zip
+
+# OS cruft
+.DS_Store

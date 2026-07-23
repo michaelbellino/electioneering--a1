@@ -1,0 +1,2096 @@
+[
+ {
+  "id": "debate_invite",
+  "title": "The Debate Invitation",
+  "weight": 1.4,
+  "minWeek": 1,
+  "defaultOptionId": "decline",
+  "prompt": "The local station wants a televised debate. Your opponent already said yes. An empty podium makes its own headlines.",
+  "options": [
+   {
+    "id": "accept",
+    "label": "Take the stage",
+    "blurb": "Big exposure either way. Charisma decides highlight reel or blooper reel.",
+    "consequence": {
+     "effects": [
+      {
+       "channel": "nameRecognition",
+       "target": "self",
+       "magnitude": 0.4
+      },
+      {
+       "channel": "favorability",
+       "target": "self",
+       "magnitude": 0.05,
+       "tone": 0.4
+      }
+     ]
+    },
+    "risk": {
+     "chance": 0.55,
+     "mitigatedBy": "charisma",
+     "failText": "You froze on the follow-up. The clip is everywhere.",
+     "onFail": {
+      "effects": [
+       {
+        "channel": "favorability",
+        "target": "self",
+        "magnitude": -0.08,
+        "tone": -0.5
+       }
+      ]
+     }
+    },
+    "resultText": "You held the stage. Clips of your closer are doing numbers."
+   },
+   {
+    "id": "decline",
+    "label": "Decline politely",
+    "blurb": "No risk — and your opponent gets the airtime to themselves.",
+    "consequence": {
+     "effects": [
+      {
+       "channel": "nameRecognition",
+       "target": "opponent",
+       "magnitude": 0.3
+      }
+     ]
+    },
+    "resultText": "You skipped the debate. Your opponent enjoyed the free airtime."
+   }
+  ]
+ },
+ {
+  "id": "old_column",
+  "title": "The Old Op-Ed",
+  "weight": 1.2,
+  "defaultOptionId": "own_it",
+  "prompt": "A blogger unearths a spicy column you wrote years ago. It reads badly out of context — and worse in context.",
+  "options": [
+   {
+    "id": "own_it",
+    "label": "Own it",
+    "blurb": "Apologize on camera. Takes the sting out, costs some shine.",
+    "consequence": {
+     "scandal": {
+      "target": "self",
+      "amount": 0.06
+     },
+     "effects": [
+      {
+       "channel": "favorability",
+       "target": "self",
+       "magnitude": 0.03,
+       "tone": 0.3
+      }
+     ]
+    },
+    "resultText": "You owned it before it owned you. The story died by Friday."
+   },
+   {
+    "id": "deny",
+    "label": "Call it a smear",
+    "blurb": "Deny everything. Integrity keeps the receipts buried.",
+    "consequence": {},
+    "risk": {
+     "chance": 0.65,
+     "mitigatedBy": "integrity",
+     "failText": "The archive checked out. 'CANDIDATE LIED' leads the evening news.",
+     "onFail": {
+      "scandal": {
+       "target": "self",
+       "amount": 0.18
+      }
+     }
+    },
+    "resultText": "The denial held. Nobody found the microfiche."
+   }
+  ]
+ },
+ {
+  "id": "megadonor",
+  "title": "The Quiet Lunch",
+  "weight": 1.1,
+  "defaultOptionId": "refuse",
+  "prompt": "A developer with business before the county offers a very large check and asks only for 'a friend in office.'",
+  "options": [
+   {
+    "id": "take_it",
+    "label": "Take the check",
+    "blurb": "A war chest doesn't ask where money sleeps. Reporters do.",
+    "consequence": {
+     "cashDelta": 60000
+    },
+    "risk": {
+     "chance": 0.45,
+     "mitigatedBy": "competence",
+     "failText": "The donation hit the filings the same week his permit did. Ouch.",
+     "onFail": {
+      "scandal": {
+       "target": "self",
+       "amount": 0.15
+      }
+     }
+    },
+    "resultText": "The check cleared quietly. For now, anyway."
+   },
+   {
+    "id": "refuse",
+    "label": "Refuse — loudly",
+    "blurb": "Turn it into a purity story.",
+    "consequence": {
+     "effects": [
+      {
+       "channel": "favorability",
+       "target": "self",
+       "magnitude": 0.05,
+       "tone": 0.6
+      }
+     ]
+    },
+    "resultText": "'The candidate who said no' plays well on the doorsteps."
+   }
+  ]
+ },
+ {
+  "id": "union_endorsement",
+  "title": "The Union Hall",
+  "weight": 1.1,
+  "defaultOptionId": "pass",
+  "prompt": "The trades council offers its endorsement and its phone banks — if you commit, in writing, to their tax-and-spend plank.",
+  "options": [
+   {
+    "id": "sign",
+    "label": "Sign the pledge",
+    "blurb": "Their turnout machine becomes yours. Your platform moves whether you like it or not.",
+    "consequence": {
+     "positionShifts": [
+      {
+       "issueId": "taxes_spending",
+       "delta": 0.3
+      }
+     ],
+     "effects": [
+      {
+       "channel": "turnout",
+       "target": "self",
+       "magnitude": 0.02
+      },
+      {
+       "channel": "favorability",
+       "target": "self",
+       "magnitude": 0.04,
+       "tone": 0.5
+      }
+     ]
+    },
+    "resultText": "Ink dry, phone banks warm. Your tax position just moved left."
+   },
+   {
+    "id": "pass",
+    "label": "Stay unbought",
+    "blurb": "Keep the platform yours.",
+    "consequence": {},
+    "resultText": "No pledge, no phone banks. Your platform stays your own."
+   }
+  ]
+ },
+ {
+  "id": "opp_gaffe",
+  "title": "The Hot Mic",
+  "weight": 1.2,
+  "minWeek": 2,
+  "defaultOptionId": "classy",
+  "prompt": "Your opponent got caught insulting half the district on a hot mic. The clip is radioactive. How hard do you swing?",
+  "options": [
+   {
+    "id": "pounce",
+    "label": "Cut an ad tonight",
+    "blurb": "Maximum damage while it's hot — going negative splashes back a little.",
+    "consequence": {
+     "cashDelta": -8000,
+     "effects": [
+      {
+       "channel": "favorability",
+       "target": "opponent",
+       "magnitude": -0.12,
+       "tone": -0.7
+      },
+      {
+       "channel": "favorability",
+       "target": "self",
+       "magnitude": -0.02,
+       "tone": -0.7
+      }
+     ]
+    },
+    "resultText": "The ad ran before their apology did. Brutal."
+   },
+   {
+    "id": "classy",
+    "label": "Take the high road",
+    "blurb": "Let the clip do its own work and pocket the contrast.",
+    "consequence": {
+     "effects": [
+      {
+       "channel": "favorability",
+       "target": "opponent",
+       "magnitude": -0.05,
+       "tone": -0.3
+      },
+      {
+       "channel": "favorability",
+       "target": "self",
+       "magnitude": 0.04,
+       "tone": 0.6
+      }
+     ]
+    },
+    "resultText": "'I'll let the voters judge' — dignified, and devastating."
+   }
+  ]
+ },
+ {
+  "id": "viral_moment",
+  "title": "The Clip",
+  "weight": 1.0,
+  "defaultOptionId": "on_message",
+  "prompt": "A volunteer filmed you helping push a stalled school bus out of an intersection. It's blowing up. Lean in, or stay on message?",
+  "options": [
+   {
+    "id": "lean_in",
+    "label": "Ride the wave",
+    "blurb": "Morning shows, memes, the lot. Huge exposure, thin substance.",
+    "consequence": {
+     "effects": [
+      {
+       "channel": "nameRecognition",
+       "target": "self",
+       "magnitude": 0.55
+      }
+     ]
+    },
+    "resultText": "You did the morning shows. Everyone knows the bus candidate now."
+   },
+   {
+    "id": "on_message",
+    "label": "Stay on message",
+    "blurb": "A smaller, steadier warm glow.",
+    "consequence": {
+     "effects": [
+      {
+       "channel": "favorability",
+       "target": "self",
+       "magnitude": 0.05,
+       "tone": 0.6
+      }
+     ]
+    },
+    "resultText": "No victory lap — and voters noticed that too."
+   }
+  ]
+ },
+ {
+  "id": "national_party",
+  "title": "The Call from Washington",
+  "weight": 1.0,
+  "minWeek": 2,
+  "defaultOptionId": "stay_local",
+  "prompt": "The national committee offers serious money — if you adopt their platform lines on healthcare and climate. Word for word.",
+  "options": [
+   {
+    "id": "take_money",
+    "label": "Take the package",
+    "blurb": "Money now, message discipline forever.",
+    "consequence": {
+     "cashDelta": 45000,
+     "positionShifts": [
+      {
+       "issueId": "healthcare",
+       "delta": 0.25
+      },
+      {
+       "issueId": "climate_energy",
+       "delta": 0.25
+      }
+     ]
+    },
+    "resultText": "The wire hit. So did the talking points memo."
+   },
+   {
+    "id": "stay_local",
+    "label": "Run your own race",
+    "blurb": "Keep the platform local and pocket the independence story.",
+    "consequence": {
+     "effects": [
+      {
+       "channel": "favorability",
+       "target": "self",
+       "magnitude": 0.04,
+       "tone": 0.5
+      }
+     ]
+    },
+    "resultText": "'Nobody in Washington writes my speeches.' Good line. Cheaper than it sounds."
+   }
+  ]
+ },
+ {
+  "id": "oppo_dossier",
+  "title": "The Manila Envelope",
+  "weight": 0.9,
+  "minWeek": 3,
+  "defaultOptionId": "shred",
+  "prompt": "An unmarked envelope of genuine, damaging oppo research on your opponent lands with your campaign. Nobody saw who left it.",
+  "options": [
+   {
+    "id": "leak",
+    "label": "Leak it",
+    "blurb": "Devastating if it sticks. Career-ending if it traces back.",
+    "consequence": {
+     "scandal": {
+      "target": "opponent",
+      "amount": 0.15
+     }
+    },
+    "risk": {
+     "chance": 0.4,
+     "mitigatedBy": "competence",
+     "failText": "A reporter traced the leak to your comms shop. Now it's YOUR scandal too.",
+     "onFail": {
+      "scandal": {
+       "target": "self",
+       "amount": 0.12
+      }
+     }
+    },
+    "resultText": "The story ran under someone else's byline. Their week just got very bad."
+   },
+   {
+    "id": "shred",
+    "label": "Shred it",
+    "blurb": "Sleep well. Win or lose.",
+    "consequence": {
+     "effects": [
+      {
+       "channel": "favorability",
+       "target": "self",
+       "magnitude": 0.02,
+       "tone": 0.3
+      }
+     ]
+    },
+    "resultText": "The shredder ate well. Somehow, the press heard you passed — respect."
+   }
+  ]
+ },
+ {
+  "id": "local_paper",
+  "title": "The Editorial Board",
+  "weight": 1.0,
+  "minWeek": 1,
+  "defaultOptionId": "skip",
+  "prompt": "The county paper offers a sit-down before its endorsement. Ninety unscripted minutes with people who've read your filings.",
+  "options": [
+   {
+    "id": "sit_down",
+    "label": "Take the meeting",
+    "blurb": "Competence carries the room; bluffing does not.",
+    "consequence": {
+     "effects": [
+      {
+       "channel": "favorability",
+       "target": "self",
+       "magnitude": 0.06,
+       "tone": 0.5
+      }
+     ]
+    },
+    "risk": {
+     "chance": 0.5,
+     "mitigatedBy": "competence",
+     "failText": "They asked about the budget line you hadn't read. The endorsement went elsewhere — pointedly.",
+     "onFail": {
+      "effects": [
+       {
+        "channel": "favorability",
+        "target": "self",
+        "magnitude": -0.07,
+        "tone": -0.4
+       }
+      ]
+     }
+    },
+    "resultText": "The endorsement ran Sunday, above the fold."
+   },
+   {
+    "id": "skip",
+    "label": "Send regrets",
+    "blurb": "No endorsement, no ambush.",
+    "consequence": {},
+    "resultText": "The paper endorsed no one, with a paragraph about candidates 'too busy for scrutiny.'"
+   }
+  ]
+ },
+ {
+  "id": "gas_spike",
+  "title": "Pain at the Pump",
+  "weight": 1.0,
+  "minWeek": 2,
+  "defaultOptionId": "populist",
+  "prompt": "Gas jumped forty cents overnight and every microphone in the district wants your plan by Friday.",
+  "options": [
+   {
+    "id": "populist",
+    "label": "Demand a tax holiday",
+    "blurb": "Crowd-pleaser now; your taxes position edges right and the wonks groan.",
+    "consequence": {
+     "positionShifts": [
+      {
+       "issueId": "taxes_spending",
+       "delta": -0.15
+      }
+     ],
+     "effects": [
+      {
+       "channel": "favorability",
+       "target": "self",
+       "magnitude": 0.05,
+       "tone": 0.4
+      }
+     ]
+    },
+    "resultText": "'Suspend the gas tax NOW' — the chyron writes itself."
+   },
+   {
+    "id": "wonk",
+    "label": "Explain the supply curve",
+    "blurb": "Honest, detailed, and only lands if you can actually explain it.",
+    "consequence": {},
+    "risk": {
+     "chance": 0.5,
+     "mitigatedBy": "competence",
+     "failText": "The whiteboard segment did not survive contact with the internet.",
+     "onFail": {
+      "effects": [
+       {
+        "channel": "favorability",
+        "target": "self",
+        "magnitude": -0.04,
+        "tone": -0.3
+       }
+      ]
+     }
+    },
+    "resultText": "Your explainer clip got called 'refreshingly honest' — and got shared."
+   }
+  ]
+ },
+ {
+  "id": "deepfake_attack",
+  "title": "The Fake Clip",
+  "weight": 0.9,
+  "minWeek": 3,
+  "defaultOptionId": "flood_zone",
+  "prompt": "A convincing AI-generated clip of you 'confessing' to fraud is spreading through group chats. It's fake. It's working.",
+  "options": [
+   {
+    "id": "flood_zone",
+    "label": "Flood the zone with the debunk",
+    "blurb": "Spend to make the correction louder than the lie.",
+    "consequence": {
+     "cashDelta": -15000,
+     "effects": [
+      {
+       "channel": "favorability",
+       "target": "self",
+       "magnitude": 0.03,
+       "tone": 0.3
+      },
+      {
+       "channel": "nameRecognition",
+       "target": "self",
+       "magnitude": 0.15
+      }
+     ]
+    },
+    "resultText": "The debunk out-traveled the fake by Friday. Expensive, but dead."
+   },
+   {
+    "id": "ignore_it",
+    "label": "Don't dignify it",
+    "blurb": "Amplifying a lie can feed it. Integrity buys the benefit of the doubt.",
+    "consequence": {},
+    "risk": {
+     "chance": 0.5,
+     "mitigatedBy": "integrity",
+     "failText": "Silence read as guilt. The clip hit the local news re-cut as 'unanswered questions.'",
+     "onFail": {
+      "scandal": {
+       "target": "self",
+       "amount": 0.12
+      }
+     }
+    },
+    "resultText": "It burned out in the group chats. Your shrug aged well."
+   }
+  ]
+ },
+ {
+  "id": "weather_disaster",
+  "title": "The Flood",
+  "weight": 1.0,
+  "minWeek": 2,
+  "defaultOptionId": "boots_on",
+  "prompt": "Flash floods hit three towns overnight. Campaigning through it looks ghoulish; vanishing looks worse.",
+  "options": [
+   {
+    "id": "boots_on",
+    "label": "Suspend the campaign and volunteer",
+    "blurb": "Sandbags, not soundbites. Costs a week of momentum; buys something better.",
+    "consequence": {
+     "apDelta": -1,
+     "effects": [
+      {
+       "channel": "favorability",
+       "target": "self",
+       "magnitude": 0.08,
+       "tone": 0.8
+      }
+     ]
+    },
+    "resultText": "No press release. Someone photographed you anyway. It mattered."
+   },
+   {
+    "id": "photo_op",
+    "label": "One visit, cameras invited",
+    "blurb": "Compassion with a call time. Efficient — if it doesn't look staged.",
+    "consequence": {},
+    "risk": {
+     "chance": 0.5,
+     "mitigatedBy": "charisma",
+     "failText": "You handed a shovel BACK to a volunteer when the cameras left. Someone filmed that too.",
+     "onFail": {
+      "effects": [
+       {
+        "channel": "favorability",
+        "target": "self",
+        "magnitude": -0.06,
+        "tone": -0.5
+       }
+      ]
+     }
+    },
+    "resultText": "The visit read as sincere, and the evening news was kind."
+   }
+  ]
+ },
+ {
+  "id": "hot-mic-diner",
+  "title": "The Hot Mic Special",
+  "prompt": "At a folksy pancake breakfast, you lean over to your aide and mutter something unflattering about the county chairman — and the lapel mic you forgot to mute broadcasts it to the whole griddle.",
+  "weight": 1.2,
+  "minWeek": 1,
+  "defaultOptionId": "own-it",
+  "options": [
+   {
+    "id": "own-it",
+    "label": "Laugh, own it, buy the room syrup",
+    "blurb": "Self-deprecation is cheaper than a press cycle, but you look sloppy.",
+    "resultText": "You crack a joke about your 'inside voice,' the diner roars, and the clip trends as charming rather than cruel.",
+    "consequence": {
+     "effects": [
+      {
+       "channel": "favorability",
+       "target": "self",
+       "magnitude": 0.05,
+       "tone": 0.6
+      },
+      {
+       "channel": "nameRecognition",
+       "target": "self",
+       "magnitude": 0.2
+      }
+     ],
+     "cashDelta": -800
+    }
+   },
+   {
+    "id": "deny-mic",
+    "label": "Insist the mic was 'edited'",
+    "blurb": "Denying audio everyone heard live is a bold pre-modern strategy.",
+    "resultText": "Your flat denial somehow gets the chairman to publicly forgive you just to end the news story.",
+    "consequence": {
+     "effects": [
+      {
+       "channel": "favorability",
+       "target": "self",
+       "magnitude": -0.03,
+       "tone": -0.4
+      }
+     ]
+    },
+    "risk": {
+     "chance": 0.55,
+     "mitigatedBy": "charisma",
+     "failText": "A local station overlays the raw waveform and the 'edited' claim becomes the story for a week.",
+     "onFail": {
+      "effects": [
+       {
+        "channel": "favorability",
+        "target": "self",
+        "magnitude": -0.09,
+        "tone": -0.7
+       }
+      ],
+      "scandal": {
+       "target": "self",
+       "amount": 0.08
+      }
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "deepfake-your-face",
+  "title": "That's Not Me (Probably)",
+  "prompt": "A slick 40-second video of you endorsing a pyramid scheme is racking up views. It's an AI deepfake — but your own team admits the lip-sync is 'honestly really good.'",
+  "weight": 1.1,
+  "minWeek": 2,
+  "defaultOptionId": "forensics",
+  "options": [
+   {
+    "id": "forensics",
+    "label": "Hire forensic experts, hold a briefing",
+    "blurb": "Truth is expensive and, unfortunately, boring.",
+    "resultText": "Analysts confirm the fake, reporters run 'candidate victimized by AI,' and you look sympathetic and modern.",
+    "consequence": {
+     "effects": [
+      {
+       "channel": "favorability",
+       "target": "self",
+       "magnitude": 0.04,
+       "tone": 0.3
+      },
+      {
+       "channel": "nameRecognition",
+       "target": "self",
+       "magnitude": 0.25
+      }
+     ],
+     "cashDelta": -45000
+    }
+   },
+   {
+    "id": "blame-opponent",
+    "label": "Imply your opponent made it",
+    "blurb": "Accusation is faster than forensics, and twice as flammable.",
+    "resultText": "Your insinuation sticks, the press pivots to grilling your opponent about their digital shop.",
+    "consequence": {
+     "effects": [
+      {
+       "channel": "favorability",
+       "target": "opponent",
+       "magnitude": -0.05,
+       "tone": -0.5
+      }
+     ]
+    },
+    "risk": {
+     "chance": 0.5,
+     "mitigatedBy": "integrity",
+     "failText": "The fake is traced to a bored teen in another state, and now you're the one who smeared a rival.",
+     "onFail": {
+      "effects": [
+       {
+        "channel": "favorability",
+        "target": "self",
+        "magnitude": -0.08,
+        "tone": -0.6
+       }
+      ],
+      "scandal": {
+       "target": "self",
+       "amount": 0.1
+      }
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "endorser-with-baggage",
+  "title": "The Endorsement You Didn't Ask For",
+  "prompt": "A wildly popular state senator offers a prime-time endorsement — but they're also under a slow-drip ethics investigation that everyone politely pretends isn't happening.",
+  "weight": 1.0,
+  "defaultOptionId": "polite-pass",
+  "options": [
+   {
+    "id": "take-it",
+    "label": "Take the endorsement and the crowd",
+    "blurb": "Their fans become your fans — until the indictment becomes your problem.",
+    "resultText": "The rally packs out, their base flocks to you, and the investigation quietly fizzles into nothing.",
+    "consequence": {
+     "effects": [
+      {
+       "channel": "enthusiasm",
+       "target": "self",
+       "magnitude": 0.06,
+       "tone": 0.5
+      },
+      {
+       "channel": "turnout",
+       "target": "self",
+       "magnitude": 0.02
+      }
+     ]
+    },
+    "risk": {
+     "chance": 0.4,
+     "mitigatedBy": "integrity",
+     "failText": "The senator is indicted the following Tuesday and every attack ad now features you two hugging.",
+     "onFail": {
+      "effects": [
+       {
+        "channel": "favorability",
+        "target": "self",
+        "magnitude": -0.09,
+        "tone": -0.6
+       }
+      ],
+      "scandal": {
+       "target": "self",
+       "amount": 0.12
+      }
+     }
+    }
+   },
+   {
+    "id": "polite-pass",
+    "label": "Graciously defer 'until after the process'",
+    "blurb": "Prudence is safe, but you just told a powerful ally you don't trust them.",
+    "resultText": "You dodge the baggage cleanly, and the senator respects the caution more than they let on.",
+    "consequence": {
+     "effects": [
+      {
+       "channel": "favorability",
+       "target": "self",
+       "magnitude": 0.02,
+       "tone": 0.2
+      }
+     ]
+    }
+   }
+  ]
+ },
+ {
+  "id": "dark-money-temptation",
+  "title": "The Very Generous Strangers",
+  "prompt": "A shadowy super PAC with a name like 'Citizens for Sensible Tomorrows' offers to carpet-bomb the airwaves on your behalf. You cannot legally coordinate, and you cannot legally un-know they exist.",
+  "weight": 1.1,
+  "minWeek": 2,
+  "defaultOptionId": "disavow",
+  "options": [
+   {
+    "id": "wink",
+    "label": "Publicly 'have no idea who they are'",
+    "blurb": "The ads are great; the plausible deniability is doing heavy lifting.",
+    "resultText": "The PAC blankets the market, your numbers rise, and the coordination questions never quite land.",
+    "consequence": {
+     "effects": [
+      {
+       "channel": "nameRecognition",
+       "target": "self",
+       "magnitude": 0.35
+      },
+      {
+       "channel": "favorability",
+       "target": "self",
+       "magnitude": 0.03
+      }
+     ]
+    },
+    "risk": {
+     "chance": 0.45,
+     "mitigatedBy": "integrity",
+     "failText": "A reporter finds your former field director now runs the PAC from an office one floor up.",
+     "onFail": {
+      "effects": [
+       {
+        "channel": "favorability",
+        "target": "self",
+        "magnitude": -0.1,
+        "tone": -0.7
+       }
+      ],
+      "scandal": {
+       "target": "self",
+       "amount": 0.14
+      }
+     }
+    }
+   },
+   {
+    "id": "disavow",
+    "label": "Loudly disavow and demand they stop",
+    "blurb": "Clean hands, empty airwaves, and a base that wishes you'd just taken the help.",
+    "resultText": "Your very public refusal earns a good-government headline and a grudgingly impressed press corps.",
+    "consequence": {
+     "effects": [
+      {
+       "channel": "favorability",
+       "target": "self",
+       "magnitude": 0.06,
+       "tone": 0.5
+      }
+     ]
+    }
+   }
+  ]
+ },
+ {
+  "id": "viral-dance-challenge",
+  "title": "The Dance You Cannot Un-Dance",
+  "prompt": "Your 19-year-old digital intern begs you to do a trending dance for the campaign account. The song is inescapable; your knees are not what they were.",
+  "weight": 0.9,
+  "defaultOptionId": "decline-dance",
+  "options": [
+   {
+    "id": "do-dance",
+    "label": "Send it, full commitment",
+    "blurb": "Youth turnout loves a cringe king; dignity is a rounding error.",
+    "resultText": "You commit so hard it loops back to endearing, and the clip pulls millions of views overnight.",
+    "consequence": {
+     "effects": [
+      {
+       "channel": "nameRecognition",
+       "target": "self",
+       "magnitude": 0.4
+      },
+      {
+       "channel": "enthusiasm",
+       "target": "self",
+       "magnitude": 0.05,
+       "tone": 0.7
+      }
+     ]
+    },
+    "risk": {
+     "chance": 0.35,
+     "mitigatedBy": "charisma",
+     "failText": "You mistime every beat, tweak your back, and 'candidate cannot find the rhythm' becomes a metaphor pundits abuse for days.",
+     "onFail": {
+      "effects": [
+       {
+        "channel": "favorability",
+        "target": "self",
+        "magnitude": -0.04,
+        "tone": -0.3
+       }
+      ]
+     }
+    }
+   },
+   {
+    "id": "decline-dance",
+    "label": "Politely film a 'blooper' instead",
+    "blurb": "Safe and warm, but you left virality on the table for the intern to sulk about.",
+    "resultText": "A gentle behind-the-scenes clip does modestly well and nobody's back is injured.",
+    "consequence": {
+     "effects": [
+      {
+       "channel": "nameRecognition",
+       "target": "self",
+       "magnitude": 0.12
+      }
+     ]
+    }
+   }
+  ]
+ },
+ {
+  "id": "debate-go-negative",
+  "title": "The Debate Kill Shot",
+  "prompt": "Your team hands you a devastating, borderline-below-the-belt line about your opponent's business bankruptcy to deploy on the debate stage. It will land. It might also splash back.",
+  "weight": 1.2,
+  "minWeek": 3,
+  "defaultOptionId": "stay-high",
+  "options": [
+   {
+    "id": "deploy-line",
+    "label": "Deliver the kill shot",
+    "blurb": "The room gasps; the question is whether they gasp with you or at you.",
+    "resultText": "The line detonates perfectly, dominates the post-debate coverage, and your opponent never recovers their footing.",
+    "consequence": {
+     "effects": [
+      {
+       "channel": "favorability",
+       "target": "opponent",
+       "magnitude": -0.08,
+       "tone": -0.6
+      },
+      {
+       "channel": "nameRecognition",
+       "target": "self",
+       "magnitude": 0.2
+      }
+     ]
+    },
+    "risk": {
+     "chance": 0.45,
+     "mitigatedBy": "charisma",
+     "failText": "It reads as cruel, your opponent tears up, and the sympathy tsunami swamps you.",
+     "onFail": {
+      "effects": [
+       {
+        "channel": "favorability",
+        "target": "self",
+        "magnitude": -0.09,
+        "tone": -0.7
+       },
+       {
+        "channel": "favorability",
+        "target": "opponent",
+        "magnitude": 0.06
+       }
+      ]
+     }
+    }
+   },
+   {
+    "id": "stay-high",
+    "label": "Take the high road on policy",
+    "blurb": "Statesmanlike and forgettable — the clip package will feature the other guy.",
+    "resultText": "You come across as the adult in the room, winning a quiet slice of independents who hate the mud.",
+    "consequence": {
+     "effects": [
+      {
+       "channel": "favorability",
+       "target": "self",
+       "magnitude": 0.04,
+       "tone": 0.4
+      }
+     ]
+    }
+   }
+  ]
+ },
+ {
+  "id": "kids-game-vs-rally",
+  "title": "The Championship and the Motorcade",
+  "prompt": "Your daughter's state semifinal game is at the exact hour as a make-or-break rally in the swing county. She hasn't said anything, which is somehow worse.",
+  "weight": 0.9,
+  "defaultOptionId": "send-surrogate",
+  "options": [
+   {
+    "id": "go-to-game",
+    "label": "Go to the game, skip the rally",
+    "blurb": "Parent of the year, no-show of the county.",
+    "resultText": "A photo of you cheering in the bleachers leaks and voters decide they trust a person who shows up for their kid.",
+    "consequence": {
+     "effects": [
+      {
+       "channel": "favorability",
+       "target": "self",
+       "magnitude": 0.05,
+       "tone": 0.6
+      }
+     ],
+     "cashDelta": -5000
+    }
+   },
+   {
+    "id": "send-surrogate",
+    "label": "Do the rally, send flowers and a surrogate",
+    "blurb": "The county gets you; the dinner table gets colder.",
+    "resultText": "The rally roars, your numbers hold in the county, and your daughter forgives you after a long, pointed silence.",
+    "consequence": {
+     "effects": [
+      {
+       "channel": "turnout",
+       "target": "self",
+       "magnitude": 0.02
+      },
+      {
+       "channel": "enthusiasm",
+       "target": "self",
+       "magnitude": 0.03
+      }
+     ]
+    },
+    "risk": {
+     "chance": 0.3,
+     "mitigatedBy": "integrity",
+     "failText": "A reporter asks why you missed the game and your fumbled non-answer becomes a 'priorities' story.",
+     "onFail": {
+      "effects": [
+       {
+        "channel": "favorability",
+        "target": "self",
+        "magnitude": -0.05,
+        "tone": -0.4
+       }
+      ]
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "doors-vs-digital",
+  "title": "Boots or Bots",
+  "prompt": "You have one last budget push. Your field director wants 300 more door-knockers; your ad guy wants to dump it all into hyper-targeted digital that 'the algorithm loves right now.'",
+  "weight": 1.0,
+  "minWeek": 4,
+  "defaultOptionId": "split-it",
+  "options": [
+   {
+    "id": "go-doors",
+    "label": "All-in on the ground game",
+    "blurb": "Human contact turns out voters, if the humans show up in the rain.",
+    "resultText": "Volunteers flood the precincts, and old-fashioned doorstep conversations move the needle where ads can't reach.",
+    "consequence": {
+     "effects": [
+      {
+       "channel": "turnout",
+       "target": "self",
+       "magnitude": 0.03
+      }
+     ],
+     "cashDelta": -60000
+    }
+   },
+   {
+    "id": "go-digital",
+    "label": "All-in on the digital blitz",
+    "blurb": "Cheap, scalable, and only occasionally shown to bots and your own mother.",
+    "resultText": "The micro-targeting hits, your name recognition spikes among low-propensity young voters, and the cost-per-view is a steal.",
+    "consequence": {
+     "effects": [
+      {
+       "channel": "nameRecognition",
+       "target": "self",
+       "magnitude": 0.3
+      }
+     ],
+     "cashDelta": -40000
+    },
+    "risk": {
+     "chance": 0.35,
+     "mitigatedBy": "competence",
+     "failText": "A targeting glitch runs your senior-focused ad exclusively to teenagers who can't vote.",
+     "onFail": {
+      "cashDelta": -15000,
+      "effects": [
+       {
+        "channel": "turnout",
+        "target": "self",
+        "magnitude": 0.01
+       }
+      ]
+     }
+    }
+   },
+   {
+    "id": "split-it",
+    "label": "Hedge and split the money",
+    "blurb": "Nobody's furious, nobody's thrilled, everybody's underfunded.",
+    "resultText": "A balanced push yields steady, unspectacular gains on both fronts.",
+    "consequence": {
+     "effects": [
+      {
+       "channel": "turnout",
+       "target": "self",
+       "magnitude": 0.015
+      },
+      {
+       "channel": "nameRecognition",
+       "target": "self",
+       "magnitude": 0.15
+      }
+     ],
+     "cashDelta": -50000
+    }
+   }
+  ]
+ },
+ {
+  "id": "opponent-gaffe-pounce",
+  "title": "They Named the Wrong State",
+  "prompt": "Live on camera, your opponent confidently welcomes everyone to the wrong state — twice. The clip is spreading. Your team wants a statement out in ten minutes.",
+  "weight": 1.1,
+  "defaultOptionId": "let-it-breathe",
+  "options": [
+   {
+    "id": "pounce",
+    "label": "Pounce with a mocking clip",
+    "blurb": "Free content, if you can dunk without looking like a bully.",
+    "resultText": "Your perfectly timed, gentle-but-lethal jab becomes the definitive version of the story.",
+    "consequence": {
+     "effects": [
+      {
+       "channel": "favorability",
+       "target": "opponent",
+       "magnitude": -0.05,
+       "tone": -0.4
+      },
+      {
+       "channel": "nameRecognition",
+       "target": "self",
+       "magnitude": 0.18
+      }
+     ]
+    },
+    "risk": {
+     "chance": 0.4,
+     "mitigatedBy": "charisma",
+     "failText": "You misname a city in your own attack, and now BOTH gaffes trend under your name.",
+     "onFail": {
+      "effects": [
+       {
+        "channel": "favorability",
+        "target": "self",
+        "magnitude": -0.06,
+        "tone": -0.5
+       }
+      ]
+     }
+    }
+   },
+   {
+    "id": "let-it-breathe",
+    "label": "Say nothing and let it spread",
+    "blurb": "Never interrupt an opponent mid-mistake — but you get no credit either.",
+    "resultText": "The gaffe travels on its own, dents your rival, and you keep your hands conspicuously clean.",
+    "consequence": {
+     "effects": [
+      {
+       "channel": "favorability",
+       "target": "opponent",
+       "magnitude": -0.04,
+       "tone": -0.3
+      }
+     ]
+    }
+   }
+  ]
+ },
+ {
+  "id": "flood-photo-op",
+  "title": "The Sandbag Optics",
+  "prompt": "A river crested overnight and three precincts are flooding. You can suspend campaigning to help fill sandbags, or keep the schedule and send a donation. The cameras will notice either way.",
+  "weight": 1.0,
+  "minWeek": 1,
+  "defaultOptionId": "donate-quietly",
+  "options": [
+   {
+    "id": "sandbags",
+    "label": "Show up in waders and haul sandbags",
+    "blurb": "Real help and a great photo, unless it reads as a stunt on someone's flooded lawn.",
+    "resultText": "You work a genuine ten-hour shift, the exhaustion is visible and real, and the community remembers who showed up.",
+    "consequence": {
+     "effects": [
+      {
+       "channel": "favorability",
+       "target": "self",
+       "magnitude": 0.07,
+       "tone": 0.6
+      },
+      {
+       "channel": "turnout",
+       "target": "self",
+       "magnitude": 0.02
+      }
+     ]
+    },
+    "risk": {
+     "chance": 0.3,
+     "mitigatedBy": "integrity",
+     "failText": "You leave the moment the cameras do, and a resident films your motorcade fleeing the mud.",
+     "onFail": {
+      "effects": [
+       {
+        "channel": "favorability",
+        "target": "self",
+        "magnitude": -0.08,
+        "tone": -0.6
+       }
+      ]
+     }
+    }
+   },
+   {
+    "id": "donate-quietly",
+    "label": "Cut a donation and keep the schedule",
+    "blurb": "Efficient and low-risk, but 'wrote a check' never trends.",
+    "resultText": "Your quiet six-figure relief gift earns a thank-you from the mayor and no controversy at all.",
+    "consequence": {
+     "effects": [
+      {
+       "channel": "favorability",
+       "target": "self",
+       "magnitude": 0.03,
+       "tone": 0.3
+      }
+     ],
+     "cashDelta": -100000
+    }
+   }
+  ]
+ },
+ {
+  "id": "own-ai-attack-ad",
+  "title": "The Ad That Writes Itself",
+  "prompt": "Your consultant demos an AI tool that generates a photorealistic ad depicting your opponent's tax plan as an apocalyptic wasteland. It's technically 'illustrative.' It's also not real.",
+  "weight": 1.1,
+  "minWeek": 3,
+  "defaultOptionId": "label-it",
+  "options": [
+   {
+    "id": "run-unlabeled",
+    "label": "Run it, no disclosure",
+    "blurb": "Devastating footage of events that never happened, at a fraction of the drone budget.",
+    "resultText": "The imagery hits like a truck and voters recoil from your opponent's plan before fact-checkers finish their coffee.",
+    "consequence": {
+     "effects": [
+      {
+       "channel": "favorability",
+       "target": "opponent",
+       "magnitude": -0.07,
+       "tone": -0.6
+      }
+     ]
+    },
+    "risk": {
+     "chance": 0.5,
+     "mitigatedBy": "integrity",
+     "failText": "The undisclosed AI is exposed and the story becomes your campaign faking a disaster, not their tax plan.",
+     "onFail": {
+      "effects": [
+       {
+        "channel": "favorability",
+        "target": "self",
+        "magnitude": -0.1,
+        "tone": -0.7
+       }
+      ],
+      "scandal": {
+       "target": "self",
+       "amount": 0.13
+      }
+     }
+    }
+   },
+   {
+    "id": "label-it",
+    "label": "Run it with a big 'AI-generated' label",
+    "blurb": "Honest, legally bulletproof, and about 40% less scary.",
+    "resultText": "The clearly labeled ad still makes your point and earns praise for transparency in the deepfake era.",
+    "consequence": {
+     "effects": [
+      {
+       "channel": "favorability",
+       "target": "opponent",
+       "magnitude": -0.03
+      },
+      {
+       "channel": "favorability",
+       "target": "self",
+       "magnitude": 0.02,
+       "tone": 0.3
+      }
+     ]
+    }
+   }
+  ]
+ },
+ {
+  "id": "picket-line-crossing",
+  "title": "The Picket Line at the Venue",
+  "prompt": "The hotel hosting your biggest fundraiser gets hit with a surprise strike this morning. Union workers are picketing the entrance your donors are about to walk through.",
+  "weight": 1.0,
+  "minWeek": 2,
+  "defaultOptionId": "move-event",
+  "options": [
+   {
+    "id": "cross-line",
+    "label": "Cross the line, hold the fundraiser",
+    "blurb": "The money's in that ballroom; so is a viral photo of you walking past workers.",
+    "resultText": "You raise a fortune and frame it as honoring commitments already made, and the fallout stays minimal.",
+    "consequence": {
+     "cashDelta": 250000,
+     "effects": [
+      {
+       "channel": "enthusiasm",
+       "target": "self",
+       "magnitude": -0.03,
+       "tone": -0.4
+      }
+     ]
+    },
+    "risk": {
+     "chance": 0.55,
+     "mitigatedBy": "charisma",
+     "failText": "The photo of you stepping past a picket sign runs statewide and labor endorsements evaporate.",
+     "onFail": {
+      "effects": [
+       {
+        "channel": "enthusiasm",
+        "target": "self",
+        "magnitude": -0.06,
+        "tone": -0.6
+       },
+       {
+        "channel": "turnout",
+        "target": "self",
+        "magnitude": -0.02
+       }
+      ]
+     }
+    }
+   },
+   {
+    "id": "move-event",
+    "label": "Cancel, join the picket instead",
+    "blurb": "Solidarity looks great and costs you a quarter-million in one morning.",
+    "resultText": "You grab a picket sign, the union roars, and the footage of you marching earns a coveted labor endorsement.",
+    "consequence": {
+     "effects": [
+      {
+       "channel": "enthusiasm",
+       "target": "self",
+       "magnitude": 0.05,
+       "tone": 0.6
+      },
+      {
+       "channel": "turnout",
+       "target": "self",
+       "magnitude": 0.02
+      }
+     ],
+     "cashDelta": -30000,
+     "positionShifts": [
+      {
+       "issueId": "taxes_spending",
+       "delta": 0.1
+      }
+     ]
+    }
+   }
+  ]
+ },
+ {
+  "id": "church-flip-flop",
+  "title": "Two Sermons, One Sunday",
+  "prompt": "A large congregation invites you to speak Sunday. Their pastor wants a firm statement on a hot-button social issue — and you've said two slightly different things about it in two different counties.",
+  "weight": 1.0,
+  "defaultOptionId": "unity-message",
+  "options": [
+   {
+    "id": "commit-hard",
+    "label": "Give the pastor the firm answer",
+    "blurb": "Certainty wins the pews and hands the other county a highlight reel.",
+    "resultText": "The congregation embraces you warmly and your clarity reads as conviction across the faith community.",
+    "consequence": {
+     "effects": [
+      {
+       "channel": "enthusiasm",
+       "target": "self",
+       "magnitude": 0.05,
+       "tone": 0.5
+      }
+     ],
+     "positionShifts": [
+      {
+       "issueId": "abortion",
+       "delta": -0.2
+      }
+     ]
+    },
+    "risk": {
+     "chance": 0.45,
+     "mitigatedBy": "integrity",
+     "failText": "Someone splices your two contradictory county clips into a 'flip-flop' supercut that outruns the sermon.",
+     "onFail": {
+      "effects": [
+       {
+        "channel": "favorability",
+        "target": "self",
+        "magnitude": -0.07,
+        "tone": -0.5
+       }
+      ]
+     }
+    }
+   },
+   {
+    "id": "unity-message",
+    "label": "Preach values, dodge specifics",
+    "blurb": "Soaring and safe, but the pastor notices you didn't actually answer.",
+    "resultText": "Your message of shared values goes over well enough, and nobody can cut a contradiction out of platitudes.",
+    "consequence": {
+     "effects": [
+      {
+       "channel": "favorability",
+       "target": "self",
+       "magnitude": 0.02,
+       "tone": 0.3
+      }
+     ]
+    }
+   }
+  ]
+ },
+ {
+  "id": "factory-closing-promise",
+  "title": "The Plant That's Already Sold",
+  "prompt": "The 400-worker auto-parts plant is closing and the whole town is at your rally waiting for hope. Your policy staff quietly whisper that the sale closed weeks ago and nothing can stop it.",
+  "weight": 1.1,
+  "minWeek": 2,
+  "defaultOptionId": "honest-plan",
+  "options": [
+   {
+    "id": "big-promise",
+    "label": "Vow to save the plant",
+    "blurb": "The crowd erupts; the spreadsheet weeps.",
+    "resultText": "The room explodes with hope and your poll numbers in the county surge on the promise alone.",
+    "consequence": {
+     "effects": [
+      {
+       "channel": "enthusiasm",
+       "target": "self",
+       "magnitude": 0.07,
+       "tone": 0.6
+      },
+      {
+       "channel": "turnout",
+       "target": "self",
+       "magnitude": 0.02
+      }
+     ]
+    },
+    "risk": {
+     "chance": 0.6,
+     "mitigatedBy": "competence",
+     "failText": "The plant closes on schedule, the town feels lied to, and the betrayal ad practically edits itself.",
+     "onFail": {
+      "effects": [
+       {
+        "channel": "favorability",
+        "target": "self",
+        "magnitude": -0.1,
+        "tone": -0.7
+       },
+       {
+        "channel": "turnout",
+        "target": "self",
+        "magnitude": -0.02
+       }
+      ]
+     }
+    }
+   },
+   {
+    "id": "honest-plan",
+    "label": "Level with them, pitch retraining",
+    "blurb": "Honesty is respected and roughly 30% less thrilling than a lie.",
+    "resultText": "You tell the hard truth and offer a real retraining plan; the town is sobered but a slice of them trust you more for it.",
+    "consequence": {
+     "effects": [
+      {
+       "channel": "favorability",
+       "target": "self",
+       "magnitude": 0.05,
+       "tone": 0.4
+      }
+     ],
+     "positionShifts": [
+      {
+       "issueId": "taxes_spending",
+       "delta": 0.05
+      }
+     ]
+    }
+   }
+  ]
+ },
+ {
+  "id": "polling-surprise-chase",
+  "title": "The Poll That Ruins Your Week",
+  "prompt": "A surprise internal poll says voters suddenly care about one niche issue you've barely mentioned. Your strategist wants to blow up the week's message to chase it.",
+  "weight": 0.9,
+  "minWeek": 3,
+  "defaultOptionId": "stay-course",
+  "options": [
+   {
+    "id": "chase-poll",
+    "label": "Pivot the whole week to the hot issue",
+    "blurb": "Riding the wave is thrilling until it's a puddle by Thursday.",
+    "resultText": "You catch the wave perfectly, own the issue before your opponent reacts, and dominate the news cycle.",
+    "consequence": {
+     "effects": [
+      {
+       "channel": "nameRecognition",
+       "target": "self",
+       "magnitude": 0.25
+      },
+      {
+       "channel": "favorability",
+       "target": "self",
+       "magnitude": 0.03
+      }
+     ]
+    },
+    "risk": {
+     "chance": 0.5,
+     "mitigatedBy": "competence",
+     "failText": "The poll was an outlier, the issue vanishes by Wednesday, and you look like you'll chase anything.",
+     "onFail": {
+      "effects": [
+       {
+        "channel": "favorability",
+        "target": "self",
+        "magnitude": -0.05,
+        "tone": -0.4
+       }
+      ]
+     }
+    }
+   },
+   {
+    "id": "stay-course",
+    "label": "Trust your core message",
+    "blurb": "Discipline is admirable and occasionally just stubbornness in a nicer suit.",
+    "resultText": "You stay on message, the fad fizzles, and your consistency reads as steadiness to weary voters.",
+    "consequence": {
+     "effects": [
+      {
+       "channel": "favorability",
+       "target": "self",
+       "magnitude": 0.02,
+       "tone": 0.2
+      }
+     ]
+    }
+   }
+  ]
+ },
+ {
+  "id": "misspoke-double-down",
+  "title": "Did You Really Say That",
+  "prompt": "You misspoke at a press gaggle and appeared to call a beloved local pastime 'kind of a waste of time.' The clip is climbing. You have until the evening news to decide your posture.",
+  "weight": 1.0,
+  "defaultOptionId": "apologize",
+  "options": [
+   {
+    "id": "double-down",
+    "label": "Double down and defend it",
+    "blurb": "Never apologize, they said, right up until they said the opposite.",
+    "resultText": "Your unflinching 'I meant it' lands as refreshing candor and a surprising number of voters secretly agree.",
+    "consequence": {
+     "effects": [
+      {
+       "channel": "enthusiasm",
+       "target": "self",
+       "magnitude": 0.03,
+       "tone": 0.3
+      }
+     ]
+    },
+    "risk": {
+     "chance": 0.55,
+     "mitigatedBy": "charisma",
+     "failText": "The pastime's fan club is enormous, organized, and now furious at you specifically.",
+     "onFail": {
+      "effects": [
+       {
+        "channel": "favorability",
+        "target": "self",
+        "magnitude": -0.08,
+        "tone": -0.6
+       },
+       {
+        "channel": "turnout",
+        "target": "self",
+        "magnitude": -0.01
+       }
+      ]
+     }
+    }
+   },
+   {
+    "id": "apologize",
+    "label": "Clarify and apologize with a smile",
+    "blurb": "The safe walk-back, though 'candidate backpedals' is its own small headline.",
+    "resultText": "You clarify warmly, show up at the next local event, and the whole thing deflates by morning.",
+    "consequence": {
+     "effects": [
+      {
+       "channel": "favorability",
+       "target": "self",
+       "magnitude": 0.02,
+       "tone": 0.2
+      }
+     ]
+    }
+   }
+  ]
+ },
+ {
+  "id": "town-hall-heckler2",
+  "title": "The Heckler With a Point",
+  "prompt": "Mid-town-hall, a heckler starts shouting a genuinely fair criticism of your record. The room tenses. Security looks at you for a signal.",
+  "weight": 0.9,
+  "defaultOptionId": "engage-heckler",
+  "options": [
+   {
+    "id": "engage-heckler",
+    "label": "Wave off security, engage directly",
+    "blurb": "Grace under fire plays beautifully — if you actually stay graceful.",
+    "resultText": "You invite the heckler to finish, answer thoughtfully, and the exchange becomes a viral clip of a candidate who can take a punch.",
+    "consequence": {
+     "effects": [
+      {
+       "channel": "favorability",
+       "target": "self",
+       "magnitude": 0.06,
+       "tone": 0.6
+      },
+      {
+       "channel": "nameRecognition",
+       "target": "self",
+       "magnitude": 0.2
+      }
+     ]
+    },
+    "risk": {
+     "chance": 0.4,
+     "mitigatedBy": "charisma",
+     "failText": "You get flustered, snap at them, and 'candidate loses cool with constituent' leads the local news.",
+     "onFail": {
+      "effects": [
+       {
+        "channel": "favorability",
+        "target": "self",
+        "magnitude": -0.07,
+        "tone": -0.5
+       }
+      ]
+     }
+    }
+   },
+   {
+    "id": "remove-heckler",
+    "label": "Have security escort them out",
+    "blurb": "Orderly, decisive, and the exact frame your opponent wants of you.",
+    "resultText": "The room settles quickly and you finish the event on schedule without further disruption.",
+    "consequence": {
+     "effects": [
+      {
+       "channel": "favorability",
+       "target": "self",
+       "magnitude": -0.02,
+       "tone": -0.2
+      }
+     ]
+    }
+   }
+  ]
+ },
+ {
+  "id": "celebrity-concert-endorse",
+  "title": "The Pop Star's Rider",
+  "prompt": "A genuine A-list musician offers a free get-out-the-vote concert. Their team sends a 'values rider' asking you to publicly commit to three specific policy positions first.",
+  "weight": 1.0,
+  "minWeek": 3,
+  "defaultOptionId": "polite-decline-rider",
+  "options": [
+   {
+    "id": "sign-rider",
+    "label": "Sign the rider, book the concert",
+    "blurb": "Fifty thousand young voters, in exchange for someone else writing part of your platform.",
+    "resultText": "The concert is a sensation, youth registration spikes, and the policy commitments actually poll fine.",
+    "consequence": {
+     "effects": [
+      {
+       "channel": "enthusiasm",
+       "target": "self",
+       "magnitude": 0.07,
+       "tone": 0.7
+      },
+      {
+       "channel": "turnout",
+       "target": "self",
+       "magnitude": 0.03
+      }
+     ],
+     "positionShifts": [
+      {
+       "issueId": "climate_energy",
+       "delta": 0.2
+      }
+     ]
+    },
+    "risk": {
+     "chance": 0.4,
+     "mitigatedBy": "integrity",
+     "failText": "The 'celebrity bought my platform' story overtakes the concert and moderates recoil.",
+     "onFail": {
+      "effects": [
+       {
+        "channel": "favorability",
+        "target": "self",
+        "magnitude": -0.07,
+        "tone": -0.5
+       }
+      ]
+     }
+    }
+   },
+   {
+    "id": "polite-decline-rider",
+    "label": "Decline the rider, keep your platform",
+    "blurb": "Independence intact, arena empty.",
+    "resultText": "You pass respectfully, the star wishes you well, and you keep full ownership of your own message.",
+    "consequence": {
+     "effects": [
+      {
+       "channel": "favorability",
+       "target": "self",
+       "magnitude": 0.02,
+       "tone": 0.2
+      }
+     ]
+    }
+   }
+  ]
+ },
+ {
+  "id": "attack-ad-response",
+  "title": "The Ad Hitting Your Family",
+  "prompt": "Your opponent drops an attack ad that drags your spouse's old business into it. It's misleading but effective. Your inbox is a mix of 'hit back hard' and 'stay above it.'",
+  "weight": 1.1,
+  "minWeek": 3,
+  "defaultOptionId": "correct-record",
+  "options": [
+   {
+    "id": "counter-attack",
+    "label": "Counter-punch with their skeleton",
+    "blurb": "Mutually assured destruction is a strategy, technically.",
+    "resultText": "Your rapid counter-ad about their own record lands harder than their hit, and they retreat to lick their wounds.",
+    "consequence": {
+     "effects": [
+      {
+       "channel": "favorability",
+       "target": "opponent",
+       "magnitude": -0.06,
+       "tone": -0.5
+      }
+     ],
+     "cashDelta": -80000
+    },
+    "risk": {
+     "chance": 0.45,
+     "mitigatedBy": "charisma",
+     "failText": "The mud-fight sours everyone, and both your favorables sink together into the swamp.",
+     "onFail": {
+      "effects": [
+       {
+        "channel": "favorability",
+        "target": "self",
+        "magnitude": -0.06,
+        "tone": -0.5
+       },
+       {
+        "channel": "favorability",
+        "target": "opponent",
+        "magnitude": -0.04
+       }
+      ]
+     }
+    }
+   },
+   {
+    "id": "correct-record",
+    "label": "Calmly correct the record, spotlight your spouse",
+    "blurb": "Dignified rebuttal, and you're still playing defense on their turf.",
+    "resultText": "Your spouse gives a warm, factual interview that humanizes the whole family and blunts the ad's bite.",
+    "consequence": {
+     "effects": [
+      {
+       "channel": "favorability",
+       "target": "self",
+       "magnitude": 0.04,
+       "tone": 0.4
+      }
+     ]
+    }
+   }
+  ]
+ },
+ {
+  "id": "diner-eating-challenge",
+  "title": "The Regional Delicacy Test",
+  "prompt": "At a famous local diner, the owner presents the town's notorious specialty — a dish that has ended lesser candidates — and the entire press pool leans in with cameras.",
+  "weight": 0.8,
+  "defaultOptionId": "small-polite-bite",
+  "options": [
+   {
+    "id": "devour-it",
+    "label": "Devour the whole thing with gusto",
+    "blurb": "Authenticity is delicious right up until it's on your tie.",
+    "resultText": "You clean the plate, ask for seconds, and become a local legend by sundown.",
+    "consequence": {
+     "effects": [
+      {
+       "channel": "favorability",
+       "target": "self",
+       "magnitude": 0.05,
+       "tone": 0.6
+      },
+      {
+       "channel": "nameRecognition",
+       "target": "self",
+       "magnitude": 0.15
+      }
+     ]
+    },
+    "risk": {
+     "chance": 0.35,
+     "mitigatedBy": "charisma",
+     "failText": "You use a fork on the sacred hand-held dish and commit an unforgivable regional heresy on camera.",
+     "onFail": {
+      "effects": [
+       {
+        "channel": "favorability",
+        "target": "self",
+        "magnitude": -0.05,
+        "tone": -0.4
+       }
+      ]
+     }
+    }
+   },
+   {
+    "id": "small-polite-bite",
+    "label": "Take a polite bite, praise it, move on",
+    "blurb": "Safe, forgettable, and the owner definitely noticed you didn't finish.",
+    "resultText": "You compliment the cook sincerely and escape with your dignity and digestive system intact.",
+    "consequence": {
+     "effects": [
+      {
+       "channel": "favorability",
+       "target": "self",
+       "magnitude": 0.02,
+       "tone": 0.2
+      }
+     ]
+    }
+   }
+  ]
+ },
+ {
+  "id": "leaked-strategy-memo",
+  "title": "The Memo In the Wild",
+  "prompt": "An internal strategy memo leaks, revealing you privately call a key voting bloc 'persuadable but exhausting.' The bloc is, understandably, exhausted with you already.",
+  "weight": 1.0,
+  "minWeek": 4,
+  "defaultOptionId": "sincere-outreach",
+  "options": [
+   {
+    "id": "blame-leaker",
+    "label": "Make it about the leaker",
+    "blurb": "Chasing the mole is easier than apologizing to a whole demographic.",
+    "resultText": "You pivot hard to the breach of trust, launch an internal probe, and the story shifts to campaign espionage.",
+    "consequence": {
+     "effects": [
+      {
+       "channel": "nameRecognition",
+       "target": "self",
+       "magnitude": 0.15
+      }
+     ]
+    },
+    "risk": {
+     "chance": 0.5,
+     "mitigatedBy": "competence",
+     "failText": "The bloc notices you never actually apologized to them, and turnout among them craters.",
+     "onFail": {
+      "effects": [
+       {
+        "channel": "turnout",
+        "target": "self",
+        "magnitude": -0.02
+       },
+       {
+        "channel": "favorability",
+        "target": "self",
+        "magnitude": -0.06,
+        "tone": -0.5
+       }
+      ]
+     }
+    }
+   },
+   {
+    "id": "sincere-outreach",
+    "label": "Own it, tour the bloc, listen",
+    "blurb": "Groveling tour: humbling, time-consuming, occasionally redemptive.",
+    "resultText": "You spend three days genuinely listening, and the sincerity wins back more goodwill than the memo cost.",
+    "consequence": {
+     "effects": [
+      {
+       "channel": "favorability",
+       "target": "self",
+       "magnitude": 0.05,
+       "tone": 0.4
+      },
+      {
+       "channel": "turnout",
+       "target": "self",
+       "magnitude": 0.01
+      }
+     ],
+     "cashDelta": -20000
+    }
+   }
+  ]
+ },
+ {
+  "id": "veterans-base-visit",
+  "title": "The Base Visit and the Bill",
+  "prompt": "You're invited to a veterans' town hall on a military base. A vocal group there wants your firm stance on a defense spending bill you've been strategically vague about.",
+  "weight": 0.9,
+  "minWeek": 2,
+  "defaultOptionId": "honor-service-vague",
+  "options": [
+   {
+    "id": "commit-position",
+    "label": "Take a clear stand on the bill",
+    "blurb": "Straight talk with veterans lands hard — in whichever direction it lands.",
+    "resultText": "Your candor earns a standing ovation and a wave of respect from a bloc that despises hedging.",
+    "consequence": {
+     "effects": [
+      {
+       "channel": "favorability",
+       "target": "self",
+       "magnitude": 0.05,
+       "tone": 0.5
+      }
+     ],
+     "positionShifts": [
+      {
+       "issueId": "taxes_spending",
+       "delta": -0.15
+      }
+     ]
+    },
+    "risk": {
+     "chance": 0.4,
+     "mitigatedBy": "competence",
+     "failText": "You flub a basic detail about the bill and the room of experts visibly deflates.",
+     "onFail": {
+      "effects": [
+       {
+        "channel": "favorability",
+        "target": "self",
+        "magnitude": -0.06,
+        "tone": -0.4
+       }
+      ]
+     }
+    }
+   },
+   {
+    "id": "honor-service-vague",
+    "label": "Honor their service, stay flexible on the bill",
+    "blurb": "Warm and respectful, but they came for an answer, not a thank-you.",
+    "resultText": "You deliver a heartfelt tribute to their service and skate past the specifics without incident.",
+    "consequence": {
+     "effects": [
+      {
+       "channel": "favorability",
+       "target": "self",
+       "magnitude": 0.02,
+       "tone": 0.3
+      }
+     ]
+    }
+   }
+  ]
+ },
+ {
+  "id": "climate-protest-at-rally",
+  "title": "The Protesters On Your Stage",
+  "prompt": "Young climate activists rush your rally stage with a banner, chanting that your energy plan is too timid. Your crowd starts to boo them. All eyes swing to you.",
+  "weight": 1.0,
+  "minWeek": 4,
+  "defaultOptionId": "acknowledge-move-on",
+  "options": [
+   {
+    "id": "invite-dialogue",
+    "label": "Quiet the crowd, give them 60 seconds",
+    "blurb": "Turning a disruption into a moment is magic — or a hijacking of your own event.",
+    "resultText": "You calm the boos, let them speak, and gently push back; the clip of your composure spreads far and wide.",
+    "consequence": {
+     "effects": [
+      {
+       "channel": "favorability",
+       "target": "self",
+       "magnitude": 0.05,
+       "tone": 0.5
+      },
+      {
+       "channel": "enthusiasm",
+       "target": "self",
+       "magnitude": 0.03
+      }
+     ],
+     "positionShifts": [
+      {
+       "issueId": "climate_energy",
+       "delta": 0.1
+      }
+     ]
+    },
+    "risk": {
+     "chance": 0.45,
+     "mitigatedBy": "charisma",
+     "failText": "They seize the mic and won't give it back, and your rally becomes their press conference.",
+     "onFail": {
+      "effects": [
+       {
+        "channel": "favorability",
+        "target": "self",
+        "magnitude": -0.05,
+        "tone": -0.4
+       },
+       {
+        "channel": "enthusiasm",
+        "target": "self",
+        "magnitude": -0.03
+       }
+      ]
+     }
+    }
+   },
+   {
+    "id": "acknowledge-move-on",
+    "label": "Acknowledge them briefly, let security clear the stage",
+    "blurb": "Orderly and firm, though you passed on a chance to look big-hearted.",
+    "resultText": "You nod to their passion, security calmly walks them off, and your rally rolls on unbroken.",
+    "consequence": {
+     "effects": [
+      {
+       "channel": "favorability",
+       "target": "self",
+       "magnitude": 0.01,
+       "tone": 0.1
+      }
+     ]
+    }
+   }
+  ]
+ }
+]

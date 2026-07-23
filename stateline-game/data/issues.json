@@ -1,0 +1,10 @@
+[
+  { "id": "taxes_spending", "name": "Taxes & Spending", "left": "cut taxes, shrink government", "right": "raise taxes, expand public services", "baseSalience": 0.90, "icon": "coins" },
+  { "id": "healthcare",     "name": "Healthcare",       "left": "market-based, private",        "right": "universal / public option",         "baseSalience": 0.85, "icon": "cross" },
+  { "id": "immigration",    "name": "Immigration",      "left": "restrictive, border-first",     "right": "open, path to citizenship",          "baseSalience": 0.80, "icon": "gate" },
+  { "id": "guns",           "name": "Guns",             "left": "gun rights",                    "right": "gun control",                        "baseSalience": 0.60, "icon": "shield" },
+  { "id": "abortion",       "name": "Abortion",         "left": "pro-life / restrict",           "right": "pro-choice / protect",               "baseSalience": 0.75, "icon": "scale" },
+  { "id": "climate_energy", "name": "Climate & Energy", "left": "fossil fuels, deregulate",      "right": "climate action, clean energy",       "baseSalience": 0.60, "icon": "leaf" },
+  { "id": "crime_policing", "name": "Crime & Policing", "left": "tough-on-crime",                "right": "reform / rehabilitation",            "baseSalience": 0.70, "icon": "badge" },
+  { "id": "social_culture", "name": "Social & Cultural","left": "traditional values",            "right": "progressive values",                 "baseSalience": 0.65, "icon": "people" }
+]
