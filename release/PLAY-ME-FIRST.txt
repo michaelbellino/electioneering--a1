@@ -1,39 +1,32 @@
-STATELINE: CAMPAIGN TRAIL — Alpha 0.1.0
-========================================
+STATELINE: CAMPAIGN TRAIL — Alpha 0.1.0  (Windows 64-bit)
+=========================================================
 
-A deep, animated US political CAMPAIGN simulation game.
-Create a candidate, pick a real race, run the trail, and play out election night.
-
-HOW TO RUN (Windows 10/11, 64-bit)
-----------------------------------
-1. Unzip this folder anywhere.
+HOW TO RUN
+----------
+1. Keep BOTH .exe files together in this folder.
 2. Double-click  Stateline.exe
 
-Windows SmartScreen note:
-Because this alpha isn't code-signed, Windows may show a blue
-"Windows protected your PC" box. Click "More info" -> "Run anyway".
-(It's an unsigned indie build, not malware.)
+If Windows SmartScreen appears ("Windows protected your PC"):
+   click "More info" -> "Run anyway".  (Unsigned indie build, not malware.)
 
-CONTROLS
---------
-Mouse for everything. Hover any button, stat, or staffer for a tooltip.
-The ☰ button (top-right of HQ) saves your game. "Continue" on the title
-screen reloads it.
+IF Stateline.exe DOES NOTHING (no window appears)
+-------------------------------------------------
+Run  Stateline.console.exe  instead. It opens a black console window and
+prints WHY the game couldn't start (graphics driver, a blocked file, etc.).
+Send me that console text and I'll fix it fast.
 
-THE LOOP
---------
-1. Build your candidate: portrait, party, attributes (point-buy), a
-   background trait or two, where you stand on 8 issues, and which race.
-2. At HQ each week you get Action Points. Spend them on ads, rallies,
-   the ground game, fundraisers, speeches and polls.
-3. Watch the polls move, survive the weekly dilemmas, hire staff, and
-   track the opposition on the Race Wire.
-4. When the weeks run out: Election Night. Precincts report live, the
-   needle swings, and the race is called.
+Also worth a 10-second check:
+ * Right-click Stateline.exe -> Properties. If there's an "Unblock" checkbox
+   at the bottom, tick it and click OK, then try again.
+ * Confirm Stateline.exe is about 109 MB (109,839,640 bytes). If it's smaller,
+   the download/join was incomplete — grab it again.
+ * Windows Defender occasionally quarantines unsigned game exes. If Stateline.exe
+   vanishes after you run it, that's Defender — check Protection History and
+   "Allow" it, or add an exclusion for this folder.
 
-TIP: You start as the underdog — nobody knows your name yet. Buy name
-recognition before you try to persuade anyone.
-
-Settings (volume, music, reduced motion) are on the title screen.
-Made with Godot. Figures for real places are stylized approximations,
-not exact Census data.
+WHAT IT IS
+----------
+Create a candidate, pick a race, run the campaign week by week (ads, rallies,
+ground game, fundraisers), survive the dilemmas, then play out a live election
+night. You start as the underdog — buy name recognition before you persuade.
+Settings (volume / music / reduced motion) are on the title screen.
