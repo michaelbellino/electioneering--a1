@@ -1,0 +1,39 @@
+STATELINE: CAMPAIGN TRAIL — Alpha 0.1.0
+========================================
+
+A deep, animated US political CAMPAIGN simulation game.
+Create a candidate, pick a real race, run the trail, and play out election night.
+
+HOW TO RUN (Windows 10/11, 64-bit)
+----------------------------------
+1. Unzip this folder anywhere.
+2. Double-click  Stateline.exe
+
+Windows SmartScreen note:
+Because this alpha isn't code-signed, Windows may show a blue
+"Windows protected your PC" box. Click "More info" -> "Run anyway".
+(It's an unsigned indie build, not malware.)
+
+CONTROLS
+--------
+Mouse for everything. Hover any button, stat, or staffer for a tooltip.
+The ☰ button (top-right of HQ) saves your game. "Continue" on the title
+screen reloads it.
+
+THE LOOP
+--------
+1. Build your candidate: portrait, party, attributes (point-buy), a
+   background trait or two, where you stand on 8 issues, and which race.
+2. At HQ each week you get Action Points. Spend them on ads, rallies,
+   the ground game, fundraisers, speeches and polls.
+3. Watch the polls move, survive the weekly dilemmas, hire staff, and
+   track the opposition on the Race Wire.
+4. When the weeks run out: Election Night. Precincts report live, the
+   needle swings, and the race is called.
+
+TIP: You start as the underdog — nobody knows your name yet. Buy name
+recognition before you try to persuade anyone.
+
+Settings (volume, music, reduced motion) are on the title screen.
+Made with Godot. Figures for real places are stylized approximations,
+not exact Census data.
