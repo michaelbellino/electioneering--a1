@@ -62,7 +62,7 @@ func on_enter(_data: Variant = null) -> void:
 		quit.pressed.connect(func(): get_tree().quit())
 		center.add_child(_center(quit))
 
-	var ver := UI.label("alpha 0.3.0  ·  built with Godot", 12, Palette.FAINT)
+	var ver := UI.label("%s  ·  built with Godot" % ProjectSettings.get_setting("application/config/version", "0.0.0"), 12, Palette.FAINT)
 	ver.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	center.add_child(UI.spacer(8))
 	center.add_child(ver)

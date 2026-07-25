@@ -13,7 +13,7 @@ var reduced := false
 
 func _ready() -> void:
 	reduced = Game.settings.get("reduced_motion", false)
-	custom_minimum_size.y = maxf(custom_minimum_size.y, 40)
+	custom_minimum_size.y = maxf(custom_minimum_size.y, 32)
 	if reduced:
 		_shown = value
 

@@ -34,6 +34,8 @@ func on_enter(data: Variant = null) -> void:
 	grid.add_theme_constant_override("h_separation", 40)
 	grid.add_theme_constant_override("v_separation", 10)
 	panel.add_child(grid)
+	panel.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	panel.custom_minimum_size = Vector2(420, 0)
 
 	var pshare: float = float(result.get("shares", {}).get("player", 0.0))
 	var oshare := 0.0
@@ -74,8 +76,10 @@ func on_enter(data: Variant = null) -> void:
 
 func _stat(grid: GridContainer, label: String, value: String) -> void:
 	var l := UI.label(label, 14, Palette.MUTED)
+	l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	var v := UI.label(value, 18, Palette.INK)
 	v.add_theme_font_override("font", Palette.font_mono)
+	v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	v.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	grid.add_child(l)
 	grid.add_child(v)

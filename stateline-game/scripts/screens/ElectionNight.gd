@@ -10,6 +10,8 @@ var _rows: Dictionary = {}      # cid -> {bar, pct, votes}
 var _reporting_lbl: Label
 var _banner: Label
 var _continue: Button
+var _margin_lbl: Label
+var _turnout_lbl: Label
 var _declared := false
 var _t := 0.0
 
@@ -39,7 +41,7 @@ func on_enter(_data: Variant = null) -> void:
 	map_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	var mv := UI.vbox(6)
 	map_panel.add_child(mv)
-	mv.add_child(UI.kicker("Precincts Reporting"))
+	mv.add_child(UI.section("Precincts Reporting", Palette.GOOD))
 	_map = MapView.new()
 	_map.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_map.custom_minimum_size = Vector2(420, 320)
@@ -56,9 +58,9 @@ func on_enter(_data: Variant = null) -> void:
 	var needle_panel := UI.panel()
 	var nv := UI.vbox(4)
 	needle_panel.add_child(nv)
-	nv.add_child(UI.kicker("Win Probability"))
+	nv.add_child(UI.section("Win Probability", Palette.IND))
 	_needle = Needle.new()
-	_needle.custom_minimum_size = Vector2(400, 160)
+	_needle.custom_minimum_size = Vector2(400, 176)
 	_needle.label_right = "YOU"
 	nv.add_child(_needle)
 	right.add_child(needle_panel)
@@ -68,7 +70,7 @@ func on_enter(_data: Variant = null) -> void:
 	var tv := UI.vbox(10)
 	tally_panel.add_child(tv)
 	var th := UI.hbox(8)
-	th.add_child(UI.kicker("The Count"))
+	th.add_child(UI.section("The Count", Palette.GOLD2))
 	th.add_child(UI.spacer())
 	_reporting_lbl = UI.label("0% reporting", 13, Palette.GOLD)
 	_reporting_lbl.add_theme_font_override("font", Palette.font_mono)
@@ -76,6 +78,22 @@ func on_enter(_data: Variant = null) -> void:
 	tv.add_child(th)
 	for c in Game.all_candidates():
 		tv.add_child(_tally_row(c))
+	tv.add_child(UI.spacer())
+	tv.add_child(UI.rule())
+	# the anchor-desk line: the margin and the turnout, the two numbers people
+	# actually shout at a screen about
+	var mrow := UI.hbox(8)
+	mrow.add_child(UI.label("Margin", 12, Palette.MUTED))
+	mrow.add_child(UI.spacer())
+	_margin_lbl = UI.num("—", 14, Palette.INK)
+	mrow.add_child(_margin_lbl)
+	tv.add_child(mrow)
+	var trow := UI.hbox(8)
+	trow.add_child(UI.label("Ballots counted", 12, Palette.MUTED))
+	trow.add_child(UI.spacer())
+	_turnout_lbl = UI.num("0", 14, Palette.MUTED)
+	trow.add_child(_turnout_lbl)
+	tv.add_child(trow)
 	right.add_child(tally_panel)
 
 	_banner = UI.title("", 30)
@@ -140,6 +158,20 @@ func _process(delta: float) -> void:
 		row["pct"].text = "%.1f%%" % (shown * 100.0)
 		row["votes"].text = "%s votes" % Game._comma(int(total_votes * final_share * _report_pct))
 	_reporting_lbl.text = "%d%% reporting" % int(_report_pct * 100)
+	var counted_votes := int(total_votes * _report_pct)
+	_turnout_lbl.text = Game._comma(counted_votes)
+	var top_other := 0.0
+	var top_other_id := ""
+	for cid2 in _rows:
+		if cid2 == "player": continue
+		if float(result.shares.get(cid2, 0.0)) > top_other:
+			top_other = float(result.shares.get(cid2, 0.0))
+			top_other_id = cid2
+	var margin: float = float(result.shares.get("player", 0.0)) - top_other
+	var margin_votes := int(absf(margin) * total_votes * _report_pct)
+	_margin_lbl.text = "%s %+.1f pts  ·  %s" % [
+		"YOU" if margin >= 0 else "OPP", absf(margin) * 100.0, Game._comma(margin_votes)]
+	_margin_lbl.add_theme_color_override("font_color", Palette.GOOD if margin >= 0 else Palette.BAD)
 	# needle: read the margin from the votes counted SO FAR, with uncertainty that
 	# narrows as precincts report. Early returns swing; the call tightens.
 	var counted := maxf(_report_pct, 0.001)

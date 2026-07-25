@@ -27,6 +27,7 @@ var _cat_bar: HBoxContainer
 var _deck: GridContainer
 var _prev: Dictionary = {}          # last week's values, for deltas
 var _staff_strip: Button
+var _weekstrip: Control
 
 func on_enter(_data: Variant = null) -> void:
 	_fx = Confetti.new()
@@ -58,89 +59,146 @@ func on_exit() -> void:
 # ---------------------------------------------------------------------------
 # Top bar
 # ---------------------------------------------------------------------------
+## The HUD is deliberately the one dark surface on the screen. It reads as the
+## game's frame rather than as another content card, which is what stops the
+## dashboard from looking like nine identical boxes stacked in a grid.
+const HUD_DIM := Color("8fa0bd")
+const HUD_INK := Color("f4f7fc")
+
 func _build_topbar() -> Control:
-	var panel := UI.panel()
-	panel.custom_minimum_size = Vector2(0, 70)
-	var h := UI.hbox(14)
+	var panel := UI.hud_panel()
+	panel.custom_minimum_size = Vector2(0, 68)
+	var h := UI.hbox(16)
 	panel.add_child(h)
 
 	var port := Portrait.new()
-	port.custom_minimum_size = Vector2(52, 52)
+	port.custom_minimum_size = Vector2(50, 50)
 	port.set_features(Game.player().get("features", {}))
 	port.set_party(Game.player().get("party", "I"))
 	h.add_child(port)
 
 	var idv := UI.vbox(1)
+	idv.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	var pl: Dictionary = Game.player()
-	var nm := UI.label(pl.get("name", "You"), 18, Palette.INK)
-	idv.add_child(nm)
-	var dist := UI.label("%s · %s" % [Game.state.district.get("name", ""), _party_word(pl.get("party","I"))], 12, Palette.MUTED)
+	idv.add_child(UI.label(pl.get("name", "You"), 18, HUD_INK))
+	var dist := UI.label("%s · %s" % [Game.state.district.get("name", ""), _party_word(pl.get("party","I"))], 12, HUD_DIM)
 	idv.add_child(dist)
 	h.add_child(idv)
 
 	h.add_child(UI.spacer())
 
-	h.add_child(_pill("Campaign", Palette.ACCENT))
+	# Week — the clock, and the loudest thing after your money
+	var wkv := UI.vbox(0)
+	wkv.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	wkv.tooltip_text = "Weeks remaining before election day.\nEffects ramp up and decay over time, so late spending lands harder — but ads fatigue."
+	wkv.mouse_filter = Control.MOUSE_FILTER_STOP
+	wkv.add_child(_cap("WEEK"))
+	_week_lbl = UI.title("", 22, HUD_INK)
+	wkv.add_child(_week_lbl)
+	h.add_child(wkv)
+	_phase_lbl = UI.label("", 11, HUD_DIM)
+	_phase_lbl.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	h.add_child(_phase_lbl)
 
-	_week_lbl = UI.label("", 14, Palette.INK)
-	_week_lbl.tooltip_text = "Weeks remaining before election day.\nEffects ramp up and decay over time, so late spending lands harder — but ads fatigue."
-	_week_lbl.mouse_filter = Control.MOUSE_FILTER_STOP
-	_week_lbl.custom_minimum_size = Vector2(150, 0)
-	_week_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	h.add_child(_week_lbl)
+	h.add_child(_hud_divider())
 
 	var cashv := UI.vbox(0)
+	cashv.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	cashv.tooltip_text = "Money on hand. Spend it — cash in the bank on election day wins zero votes.\nIncome comes from fundraisers, the weekly small-dollar trickle and your Finance Director."
 	cashv.mouse_filter = Control.MOUSE_FILTER_STOP
-	cashv.add_child(UI.label("WAR CHEST", 10, Palette.FAINT))
-	_cash_lbl = UI.label("$0", 18, Palette.GOLD)
-	_cash_lbl.add_theme_font_override("font", Palette.font_mono)
+	cashv.add_child(_cap("WAR CHEST"))
+	_cash_lbl = UI.label("$0", 19, Palette.GOLD)
+	_cash_lbl.add_theme_font_override("font", Palette.font_mono_bold)
 	cashv.add_child(_cash_lbl)
 	h.add_child(cashv)
 
-	var apv := UI.vbox(0)
+	h.add_child(_hud_divider())
+
+	var apv := UI.vbox(2)
+	apv.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	apv.tooltip_text = "Action points left this week. Every move costs at least one.\nThey refresh when you end the week; a Campaign Manager grants one more."
 	apv.mouse_filter = Control.MOUSE_FILTER_STOP
-	apv.add_child(UI.label("ACTIONS", 10, Palette.FAINT))
+	apv.add_child(_cap("ACTIONS LEFT"))
 	_ap_ctl = Control.new()
-	_ap_ctl.custom_minimum_size = Vector2(132, 22)
+	_ap_ctl.custom_minimum_size = Vector2(96, 20)
 	_ap_ctl.draw.connect(_draw_ap)
 	apv.add_child(_ap_ctl)
 	h.add_child(apv)
 
-	var menu := UI.button("Menu")
+	var menu := Button.new()
+	menu.text = "☰  Menu"
+	menu.focus_mode = Control.FOCUS_ALL
+	menu.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	menu.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_style_hud_button(menu)
 	menu.tooltip_text = "Menu — save, load, settings, restart, quit  (Esc)"
 	menu.pressed.connect(_open_menu)
 	h.add_child(menu)
 	return panel
 
+func _cap(text: String) -> Label:
+	var l := UI.label(text, 9, HUD_DIM)
+	l.add_theme_font_override("font", Palette.font_ui_bold)
+	return l
+
+func _hud_divider() -> Control:
+	var c := ColorRect.new()
+	c.color = Color(1, 1, 1, 0.10)
+	c.custom_minimum_size = Vector2(1, 36)
+	c.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	c.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return c
+
+func _style_hud_button(b: Button) -> void:
+	var states := {
+		"normal": UI.flat(Color(1, 1, 1, 0.10), 7, 1, Color(1, 1, 1, 0.18)),
+		"hover": UI.flat(Color(1, 1, 1, 0.18), 7, 1, Color(1, 1, 1, 0.30)),
+		"pressed": UI.flat(Color(0, 0, 0, 0.20), 7, 1, Color(1, 1, 1, 0.18)),
+		"focus": UI.flat(Color(1, 1, 1, 0.14), 7, 2, Palette.GOLD),
+	}
+	for st in states:
+		var box: StyleBoxFlat = states[st]
+		box.content_margin_left = 14; box.content_margin_right = 14
+		box.content_margin_top = 8; box.content_margin_bottom = 8
+		b.add_theme_stylebox_override(st, box)
+	b.add_theme_font_override("font", Palette.font_ui_bold)
+	b.add_theme_font_size_override("font_size", 14)
+	for c in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color"]:
+		b.add_theme_color_override(c, HUD_INK)
+
 func _draw_ap() -> void:
 	var cur: int = int(Game.state.get("ap", 0))
 	var mx: int = int(Game.state.get("maxAP", 3))
 	if Game.staff_has("manager"): mx += 1
-	var x := 6.0
+	var x := 8.0
 	for i in maxi(mx, cur):
 		var filled := i < cur
-		_ap_ctl.draw_circle(Vector2(x, 11), 7, Palette.GOLD if filled else Palette.PANEL2)
-		_ap_ctl.draw_arc(Vector2(x, 11), 7, 0, TAU, 20, Palette.GOLD if filled else Palette.BORDER, 1.5, true)
-		x += 18
+		_ap_ctl.draw_circle(Vector2(x, 10), 7, Palette.GOLD if filled else Color(1, 1, 1, 0.08))
+		_ap_ctl.draw_arc(Vector2(x, 10), 7, 0, TAU, 20,
+			Palette.GOLD if filled else Color(1, 1, 1, 0.28), 1.5, true)
+		x += 19
 
 # ---------------------------------------------------------------------------
 # Left: map + race wire
 # ---------------------------------------------------------------------------
 func _build_left() -> Control:
 	var col := UI.vbox(12)
-	col.custom_minimum_size = Vector2(340, 0)
+	col.custom_minimum_size = Vector2(330, 0)
 
 	var map_panel := UI.panel()
+	map_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	var mv := UI.vbox(8)
 	map_panel.add_child(mv)
-	var mk := UI.kicker("The District")
+	var mk := UI.section("The District", Palette.GOOD)
 	mk.tooltip_text = "Each cell is a precinct, tinted by projected support.\nThe bus marks where your campaign has been. On election night these report one by one."
 	mk.mouse_filter = Control.MOUSE_FILTER_STOP
 	mv.add_child(mk)
 	_map = MapView.new()
-	_map.custom_minimum_size = Vector2(300, 210)
+	# The map is the flexible element in this column: it takes whatever height is
+	# left over, so a three-way race (which adds a row to the wire) shrinks the map
+	# instead of shoving the End Week button off the bottom of the screen.
+	_map.custom_minimum_size = Vector2(292, 128)
+	_map.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_map.configure(Game.state.district)
 	mv.add_child(_map)
 	col.add_child(map_panel)
@@ -148,14 +206,27 @@ func _build_left() -> Control:
 	var wire := UI.panel()
 	var wv := UI.vbox(8)
 	wire.add_child(wv)
-	var wk := UI.kicker("Race Wire")
+	var wk := UI.section("Race Wire", Palette.BAD)
 	wk.tooltip_text = "Everyone on the ballot, with their latest polling and an estimate of their money.\nOpponent cash is an estimate — your own figure is exact."
 	wk.mouse_filter = Control.MOUSE_FILTER_STOP
 	wv.add_child(wk)
-	_wire_box = UI.vbox(8)
+	_wire_box = UI.vbox(9)
 	wv.add_child(_wire_box)
 	col.add_child(wire)
-	col.add_child(UI.spacer())
+
+	# The vitals used to sit in the middle column, which starved the action deck
+	# of height and left this column with 200px of nothing under the wire.
+	var g_panel := UI.quiet_panel()
+	var gv := UI.vbox(10)
+	g_panel.add_child(gv)
+	gv.add_child(UI.section("Your Numbers", Palette.GOLD2))
+	_fav_g = _add_gauge(gv, "Net Favorability", true,
+		"How warmly voters feel about you, from -100 to +100.\nRaised by positive ads, speeches and good weeks; cut by attacks and scandal.\nIt feeds directly into vote choice.")
+	_name_g = _add_gauge(gv, "Name Recognition", false,
+		"The share of voters who have heard of you at all.\nThis GATES everything: a voter who doesn't know you cannot vote for you,\nno matter how much they agree with you. Buy reach before persuasion.")
+	_cash_g = _add_gauge(gv, "Weeks of Runway", false,
+		"How many more weeks you could keep paying staff at your current burn.\nSalaries come out every week whether you act or not.")
+	col.add_child(g_panel)
 	return col
 
 # ---------------------------------------------------------------------------
@@ -168,47 +239,31 @@ func _build_center() -> Control:
 	var poll_panel := UI.panel()
 	var pv := UI.vbox(6)
 	poll_panel.add_child(pv)
-	var ph := UI.hbox(8)
-	var pk := UI.kicker("Polling — Your Share Over Time")
+	var pk := UI.section("Polling — Your Share Over Time", Palette.ACCENT)
 	pk.tooltip_text = "Sampled polls, not the true result. The shaded band is the margin of error.\nHire a Pollster or commission a poll for a tighter, more reliable read."
 	pk.mouse_filter = Control.MOUSE_FILTER_STOP
-	ph.add_child(pk)
-	pv.add_child(ph)
+	pv.add_child(pk)
 	_chart = PollChart.new()
-	_chart.custom_minimum_size = Vector2(0, 150)
+	_chart.custom_minimum_size = Vector2(0, 168)
 	pv.add_child(_chart)
 	col.add_child(poll_panel)
 
-	# gauges
-	var g_panel := UI.panel()
-	var grid := GridContainer.new()
-	grid.columns = 2
-	grid.add_theme_constant_override("h_separation", 24)
-	grid.add_theme_constant_override("v_separation", 10)
-	g_panel.add_child(grid)
-	_fav_g = _add_gauge(grid, "Net Favorability", true,
-		"How warmly voters feel about you, from -100 to +100.\nRaised by positive ads, speeches and good weeks; cut by attacks and scandal.\nIt feeds directly into vote choice.")
-	_name_g = _add_gauge(grid, "Name Recognition", false,
-		"The share of voters who have heard of you at all.\nThis GATES everything: a voter who doesn't know you cannot vote for you,\nno matter how much they agree with you. Buy reach before persuasion.")
-	_cash_g = _add_gauge(grid, "Weeks of Runway", false,
-		"How many more weeks you could keep paying staff at your current burn.\nSalaries come out every week whether you act or not.")
-	col.add_child(g_panel)
-
-	# actions
+	# actions — the deck is the loudest card on the screen, and gets the height
 	var act_panel := UI.panel()
 	act_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	var av := UI.vbox(8)
+	var av := UI.vbox(9)
 	act_panel.add_child(av)
-	var ak := UI.kicker("This Week's Moves")
+	var ak := UI.section("This Week's Moves", Palette.IND,
+		UI.label("hover a card for the numbers", 11, Palette.FAINT))
 	ak.tooltip_text = "Spend action points and money here. Hover any move for exactly what it costs and does."
 	ak.mouse_filter = Control.MOUSE_FILTER_STOP
 	av.add_child(ak)
-	_cat_bar = UI.hbox(4)
+	_cat_bar = UI.hbox(5)
 	av.add_child(_cat_bar)
 	_deck = GridContainer.new()
 	_deck.columns = 3
-	_deck.add_theme_constant_override("h_separation", 8)
-	_deck.add_theme_constant_override("v_separation", 8)
+	_deck.add_theme_constant_override("h_separation", 9)
+	_deck.add_theme_constant_override("v_separation", 9)
 	_deck.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	av.add_child(_deck)
 	_build_cat_bar()
@@ -217,6 +272,17 @@ func _build_center() -> Control:
 	return col
 
 const CATS := ["Air War", "Ground Game", "Message", "Events", "Money"]
+
+## Each lane of play gets its own colour, carried from the tab to the card edge,
+## so the deck reads as five kinds of move rather than one wall of tiles.
+func _cat_color(cat: String) -> Color:
+	match cat:
+		"Air War": return Palette.ACCENT
+		"Ground Game": return Palette.GOOD
+		"Message": return Palette.IND
+		"Events": return Palette.WARN
+		"Money": return Palette.GOLD2
+		_: return Palette.MUTED
 
 func _cat_count(cat: String) -> int:
 	var n := 0
@@ -228,7 +294,7 @@ func _build_cat_bar() -> void:
 	for c in _cat_bar.get_children(): c.queue_free()
 	var i := 1
 	for cat in CATS:
-		var b := UI.selectable("%s (%d)" % [cat, _cat_count(cat)])
+		var b := UI.selectable("%s  %d" % [cat, _cat_count(cat)], _cat_color(cat))
 		b.button_pressed = cat == _cat
 		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		b.add_theme_font_size_override("font_size", 12)
@@ -251,30 +317,62 @@ func _build_deck() -> void:
 		if a.cat != _cat: continue
 		_deck.add_child(_action_button(a))
 
-func _add_gauge(grid: GridContainer, label: String, bipolar: bool, tip := "") -> Gauge:
+func _add_gauge(parent: Container, label: String, bipolar: bool, tip := "") -> Gauge:
 	var g := Gauge.new()
-	g.custom_minimum_size = Vector2(260, 40)
+	g.custom_minimum_size = Vector2(0, 32)
 	g.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	g.bipolar = bipolar
 	g.label_text = label
 	g.tooltip_text = tip
 	g.mouse_filter = Control.MOUSE_FILTER_STOP
-	grid.add_child(g)
+	parent.add_child(g)
 	return g
 
+## A move card. A Button is not a Container, so its children are NOT auto-sized —
+## the inner box has to be anchored to the button's rect or the wrapped blurb
+## measures against its own minimum width and spills out the bottom edge. It is
+## also hard-clipped to two lines so no amount of copy can ever break the grid.
 func _action_button(a: Dictionary) -> Control:
+	var accent := _cat_color(str(a.cat))
 	var b := Button.new()
 	b.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-	b.custom_minimum_size = Vector2(150, 84)
+	b.custom_minimum_size = Vector2(150, 100)
 	b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	b.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	b.clip_contents = true
 	UI._style_button(b, false)
 	b.tooltip_text = Game.action_tooltip(a)
-	var v := UI.vbox(1)
+
+	# a colour stripe down the left edge ties the card to its lane
+	var stripe := ColorRect.new()
+	stripe.color = accent
+	stripe.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	stripe.set_anchors_and_offsets_preset(Control.PRESET_LEFT_WIDE)
+	stripe.offset_left = 1; stripe.offset_right = 4
+	stripe.offset_top = 6; stripe.offset_bottom = -6
+	b.add_child(stripe)
+
+	var mc := MarginContainer.new()
+	mc.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	mc.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	mc.add_theme_constant_override("margin_left", 12)
+	mc.add_theme_constant_override("margin_right", 9)
+	mc.add_theme_constant_override("margin_top", 8)
+	mc.add_theme_constant_override("margin_bottom", 8)
+	mc.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	b.add_child(mc)
+
+	var v := UI.vbox(3)
 	v.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	mc.add_child(v)
+
 	var name_lbl := UI.label(a.label, 14, Palette.INK)
+	name_lbl.add_theme_font_override("font", Palette.font_ui_bold)
 	name_lbl.clip_text = true
+	name_lbl.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	v.add_child(name_lbl)
-	var cost_row := UI.hbox(5)
+
+	var cost_row := UI.hbox(6)
 	cost_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	cost_row.add_child(UI.label("●".repeat(int(a.ap)), 11, Palette.GOLD.darkened(0.15)))
 	if int(a.cost) > 0:
@@ -284,15 +382,11 @@ func _action_button(a: Dictionary) -> Control:
 	if int(a.get("fund", 0)) > 0:
 		cost_row.add_child(UI.label("→ raises", 10, Palette.GOOD))
 	v.add_child(cost_row)
-	var sub := UI.label(a.desc, 11, Palette.MUTED)
-	sub.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	sub.custom_minimum_size = Vector2(140, 0)
-	sub.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+
+	var sub := UI.clamped(str(a.desc), 3, 11, Palette.MUTED)
+	sub.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	v.add_child(sub)
-	var mc := UI.margin(8)
-	mc.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	mc.add_child(v)
-	b.add_child(mc)
+
 	b.pressed.connect(func(): _do_action(a.id, b))
 	_action_rows.append({"id": a.id, "button": b, "sub": sub})
 	return b
@@ -319,31 +413,30 @@ func _on_action_feedback(_a: Dictionary, _r: Dictionary) -> void:
 # ---------------------------------------------------------------------------
 func _build_right() -> Control:
 	var col := UI.vbox(12)
-	col.custom_minimum_size = Vector2(300, 0)
+	col.custom_minimum_size = Vector2(288, 0)
 
-	var staff_panel := UI.panel()
+	var staff_panel := UI.quiet_panel()
 	var sv := UI.vbox(8)
 	staff_panel.add_child(sv)
-	sv.add_child(UI.kicker("Campaign Staff"))
+	sv.add_child(UI.section("Campaign Staff", Palette.ACCENT2))
 	_staff_strip = UI.button("")
 	_staff_strip.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_staff_strip.tooltip_text = "Hire campaign staff — each one amplifies a kind of move"
 	_staff_strip.pressed.connect(_open_staff)
 	sv.add_child(_staff_strip)
-	_staff_box = UI.vbox(6)     # populated inside the staff modal
-	_staff_box.visible = false
+	_staff_box = UI.vbox(5)     # the roster of who you've actually hired
 	sv.add_child(_staff_box)
 	col.add_child(staff_panel)
 
-	var news_panel := UI.panel()
+	var news_panel := UI.quiet_panel()
 	news_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	var nv := UI.vbox(8)
 	news_panel.add_child(nv)
-	nv.add_child(UI.kicker("Field Notes"))
+	nv.add_child(UI.section("Field Notes", Palette.MUTED))
 	var scroll := ScrollContainer.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	_news_box = UI.vbox(5)
+	_news_box = UI.vbox(2)
 	_news_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.add_child(_news_box)
 	nv.add_child(scroll)
@@ -359,9 +452,20 @@ func _build_ticker() -> Control:
 	return _ticker
 
 func _build_bottom() -> Control:
-	var h := UI.hbox(12)
+	var h := UI.hbox(14)
 	h.custom_minimum_size = Vector2(0, 56)
-	h.add_child(UI.spacer())
+
+	# The calendar. Cheap to read at a glance and it stops the footer from being
+	# 900px of empty page next to one button.
+	_weekstrip = Control.new()
+	_weekstrip.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_weekstrip.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_weekstrip.custom_minimum_size = Vector2(0, 34)
+	_weekstrip.tooltip_text = "The campaign calendar. Filled blocks are weeks you have already spent."
+	_weekstrip.mouse_filter = Control.MOUSE_FILTER_STOP
+	_weekstrip.draw.connect(_draw_weekstrip)
+	h.add_child(_weekstrip)
+
 	_end_btn = UI.button("End Week  ▶", true)
 	_end_btn.custom_minimum_size = Vector2(300, 56)
 	_end_btn.add_theme_font_size_override("font_size", 17)
@@ -394,7 +498,10 @@ func refresh() -> void:
 	else:
 		_cash_lbl.add_theme_color_override("font_color", Palette.GOLD)
 	var wl := Game.weeks_left()
-	_week_lbl.text = "Week %d of %d\n%d week%s to election" % [int(st.week) + 1, int(st.totalWeeks), wl, ("" if wl == 1 else "s")]
+	_week_lbl.text = "%d / %d" % [int(st.week) + 1, int(st.totalWeeks)]
+	if is_instance_valid(_phase_lbl):
+		_phase_lbl.text = "ELECTION DAY" if wl <= 1 else "%d week%s\nto election" % [wl, ("" if wl == 1 else "s")]
+		_phase_lbl.add_theme_color_override("font_color", Palette.GOLD if wl <= 3 else HUD_DIM)
 	_ap_ctl.queue_redraw()
 
 	# stats
@@ -458,6 +565,7 @@ func refresh() -> void:
 			_end_btn.text = "%d action%s unspent — End Week  ▶" % [ap_left, "" if ap_left == 1 else "s"]
 		else:
 			_end_btn.text = "End Week  ▶     (Space)"
+	if is_instance_valid(_weekstrip): _weekstrip.queue_redraw()
 	_rebuild_wire()
 	_refresh_staff_strip()
 	_rebuild_news()
@@ -543,44 +651,24 @@ func _refresh_staff_strip() -> void:
 	for sid in Game.state.staff:
 		burn += int(Game.staff_def(sid).get("salary", 0))
 	burn = int(round(burn * float(Game.player().get("salaryMult", 1.0))))
-	_staff_strip.text = "Staff  %d / %d      $%s / week      [ Hire ]" % [n, Game.STAFF.size(), Game._comma(burn)]
-
-func _rebuild_staff() -> void:
+	_staff_strip.text = ("Hire your first staffer  +" if n == 0 else "Hire staff  ·  %d of %d  ·  $%s/wk  +") \
+		% ([] if n == 0 else [n, Game.STAFF.size(), Game._comma(burn)])
+	# who's actually on the payroll, so the panel isn't an empty box all game
 	for c in _staff_box.get_children(): c.queue_free()
-	for s in Game.STAFF:
-		var hired: bool = Game.state.staff.has(s.id)
-		var cost := int(round(s.sign * float(Game.player().get("salaryMult", 1.0))))
-		var b := Button.new()
-		b.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		b.custom_minimum_size = Vector2(0, 92)
-		UI._style_button(b, false)
-		b.tooltip_text = s.blurb + "\nSalary $%s/wk" % Game._comma(int(s.salary))
-		b.disabled = hired or int(Game.state.cash) < cost * 100
-		var v := UI.vbox(2)
-		v.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		var top := UI.hbox(6)
-		top.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		top.add_child(UI.label(s.name, 13, Palette.INK))
-		top.add_child(UI.spacer())
-		top.add_child(UI.label(("HIRED" if hired else "$" + Game._comma(cost)), 12, Palette.GOOD if hired else Palette.GOLD))
-		v.add_child(top)
-		var blurb := UI.wrap(str(s.blurb), 240, 10, Palette.GOOD if hired else Palette.MUTED)
-		blurb.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		v.add_child(blurb)
-		var sal := UI.label("$%s / week" % Game._comma(int(s.salary)), 10, Palette.FAINT)
-		sal.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		v.add_child(sal)
-		var mc := UI.margin(6)
-		mc.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		mc.add_child(v)
-		b.add_child(mc)
-		if not hired:
-			b.pressed.connect(func():
-				if Game.hire(s.id):
-					_fx.float_text(b.global_position + Vector2(60, 0), "Hired!", Palette.GOOD)
-				refresh())
-		_staff_box.add_child(b)
+	for sid in Game.state.staff:
+		var s: Dictionary = Game.staff_def(sid)
+		var row := UI.hbox(6)
+		var dot := UI.label("●", 10, Palette.GOOD)
+		row.add_child(dot)
+		var nm := UI.label(str(s.get("name", sid)), 12, Palette.INK)
+		nm.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		nm.clip_text = true
+		nm.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+		row.add_child(nm)
+		row.add_child(UI.num("$%s" % Game._comma(int(s.get("salary", 0))), 11, Palette.FAINT))
+		row.tooltip_text = str(s.get("blurb", ""))
+		row.mouse_filter = Control.MOUSE_FILTER_STOP
+		_staff_box.add_child(row)
 
 ## Staff is a one-time decision — it lives in a modal, not permanent real estate.
 func _open_staff() -> void:
@@ -631,7 +719,8 @@ func _fill_staff(box: VBoxContainer, on_change: Callable) -> void:
 		var b := UI.select_card(Palette.GOOD)
 		b.button_pressed = hired
 		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		b.custom_minimum_size = Vector2(0, 84)
+		b.custom_minimum_size = Vector2(0, 94)
+		b.clip_contents = true
 		b.disabled = hired or int(Game.state.cash) < cost * 100
 		var v := UI.vbox(2)
 		v.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -653,6 +742,7 @@ func _fill_staff(box: VBoxContainer, on_change: Callable) -> void:
 		var mc := UI.margin(8)
 		mc.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		mc.add_child(v)
+		mc.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 		b.add_child(mc)
 		if not hired:
 			b.pressed.connect(func():
@@ -660,13 +750,41 @@ func _fill_staff(box: VBoxContainer, on_change: Callable) -> void:
 					on_change.call())
 		box.add_child(b)
 
+## Grouped by week rather than shown as one undifferentiated bullet list — a
+## 20-line stack of identical dashes is unreadable and reads as filler.
 func _rebuild_news() -> void:
 	for c in _news_box.get_children(): c.queue_free()
+	if Game.state.log.is_empty():
+		var empty := UI.wrap("Nothing on the wire yet. Every move you make gets logged here.",
+			250, 12, Palette.FAINT)
+		_news_box.add_child(empty)
+		return
+	var last_week := ""
 	for entry in Game.state.log:
-		var l := UI.label("· " + str(entry), 12, Palette.MUTED)
+		var text := str(entry)
+		var week := ""
+		var colon := text.find(":")
+		if colon > 0 and text.begins_with("W"):
+			week = text.substr(0, colon)
+			text = text.substr(colon + 1).strip_edges()
+		if week != last_week:
+			last_week = week
+			if _news_box.get_child_count() > 0:
+				var gap := Control.new()
+				gap.custom_minimum_size = Vector2(0, 7)
+				_news_box.add_child(gap)
+			var hdr := UI.label(("WEEK " + week.substr(1)) if week != "" else "EARLIER", 10, Palette.FAINT)
+			hdr.add_theme_font_override("font", Palette.font_display)
+			_news_box.add_child(hdr)
+		var row := UI.hbox(6)
+		var tick := UI.label("›", 12, Palette.BORDER_HI)
+		tick.custom_minimum_size = Vector2(8, 0)
+		row.add_child(tick)
+		var l := UI.label(text, 12, Palette.MUTED)
 		l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		l.custom_minimum_size = Vector2(260, 0)
-		_news_box.add_child(l)
+		l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		row.add_child(l)
+		_news_box.add_child(row)
 
 # ---------------------------------------------------------------------------
 # Menu / pill helpers
@@ -700,19 +818,31 @@ func _unhandled_input(event: InputEvent) -> void:
 					_end_week()
 					get_viewport().set_input_as_handled()
 
-func _pill(text: String, color: Color) -> PanelContainer:
-	var p := PanelContainer.new()
-	p.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	p.add_theme_stylebox_override("panel", UI.flat(Palette.PANEL2, 999, 1, color))
-	var l := UI.label(text, 12, color)
-	var mc := MarginContainer.new()
-	mc.add_theme_constant_override("margin_left", 12)
-	mc.add_theme_constant_override("margin_right", 12)
-	mc.add_theme_constant_override("margin_top", 3)
-	mc.add_theme_constant_override("margin_bottom", 3)
-	mc.add_child(l)
-	p.add_child(mc)
-	return p
-
 func _party_word(p: String) -> String:
 	return {"D": "Democrat", "R": "Republican", "I": "Independent"}.get(p, "Independent")
+
+## A row of week blocks: spent, current, still to come — then the ballot box.
+func _draw_weekstrip() -> void:
+	var total: int = maxi(int(Game.state.get("totalWeeks", 14)), 1)
+	var cur: int = int(Game.state.get("week", 0))
+	var w: float = _weekstrip.size.x
+	var y := _weekstrip.size.y * 0.5
+	var end_pad := 78.0
+	var track: float = maxf(w - end_pad, 40.0)
+	var gap := 3.0
+	var bw: float = maxf((track - gap * (total - 1)) / float(total), 2.0)
+	for i in total:
+		var x := i * (bw + gap)
+		var r := Rect2(x, y - 5, bw, 10)
+		var col := Palette.BORDER
+		if i < cur:
+			col = Palette.ACCENT.lerp(Palette.BG, 0.45)
+		elif i == cur:
+			col = Palette.GOLD
+			r = Rect2(x, y - 8, bw, 16)
+		elif total - i <= 3:
+			col = Palette.BAD.lerp(Palette.BG, 0.6)
+		_weekstrip.draw_rect(r, col)
+	if Palette.font_ui_bold:
+		_weekstrip.draw_string(Palette.font_ui_bold, Vector2(track + 10, y + 4),
+			"ELECTION", HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Palette.BAD)

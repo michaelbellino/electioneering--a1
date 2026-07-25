@@ -20,6 +20,7 @@ var _rng := RandomNumberGenerator.new()
 var reduced := false
 var _fit_scale := 1.0
 var _fit_off := Vector2.ZERO
+var _bbox := Rect2()
 var subtitle := ""
 
 func configure(d: Dictionary) -> void:
@@ -27,6 +28,7 @@ func configure(d: Dictionary) -> void:
 	reduced = Game.settings.get("reduced_motion", false)
 	_rng.seed = hash(str(d.get("id", "x")))
 	rings = Content.geo_rings(d)
+	_recompute_bbox()
 	subtitle = Content.geo_label(d)
 	_build()
 	queue_redraw()
@@ -34,15 +36,31 @@ func configure(d: Dictionary) -> void:
 # ---------------------------------------------------------------------------
 # Layout inside the real outline
 # ---------------------------------------------------------------------------
+## Fit the shape's own bounding box — not the unit square it was normalised into —
+## so a wide district actually fills a wide panel instead of floating in the middle
+## of an invisible square with dead margins either side.
 func _recompute_fit() -> void:
-	# Fit the unit-box geometry into the control, preserving aspect.
-	var pad := 10.0
-	var side: float = minf(size.x - pad * 2.0, size.y - pad * 2.0)
-	_fit_scale = maxf(side, 1.0)
-	_fit_off = Vector2((size.x - _fit_scale) * 0.5, (size.y - _fit_scale) * 0.5)
+	var pad := 12.0
+	var avail := Vector2(maxf(size.x - pad * 2.0, 1.0), maxf(size.y - pad * 2.0 - 10.0, 1.0))
+	if _bbox.size.x <= 0.0 or _bbox.size.y <= 0.0:
+		_fit_scale = maxf(minf(avail.x, avail.y), 1.0)
+		_fit_off = Vector2((size.x - _fit_scale) * 0.5, (size.y - _fit_scale) * 0.5)
+		return
+	_fit_scale = minf(avail.x / _bbox.size.x, avail.y / _bbox.size.y)
+	var drawn := _bbox.size * _fit_scale
+	_fit_off = Vector2((size.x - drawn.x) * 0.5, (size.y - 10.0 - drawn.y) * 0.5) - _bbox.position * _fit_scale
 
 func _uv_to_px(uv: Vector2) -> Vector2:
 	return _fit_off + uv * _fit_scale
+
+func _recompute_bbox() -> void:
+	var mn := Vector2(INF, INF)
+	var mx := Vector2(-INF, -INF)
+	for ring in rings:
+		for uv in ring:
+			mn.x = minf(mn.x, uv.x); mn.y = minf(mn.y, uv.y)
+			mx.x = maxf(mx.x, uv.x); mx.y = maxf(mx.y, uv.y)
+	_bbox = Rect2(mn, mx - mn) if mn.x < INF else Rect2()
 
 func _point_in_shape(p: Vector2) -> bool:
 	# Even-odd across every ring: holes and multi-part shapes both behave.
@@ -250,7 +268,7 @@ func _draw() -> void:
 		c.a = (1.0 - float(r["t"])) * 0.55
 		draw_arc(_uv_to_px(r["uv"]), rad, 0, TAU, 32, c, 2.5, true)
 
-	# towns
+	# towns — markers first, then labels, so a nearby pin never lands on top of a name
 	for t in towns:
 		var p := _uv_to_px(t["uv"])
 		var pr: float = float(t["pulse"])
@@ -259,14 +277,7 @@ func _draw() -> void:
 			draw_circle(p, 9 + pr * 10, gc)
 		draw_circle(p, 4.5, Palette.GOLD if t["visited"] else Palette.INK)
 		draw_arc(p, 4.5, 0, TAU, 16, Color("ffffff"), 1.5, true)
-		if Palette.font_ui_bold:
-			var label := str(t["name"])
-			var w := Palette.font_ui_bold.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, 11).x
-			var tp := p + Vector2(7, 4)
-			if tp.x + w > size.x - 4:
-				tp.x = p.x - 7 - w
-			draw_string_outline(Palette.font_ui_bold, tp, label, HORIZONTAL_ALIGNMENT_LEFT, -1, 11, 3, Color(1, 1, 1, 0.85))
-			draw_string(Palette.font_ui_bold, tp, label, HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Palette.INK)
+	_draw_town_labels()
 
 	# the bus
 	if mode == "campaign" and towns.size() > 0:
@@ -298,3 +309,40 @@ func _support_color(support: float) -> Color:
 	if support >= 0.5:
 		return Color("cfc7b4").lerp(Palette.DEM, (support - 0.5) * 2.0)
 	return Color("cfc7b4").lerp(Palette.GOP, (0.5 - support) * 2.0)
+
+## Greedy label placement: try each candidate offset around the pin and take the
+## first that clears every label already on the map. Names that cannot be placed
+## are dropped — an unreadable pile of overlapping text is worse than no text.
+func _draw_town_labels() -> void:
+	if Palette.font_ui_bold == null:
+		return
+	var taken: Array = []
+	var offsets := [Vector2(8, 4), Vector2(8, -8), Vector2(8, 16), Vector2(-8, 4),
+		Vector2(-8, -8), Vector2(-8, 16), Vector2(0, -11), Vector2(0, 18)]
+	for t in towns:
+		var p := _uv_to_px(t["uv"])
+		var label := str(t["name"])
+		var m := Palette.font_ui_bold.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, 11)
+		var placed := false
+		for off in offsets:
+			var tp: Vector2 = p + off
+			if off.x < 0:
+				tp.x = p.x + off.x - m.x
+			var box := Rect2(tp.x - 2, tp.y - m.y + 1, m.x + 4, m.y + 2)
+			if box.position.x < 2 or box.end.x > size.x - 2 \
+			   or box.position.y < 2 or box.end.y > size.y - 14:
+				continue
+			var clash := false
+			for other in taken:
+				if box.intersects(other):
+					clash = true
+					break
+			if clash:
+				continue
+			taken.append(box)
+			draw_string_outline(Palette.font_ui_bold, tp, label, HORIZONTAL_ALIGNMENT_LEFT, -1, 11, 4, Color(1, 1, 1, 0.9))
+			draw_string(Palette.font_ui_bold, tp, label, HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Palette.INK)
+			placed = true
+			break
+		if not placed:
+			continue

@@ -26,8 +26,8 @@ func _process(delta: float) -> void:
 
 func _draw() -> void:
 	var cx := size.x * 0.5
-	var cy := size.y - 12
-	var radius := minf(size.x * 0.42, size.y - 24)
+	var cy := size.y - 26            # leave a baseline for the OPP / YOU labels
+	var radius := minf(size.x * 0.42, size.y - 38)
 	# arc segments colored
 	var steps := 60
 	for i in steps:
@@ -49,10 +49,12 @@ func _draw() -> void:
 	draw_line(Vector2(cx, cy), tip, Palette.INK, 3.0)
 	draw_circle(Vector2(cx, cy), 8, Palette.PANEL)
 	draw_circle(Vector2(cx, cy), 8, Palette.INK, false, 2.0)
-	# labels
+	# labels — pulled inside the arc's footprint so they can't clip the panel edge
 	if Palette.font_ui:
-		draw_string(Palette.font_ui, Vector2(cx - radius, cy + 4), label_left, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Palette.GOP)
-		draw_string(Palette.font_ui, Vector2(cx + radius - 40, cy + 4), label_right, HORIZONTAL_ALIGNMENT_RIGHT, 40, 12, Palette.DEM)
+		draw_string(Palette.font_ui, Vector2(cx - radius + 4, cy + 15), label_left,
+			HORIZONTAL_ALIGNMENT_LEFT, 60, 12, Palette.GOP)
+		draw_string(Palette.font_ui, Vector2(cx + radius - 64, cy + 15), label_right,
+			HORIZONTAL_ALIGNMENT_RIGHT, 60, 12, Palette.DEM)
 	if Palette.font_display:
 		var pct := "%d%%" % int(round(_shown * 100))
 		draw_string(Palette.font_display, Vector2(cx - 40, cy - radius * 0.45), pct, HORIZONTAL_ALIGNMENT_CENTER, 80, 30, Palette.INK)

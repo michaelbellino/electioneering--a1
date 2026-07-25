@@ -71,6 +71,7 @@ func _option_button(opt: Dictionary) -> Control:
 	var mc := UI.margin(6)
 	mc.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	mc.add_child(vb)
+	mc.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	b.add_child(mc)
 	b.custom_minimum_size.y = 62
 	b.pressed.connect(func(): _choose(opt.get("id", "")))

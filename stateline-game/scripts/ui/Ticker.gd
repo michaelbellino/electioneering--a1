@@ -9,6 +9,10 @@ var speed := 60.0
 var _segments: Array = []   # cached {text,color,width,x}
 var _dirty := true
 
+func _ready() -> void:
+	# Without this the chyron draws straight past its own rect and off the window.
+	clip_contents = true
+
 func set_items(list: Array) -> void:
 	items = list
 	_dirty = true
@@ -43,29 +47,34 @@ func _process(delta: float) -> void:
 
 func _draw() -> void:
 	draw_rect(Rect2(Vector2.ZERO, size), Palette.PANEL)
-	draw_rect(Rect2(Vector2.ZERO, size), Palette.BORDER, false, 1.0)
-	# LIVE flag
-	var flag_w := 62.0
-	draw_rect(Rect2(0, 0, flag_w, size.y), Palette.BAD)
-	if Palette.font_ui:
-		draw_string(Palette.font_display, Vector2(12, size.y*0.5 + 6), "LIVE", HORIZONTAL_ALIGNMENT_LEFT, -1, 15, Color("ffffff"))
 	if _dirty: _rebuild()
-	if _segments.is_empty(): return
-	var total := 0.0
-	for s in _segments: total += s["width"]
-	if total <= 0: return
-	var start_x := flag_w + 8 - fmod(_offset, total)
-	# draw two passes to fill the strip seamlessly
+	var flag_w := 58.0
 	var y := size.y * 0.5 + 5
-	for pass_i in 3:
-		var x := start_x + pass_i * total
-		for s in _segments:
-			if x > flag_w and x < size.x:
-				draw_string(Palette.font_ui, Vector2(x, y), s["text"], HORIZONTAL_ALIGNMENT_LEFT, -1, 14, s["color"])
-			x += s["width"]
-			if x > size.x and pass_i > 0:
-				break
-	# mask under the flag so text slides beneath it
+	if not _segments.is_empty():
+		var total := 0.0
+		for s in _segments: total += s["width"]
+		if total > 0:
+			var start_x := flag_w + 10 - fmod(_offset, total)
+			for pass_i in 3:
+				var x := start_x + pass_i * total
+				for s in _segments:
+					if x > flag_w - 40 and x < size.x:
+						draw_string(Palette.font_ui, Vector2(x, y), s["text"],
+							HORIZONTAL_ALIGNMENT_LEFT, -1, 14, s["color"])
+					x += s["width"]
+					if x > size.x and pass_i > 0:
+						break
+	# fade the right edge so headlines dissolve out rather than getting guillotined
+	var fade_w := 90.0
+	var steps := 18
+	for i in steps:
+		var t := float(i) / float(steps - 1)
+		var c := Palette.PANEL
+		c.a = pow(t, 0.7)
+		draw_rect(Rect2(size.x - fade_w + t * (fade_w - 2.0), 0, fade_w / steps + 2.0, size.y), c)
+	# LIVE flag last, so text slides beneath it
 	draw_rect(Rect2(0, 0, flag_w, size.y), Palette.BAD)
-	if Palette.font_ui:
-		draw_string(Palette.font_display, Vector2(12, y), "LIVE", HORIZONTAL_ALIGNMENT_LEFT, -1, 15, Color("ffffff"))
+	if Palette.font_display:
+		draw_string(Palette.font_display, Vector2(11, y), "LIVE",
+			HORIZONTAL_ALIGNMENT_LEFT, -1, 15, Color("ffffff"))
+	draw_rect(Rect2(Vector2.ZERO, size), Palette.BORDER, false, 1.0)

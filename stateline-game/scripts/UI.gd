@@ -27,9 +27,24 @@ static func flat(bg: Color, radius := 6, border := 0, border_col := Color.TRANSP
 	return s
 
 static func panel_style() -> StyleBoxFlat:
-	var s := flat(Palette.PANEL, 8, 1, Palette.BORDER)
+	var s := flat(Palette.PANEL, 10, 1, Palette.BORDER)
 	s.shadow_color = Color(0.10, 0.12, 0.18, 0.10)
-	s.shadow_size = 6
+	s.shadow_size = 7
+	s.shadow_offset = Vector2(0, 2)
+	return s
+
+## Second-tier surface: sits *in* the page rather than on top of it. No shadow,
+## warmer ground. Used for supporting panels so the screen isn't nine identical
+## white cards in a row — elevation is what tells you where to look first.
+static func quiet_style() -> StyleBoxFlat:
+	var s := flat(Palette.BG.lerp(Palette.PANEL, 0.45), 10, 1, Palette.BORDER)
+	return s
+
+## Chrome: the dark HUD band. Reads as the game's frame, not as content.
+static func hud_style() -> StyleBoxFlat:
+	var s := flat(Palette.INK, 10, 0)
+	s.shadow_color = Color(0.10, 0.12, 0.18, 0.22)
+	s.shadow_size = 8
 	s.shadow_offset = Vector2(0, 2)
 	return s
 
@@ -93,6 +108,47 @@ static func panel() -> PanelContainer:
 	var p := PanelContainer.new()
 	p.add_theme_stylebox_override("panel", panel_style())
 	return p
+
+static func quiet_panel() -> PanelContainer:
+	var p := PanelContainer.new()
+	p.add_theme_stylebox_override("panel", quiet_style())
+	return p
+
+static func hud_panel() -> PanelContainer:
+	var p := PanelContainer.new()
+	p.add_theme_stylebox_override("panel", hud_style())
+	return p
+
+## Panel header: a colour-coded bar, a real title, and an optional right-hand slot.
+## Replaces the bare grey small-caps kicker that made every panel look alike.
+static func section(text: String, accent := Palette.ACCENT, right: Control = null) -> HBoxContainer:
+	var h := hbox(8)
+	var bar := ColorRect.new()
+	bar.color = accent
+	bar.custom_minimum_size = Vector2(3, 15)
+	bar.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	h.add_child(bar)
+	var l := Label.new()
+	l.text = text.to_upper()
+	l.add_theme_font_override("font", Palette.font_display)
+	l.add_theme_font_size_override("font_size", 14)
+	l.add_theme_color_override("font_color", Palette.INK)
+	l.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	h.add_child(l)
+	h.add_child(spacer())
+	if right:
+		h.add_child(right)
+	return h
+
+## A label that can never spill its box: wraps, then hard-stops at `lines`.
+static func clamped(text: String, lines := 2, size := 11, color := Palette.MUTED) -> Label:
+	var l := label(text, size, color)
+	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	l.max_lines_visible = lines
+	l.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	l.clip_text = true
+	return l
 
 static func rule() -> HSeparator:
 	var h := HSeparator.new()

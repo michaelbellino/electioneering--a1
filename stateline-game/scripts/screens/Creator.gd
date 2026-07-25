@@ -197,9 +197,9 @@ func _step_identity() -> Control:
 	left.custom_minimum_size = Vector2(330, 0)
 	var lv := UI.vbox(10)
 	left.add_child(lv)
-	lv.add_child(UI.kicker("Your candidate"))
+	lv.add_child(UI.section("Your candidate", Palette.ACCENT))
 	_portrait = Portrait.new()
-	_portrait.custom_minimum_size = Vector2(290, 330)
+	_portrait.custom_minimum_size = Vector2(290, 430)
 	_portrait.set_features(features)
 	_portrait.set_party(party)
 	lv.add_child(_portrait)
@@ -218,7 +218,7 @@ func _step_identity() -> Control:
 	mid.custom_minimum_size = Vector2(330, 0)
 	var mv := UI.vbox(8)
 	mid.add_child(mv)
-	mv.add_child(UI.kicker("Appearance"))
+	mv.add_child(UI.section("Appearance", Palette.IND))
 	mv.add_child(_cycler("Hair", func(): return Portrait.HAIR_NAMES[int(features.get("hairStyle", 0)) % Portrait.HAIR_STYLES],
 		func(dir): features["hairStyle"] = wrapi(int(features.get("hairStyle", 0)) + dir, 0, Portrait.HAIR_STYLES)))
 	mv.add_child(_cycler("Hair colour", func(): return "Shade %d" % (Portrait.HAIRS.find(str(features.get("hairColor", ""))) + 1),
@@ -231,6 +231,13 @@ func _step_identity() -> Control:
 		func(dir): features["suit"] = Portrait.SUITS[wrapi(Portrait.SUITS.find(str(features.get("suit", ""))) + dir, 0, Portrait.SUITS.size())]))
 	mv.add_child(_cycler("Tie", func(): return "Colour %d" % (Portrait.TIES.find(str(features.get("tie", ""))) + 1),
 		func(dir): features["tie"] = Portrait.TIES[wrapi(Portrait.TIES.find(str(features.get("tie", ""))) + dir, 0, Portrait.TIES.size())]))
+	const BROWS := ["Level", "Furrowed", "Raised"]
+	const EYE_COLS := ["3b2b1d", "2f4f6f", "3f6b4f", "5a4632"]
+	const EYE_NAMES := ["Brown", "Blue", "Green", "Hazel"]
+	mv.add_child(_cycler("Brow", func(): return BROWS[int(features.get("brow", 1)) % 3],
+		func(dir): features["brow"] = wrapi(int(features.get("brow", 1)) + dir, 0, 3)))
+	mv.add_child(_cycler("Eyes", func(): return EYE_NAMES[maxi(EYE_COLS.find(str(features.get("eyeColor", ""))), 0)],
+		func(dir): features["eyeColor"] = EYE_COLS[wrapi(maxi(EYE_COLS.find(str(features.get("eyeColor", ""))), 0) + dir, 0, EYE_COLS.size())]))
 	var specs := UI.selectable("Glasses")
 	specs.button_pressed = bool(features.get("glasses", false))
 	specs.pressed.connect(func():
@@ -239,6 +246,12 @@ func _step_identity() -> Control:
 		_portrait.set_features(features)
 		Audio.sfx("click"))
 	mv.add_child(specs)
+	mv.add_child(UI.rule())
+	mv.add_child(_feature_slider("Smile", "smile", 0.0, 1.0))
+	mv.add_child(_feature_slider("Jaw", "jaw", 0.85, 1.15))
+	mv.add_child(UI.spacer())
+	mv.add_child(UI.wrap("Looks are cosmetic — nothing here changes how voters break. Build whoever you want to be.",
+		290, 11, Palette.FAINT))
 	row.add_child(mid)
 
 	# right: name + party
@@ -246,7 +259,7 @@ func _step_identity() -> Control:
 	right.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	var rv := UI.vbox(10)
 	right.add_child(rv)
-	rv.add_child(UI.kicker("Name & party"))
+	rv.add_child(UI.section("Name & party", Palette.GOLD2))
 	var name_row := UI.hbox(8)
 	var name_edit := LineEdit.new()
 	name_edit.text = pname
@@ -274,8 +287,55 @@ func _step_identity() -> Control:
 		["R", "Republican", "Inherits Republican-leaning voters. Strong where the seat already leans red.", Palette.GOP],
 		["I", "Independent", "No inherited base at all — you win purely on issues, character and name recognition. Hardest, most flexible.", Palette.IND]]:
 		rv.add_child(_party_card(str(p[0]), str(p[1]), str(p[2]), p[3]))
+	rv.add_child(UI.spacer())
+	rv.add_child(_starting_position())
 	row.add_child(right)
 	return row
+
+## What the party choice actually buys you in the seat you're currently set to
+## run in — otherwise the choice is three paragraphs of prose and a guess.
+func _starting_position() -> Control:
+	var d := Content.district(district_id)
+	var lean := float(d.get("lean", 0.0))
+	var box := UI.quiet_panel()
+	var v := UI.vbox(6)
+	box.add_child(v)
+	v.add_child(UI.section("Where that leaves you", Palette.MUTED))
+
+	var seat := UI.hbox(8)
+	seat.add_child(UI.label(str(d.get("name", "")), 13, Palette.INK))
+	seat.add_child(UI.spacer())
+	var tilt := "Even"
+	if absf(lean) >= 0.02:
+		tilt = "%s +%d" % ["D" if lean > 0 else "R", int(round(absf(lean) * 100))]
+	seat.add_child(UI.chip(tilt, Palette.lean_ink(lean), 0.18))
+	v.add_child(seat)
+
+	var meter := Control.new()
+	meter.custom_minimum_size = Vector2(0, 12)
+	meter.draw.connect(func():
+		var w := meter.size.x
+		meter.draw_rect(Rect2(0, 3, w, 6), Palette.BG2)
+		var mid := w * 0.5
+		var mag: float = clampf(absf(lean) * 2.5, 0.0, 1.0) * w * 0.5
+		var c := Palette.DEM if lean > 0 else Palette.GOP
+		meter.draw_rect(Rect2(mid if lean > 0 else mid - mag, 3, mag, 6), c)
+		meter.draw_line(Vector2(mid, 0), Vector2(mid, 12), Palette.FAINT, 1.0))
+	v.add_child(meter)
+
+	var with_grain := (lean >= 0.02 and party == "D") or (lean <= -0.02 and party == "R")
+	var against := (lean >= 0.02 and party == "R") or (lean <= -0.02 and party == "D")
+	var verdict := ""
+	if party == "I":
+		verdict = "Independent: you inherit nobody. Every vote has to be earned on name recognition, character and where you stand."
+	elif with_grain:
+		verdict = "You are running with the grain. The base is already there — your job is turnout and not losing it."
+	elif against:
+		verdict = "You are running against the grain. You will need crossover voters, which means character and issues over party."
+	else:
+		verdict = "A genuine toss-up seat. Nobody starts ahead; the campaign decides it."
+	v.add_child(UI.wrap(verdict, 440, 12, Palette.MUTED))
+	return box
 
 func _cycler(label: String, getter: Callable, setter: Callable) -> Control:
 	var row := UI.hbox(6)
@@ -297,10 +357,30 @@ func _cycler(label: String, getter: Callable, setter: Callable) -> Control:
 	row.add_child(prev); row.add_child(val); row.add_child(next)
 	return row
 
+## Continuous portrait knob. Repaints the preview live without rebuilding the
+## page — the whole-page rebuild on drag is what made the sliders flicker.
+func _feature_slider(label: String, key: String, lo: float, hi: float) -> Control:
+	var row := UI.hbox(6)
+	var l := UI.label(label, 13, Palette.MUTED)
+	l.custom_minimum_size = Vector2(96, 0)
+	row.add_child(l)
+	var s := HSlider.new()
+	s.min_value = lo; s.max_value = hi; s.step = 0.01
+	s.value = clampf(float(features.get(key, (lo + hi) * 0.5)), lo, hi)
+	s.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	s.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	s.custom_minimum_size = Vector2(0, 22)
+	s.value_changed.connect(func(v):
+		features[key] = v
+		if _portrait: _portrait.set_features(features))
+	row.add_child(s)
+	return row
+
 func _party_card(id: String, label: String, desc: String, col: Color) -> Control:
 	var b := UI.select_card(col)
 	b.button_pressed = party == id
-	b.custom_minimum_size = Vector2(0, 62)
+	b.custom_minimum_size = Vector2(0, 68)
+	b.clip_contents = true
 	b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	var v := UI.vbox(2)
 	v.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -312,6 +392,7 @@ func _party_card(id: String, label: String, desc: String, col: Color) -> Control
 	var mc := UI.margin(8)
 	mc.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	mc.add_child(v)
+	mc.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	b.add_child(mc)
 	b.pressed.connect(func():
 		party = id
@@ -339,7 +420,7 @@ func _step_strengths() -> Control:
 	var dp := UI.panel()
 	var dv := UI.vbox(8)
 	dp.add_child(dv)
-	dv.add_child(UI.kicker("Difficulty"))
+	dv.add_child(UI.section("Difficulty", Palette.WARN))
 	dv.add_child(UI.wrap("Difficulty never changes the rules — it rescales your budget, your week, and how hard the opposition pushes.", 900, 12, Palette.FAINT))
 	var drow := UI.hbox(10)
 	for d in Game.DIFFICULTIES:
@@ -352,7 +433,7 @@ func _step_strengths() -> Control:
 	var av := UI.vbox(8)
 	ap.add_child(av)
 	var ahead := UI.hbox(8)
-	ahead.add_child(UI.kicker("Attributes"))
+	ahead.add_child(UI.section("Attributes", Palette.ACCENT))
 	ahead.add_child(UI.spacer())
 	var pts_lbl := UI.label("", 14, Palette.GOLD)
 	pts_lbl.add_theme_font_override("font", Palette.font_mono)
@@ -372,7 +453,7 @@ func _step_strengths() -> Control:
 	var tv := UI.vbox(8)
 	tp.add_child(tv)
 	var thead := UI.hbox(8)
-	thead.add_child(UI.kicker("Background — pick up to two"))
+	thead.add_child(UI.section("Background — pick up to two", Palette.IND))
 	thead.add_child(UI.spacer())
 	thead.add_child(UI.label("%d / 2 chosen" % traits.size(), 13, Palette.GOLD if traits.size() > 0 else Palette.MUTED))
 	tv.add_child(thead)
@@ -406,6 +487,7 @@ func _difficulty_card(d: Dictionary) -> Control:
 	var mc := UI.margin(8)
 	mc.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	mc.add_child(v)
+	mc.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	b.add_child(mc)
 	b.pressed.connect(func():
 		difficulty_id = str(d.id)
@@ -501,6 +583,7 @@ func _trait_card(t: Dictionary) -> Control:
 	var mc := UI.margin(8)
 	mc.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	mc.add_child(v)
+	mc.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	b.add_child(mc)
 	b.pressed.connect(func():
 		var tid := str(t.id)
@@ -542,7 +625,7 @@ func _step_platform() -> Control:
 	left.custom_minimum_size = Vector2(330, 0)
 	var lv := UI.vbox(8)
 	left.add_child(lv)
-	lv.add_child(UI.kicker("Your ideology"))
+	lv.add_child(UI.section("Your ideology", Palette.IND))
 	var ideo := Sim.ideology_of(stances)
 	var compass := Compass.new()
 	_compass = compass
@@ -606,7 +689,7 @@ func _step_platform() -> Control:
 	var hv := UI.vbox(4)
 	head.add_child(hv)
 	var hr := UI.hbox(8)
-	hr.add_child(UI.kicker("Where you stand — %d policies across %d areas" % [Content.policies.size(), Content.issues.size()]))
+	hr.add_child(UI.section("Where you stand — %d policies across %d areas" % [Content.policies.size(), Content.issues.size()], Palette.ACCENT))
 	hr.add_child(UI.spacer())
 	hr.add_child(UI.label("Open an area to set each policy precisely", 11, Palette.FAINT))
 	hv.add_child(hr)
@@ -917,7 +1000,7 @@ func _step_race() -> Control:
 	left.custom_minimum_size = Vector2(420, 0)
 	var lv := UI.vbox(8)
 	left.add_child(lv)
-	lv.add_child(UI.kicker("Choose your race"))
+	lv.add_child(UI.section("Choose your race", Palette.GOOD))
 
 	var search := LineEdit.new()
 	search.placeholder_text = "Search state, district or theme…"
@@ -994,11 +1077,12 @@ func _race_row(d: Dictionary) -> Control:
 	sub.add_child(UI.label("★%d" % int(d.get("stars", 1)), 11, Palette.GOLD))
 	sub.add_child(UI.label(str(d.get("tagline", "")), 11, Palette.ACCENT))
 	sub.add_child(UI.spacer())
-	sub.add_child(UI.label(_lean_word(float(d.get("lean", 0.0))), 11, Palette.lean_color(float(d.get("lean", 0.0)))))
+	sub.add_child(UI.label(_lean_word(float(d.get("lean", 0.0))), 11, Palette.lean_ink(float(d.get("lean", 0.0)))))
 	v.add_child(sub)
 	var mc := UI.margin(7)
 	mc.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	mc.add_child(v)
+	mc.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	b.add_child(mc)
 	b.pressed.connect(func():
 		district_id = str(d.get("id", ""))

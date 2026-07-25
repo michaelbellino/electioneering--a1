@@ -72,6 +72,13 @@ func party_color(p: String) -> Color:
 		"R": return GOP
 		_:   return IND
 
+## A readable text colour for a lean word. The map gradient runs through a pale
+## neutral, which is invisible as type — near-even seats fall back to grey ink.
+func lean_ink(lean: float) -> Color:
+	if absf(lean) < 0.04:
+		return MUTED
+	return lean_color(lean).darkened(0.3)
+
 ## Lean −1 (R) .. +1 (D) → red ▸ neutral ▸ blue.
 func lean_color(lean: float) -> Color:
 	var t: float = clampf((lean + 1.0) * 0.5, 0.0, 1.0)

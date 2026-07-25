@@ -137,12 +137,38 @@ func _run_shots() -> void:
 		Game.end_week()
 	if current and current.has_method("refresh"): current.refresh()
 	await _wait(0.9); await _save_shot("04_hq_midgame")
+	# overlays: the week sheet, the staff modal, the pause menu
+	var sheet := WeekReview.new()
+	overlay_layer.add_child(sheet)
+	sheet.setup(Game.state.get("weekReport", {}))
+	await _wait(0.5); await _save_shot("08_weekreview")
+	for c in overlay_layer.get_children(): c.queue_free()
+	await get_tree().process_frame
+	if current and current.has_method("_open_staff"):
+		current._open_staff()
+		await _wait(0.5); await _save_shot("09_staff")
+		for c in current.get_children():
+			if c is ColorRect: c.queue_free()
+		await get_tree().process_frame
+	show_pause_menu()
+	await _wait(0.5); await _save_shot("10_pause")
+	for c in overlay_layer.get_children(): c.queue_free()
+	await get_tree().process_frame
+
 	# a dilemma card
 	var d := Game._draw_dilemma()
 	if not d.is_empty():
 		await show_dilemma_shot(d)
 		await _wait(0.5); await _save_shot("05_dilemma")
 		for c in overlay_layer.get_children(): c.queue_free()
+	# a three-way statewide race exercises the tallest possible race wire
+	Game.new_game("az-gov", "normal", sample, 77)
+	await _goto_settled("hq"); await _wait(0.8); await _save_shot("11_hq_threeway")
+	Game.new_game("pa-07", "normal", sample, 4242)
+	for i in 12:
+		for aid in ["fundraiser", "tv_positive", "rally"]:
+			if Game.can_do(aid): Game.do_action(aid)
+		Game.end_week()
 	await _goto_settled("election"); await _wait(4.5); await _save_shot("06_election")
 	await _goto_settled("results", Game.state.get("result", {})); await _wait(0.8); await _save_shot("07_results")
 	print("SHOTS complete")
