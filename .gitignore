@@ -1,2 +1,6 @@
 # Build output / packaged deliverables (large binaries live here)
 dist/
+
+# Don't commit the 38 MB bundle — it permanently bloats every clone.
+# The tiny content pack (release/Stateline.pck, ~1 MB) is committed instead.
+release/*.zip

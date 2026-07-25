@@ -238,7 +238,7 @@ func _build_action_deck(deck: VBoxContainer) -> void:
 func _action_button(a: Dictionary) -> Control:
 	var b := Button.new()
 	b.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-	b.custom_minimum_size = Vector2(250, 58)
+	b.custom_minimum_size = Vector2(250, 76)
 	b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	UI._style_button(b, false)
 	b.tooltip_text = Game.action_tooltip(a)
@@ -255,7 +255,8 @@ func _action_button(a: Dictionary) -> Control:
 	v.add_child(top)
 	var sub := UI.label(a.desc, 11, Palette.MUTED)
 	sub.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	sub.custom_minimum_size = Vector2(220, 0)
+	sub.custom_minimum_size = Vector2(206, 0)
+	sub.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	v.add_child(sub)
 	var mc := UI.margin(8)
 	mc.mouse_filter = Control.MOUSE_FILTER_IGNORE

@@ -1,0 +1,8 @@
+Bundled typefaces, all under the SIL Open Font License 1.1:
+
+  Public Sans   — the U.S. federal government's open typeface (USWDS).
+  Oswald        — Vernon Adams, Kalapi Gajjar, Cyreal.
+  Courier Prime — Quote-Unquote Apps (Alan Dague-Greene).
+
+The OFL permits bundling and redistribution with software.
+Full license text: https://scripts.sil.org/OFL

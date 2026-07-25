@@ -47,7 +47,7 @@ func _draw() -> void:
 	var ang := PI + PI * val
 	var tip := Vector2(cx + cos(ang) * (radius - 6), cy + sin(ang) * (radius - 6))
 	draw_line(Vector2(cx, cy), tip, Palette.INK, 3.0)
-	draw_circle(Vector2(cx, cy), 8, Palette.PANEL2)
+	draw_circle(Vector2(cx, cy), 8, Palette.PANEL)
 	draw_circle(Vector2(cx, cy), 8, Palette.INK, false, 2.0)
 	# labels
 	if Palette.font_ui:

@@ -144,7 +144,7 @@ func _process(delta: float) -> void:
 
 func _draw() -> void:
 	# backdrop
-	draw_rect(Rect2(Vector2.ZERO, size), Palette.BG2)
+	draw_rect(Rect2(Vector2.ZERO, size), Color("fbf7ee"))
 	draw_rect(Rect2(Vector2.ZERO, size), Palette.BORDER, false, 1.0)
 	# faint grid glow
 	# cells
@@ -153,13 +153,13 @@ func _draw() -> void:
 		var support: float = float(cell["support"])
 		var col: Color
 		if mode == "election" and not cell["reported"]:
-			col = Palette.PANEL2
+			col = Color("e4dccb")
 		else:
 			# support 0..1 => R..D via player's leaning (player_share as neutral point)
 			col = _support_color(support)
 			if mode == "election":
 				var rt: float = float(cell["reportT"])
-				col = Palette.INK.lerp(col, rt)  # flash white then settle
+				col = Color("fff6d8").lerp(col, rt)  # flash white then settle
 		# breathing shimmer in campaign mode
 		var a := 1.0
 		if mode == "campaign" and not reduced:
@@ -179,7 +179,8 @@ func _draw() -> void:
 			var gc := Palette.GOLD; gc.a = pr * 0.4
 			draw_circle(p, 10 + pr * 10, gc)
 		draw_circle(p, 5, Palette.GOLD if t["visited"] else Palette.MUTED)
-		draw_circle(p, 5, Palette.BG, false, 1.5)
+		draw_arc(p, 5, 0, TAU, 16, Color("ffffff"), 1.5, true)
+		
 		if Palette.font_ui:
 			draw_string(Palette.font_ui, p + Vector2(9, 4), t["name"], HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Palette.MUTED)
 	# campaign bus
@@ -188,16 +189,16 @@ func _draw() -> void:
 		var bob := 0.0 if reduced else sin(_t * 6.0) * 1.5
 		bp.y += bob
 		draw_rect(Rect2(bp - Vector2(11, 6), Vector2(22, 12)), Palette.ACCENT, true)
-		draw_rect(Rect2(bp - Vector2(11, 6), Vector2(22, 12)), Palette.INK, false, 1.0)
+		draw_rect(Rect2(bp - Vector2(11, 6), Vector2(22, 12)), Palette.ACCENT2, false, 1.5)
 		draw_circle(bp + Vector2(-6, 7), 2.5, Palette.INK)
 		draw_circle(bp + Vector2(6, 7), 2.5, Palette.INK)
-		draw_rect(Rect2(bp + Vector2(-8, -4), Vector2(6, 5)), Palette.BG2)
+		draw_rect(Rect2(bp + Vector2(-8, -4), Vector2(6, 5)), Color("ffffff"))
 
 func _support_color(support: float) -> Color:
 	# support = player's share of the two-party-ish vote in the cell
 	if support >= 0.5:
-		return Color("2b3a52").lerp(Palette.DEM, (support - 0.5) * 2.0)
-	return Color("2b3a52").lerp(Palette.GOP, (0.5 - support) * 2.0)
+		return Color("dcd6c6").lerp(Palette.DEM, (support - 0.5) * 2.0)
+	return Color("dcd6c6").lerp(Palette.GOP, (0.5 - support) * 2.0)
 
 func _draw_round_rect(rect: Rect2, color: Color, radius: float) -> void:
 	# approximate rounded rect with a filled rect + corner smoothing via draw_style? keep simple.

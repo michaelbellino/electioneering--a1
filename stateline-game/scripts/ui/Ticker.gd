@@ -42,13 +42,13 @@ func _process(delta: float) -> void:
 	queue_redraw()
 
 func _draw() -> void:
-	draw_rect(Rect2(Vector2.ZERO, size), Palette.BG2)
+	draw_rect(Rect2(Vector2.ZERO, size), Palette.PANEL)
 	draw_rect(Rect2(Vector2.ZERO, size), Palette.BORDER, false, 1.0)
 	# LIVE flag
 	var flag_w := 62.0
 	draw_rect(Rect2(0, 0, flag_w, size.y), Palette.BAD)
 	if Palette.font_ui:
-		draw_string(Palette.font_ui, Vector2(10, size.y*0.5 + 5), "LIVE", HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Palette.BG)
+		draw_string(Palette.font_display, Vector2(12, size.y*0.5 + 6), "LIVE", HORIZONTAL_ALIGNMENT_LEFT, -1, 15, Color("ffffff"))
 	if _dirty: _rebuild()
 	if _segments.is_empty(): return
 	var total := 0.0
@@ -68,4 +68,4 @@ func _draw() -> void:
 	# mask under the flag so text slides beneath it
 	draw_rect(Rect2(0, 0, flag_w, size.y), Palette.BAD)
 	if Palette.font_ui:
-		draw_string(Palette.font_ui, Vector2(10, y), "LIVE", HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Palette.BG)
+		draw_string(Palette.font_display, Vector2(12, y), "LIVE", HORIZONTAL_ALIGNMENT_LEFT, -1, 15, Color("ffffff"))

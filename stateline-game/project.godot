@@ -7,12 +7,12 @@ config_version=5
 
 config/name="Stateline: Campaign Trail"
 config/description="A deep US political & electoral campaign simulation."
-config/version="0.3.0-alpha"
+config/version="0.3.1-alpha"
 run/main_scene="res://scenes/Main.tscn"
 config/features=PackedStringArray("4.7", "GL Compatibility")
 config/icon="res://assets/icon.svg"
 boot_splash/show_image=false
-boot_splash/bg_color=Color(0.027, 0.039, 0.067, 1)
+boot_splash/bg_color=Color(0.961, 0.937, 0.890, 1)
 
 [autoload]
 
@@ -46,7 +46,7 @@ renderer/rendering_method="gl_compatibility"
 renderer/rendering_method.mobile="gl_compatibility"
 textures/canvas_textures/default_texture_filter=1
 2d/snap/snap_2d_transforms_to_pixel=false
-environment/defaults/default_clear_color=Color(0.027, 0.039, 0.067, 1)
+environment/defaults/default_clear_color=Color(0.961, 0.937, 0.890, 1)
 
 [file_customization]
 

@@ -112,9 +112,10 @@ func _draw() -> void:
 
 	# backdrop: party-tinted vignette
 	var halo := Palette.party_color(party)
-	var hc := halo; hc.a = 0.13
+	var hc := halo; hc.a = 0.10
+	draw_circle(c + Vector2(0, s * 0.02), s * 0.42, Color("ffffff"))
 	draw_circle(c + Vector2(0, s * 0.02), s * 0.42, hc)
-	var ring := halo.lerp(Palette.BORDER, 0.45); ring.a = 0.55
+	var ring := halo.lerp(Palette.BORDER, 0.30); ring.a = 0.75
 	draw_arc(c + Vector2(0, s * 0.02), s * 0.42, 0, TAU, 64, ring, 2.0, true)
 
 	var style: int = int(features.get("hairStyle", 0))
