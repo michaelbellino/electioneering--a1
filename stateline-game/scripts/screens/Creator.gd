@@ -25,6 +25,12 @@ var race_query := ""
 var _rng := RandomNumberGenerator.new()
 
 var _portrait: Portrait
+var _compass: Compass
+var _ideo_fiscal: Label
+var _ideo_social: Label
+var _fit_label: Label
+var _area_rows: Dictionary = {}     # area id -> {stance: Label, brush: HSlider}
+var _policy_rows: Dictionary = {}   # policy id -> {pick: Label, slider: HSlider}
 var _body: Control
 var _tabs: HBoxContainer
 var _next_btn: Button
@@ -91,7 +97,9 @@ func on_enter(_data: Variant = null) -> void:
 # ---------------------------------------------------------------------------
 # Wizard chrome
 # ---------------------------------------------------------------------------
-func _rebuild() -> void:
+func _rebuild(animate := true) -> void:
+	_area_rows.clear()
+	_policy_rows.clear()
 	for c in _tabs.get_children():
 		c.queue_free()
 	for i in STEPS.size():
@@ -125,7 +133,7 @@ func _rebuild() -> void:
 	_next_btn.text = "  Launch Campaign  →" if step == STEPS.size() - 1 else "Next →"
 	_refresh_footer()
 
-	if not Game.settings.get("reduced_motion", false):
+	if animate and not Game.settings.get("reduced_motion", false):
 		pg.modulate.a = 0.0
 		var tw := create_tween()
 		tw.tween_property(pg, "modulate:a", 1.0, 0.16)
@@ -530,6 +538,7 @@ func _step_platform() -> Control:
 	lv.add_child(UI.kicker("Your ideology"))
 	var ideo := Sim.ideology_of(stances)
 	var compass := Compass.new()
+	_compass = compass
 	compass.custom_minimum_size = Vector2(290, 270)
 	compass.set_values(float(ideo.fiscal), float(ideo.social))
 	compass.tooltip_text = "Computed from all 24 of your policy stances.\nThe gold crosshair is where this district's voters sit."
@@ -542,12 +551,14 @@ func _step_platform() -> Control:
 	var fi := UI.hbox(6)
 	fi.add_child(UI.label("Fiscal", 12, Palette.MUTED))
 	fi.add_child(UI.spacer())
-	fi.add_child(UI.chip(Sim.ideology_label(float(ideo.fiscal)), Palette.ACCENT))
+	_ideo_fiscal = UI.label(Sim.ideology_label(float(ideo.fiscal)), 12, Palette.ACCENT.darkened(0.15))
+	fi.add_child(_ideo_fiscal)
 	lv.add_child(fi)
 	var so := UI.hbox(6)
 	so.add_child(UI.label("Social", 12, Palette.MUTED))
 	so.add_child(UI.spacer())
-	so.add_child(UI.chip(Sim.ideology_label(float(ideo.social)), Palette.IND))
+	_ideo_social = UI.label(Sim.ideology_label(float(ideo.social)), 12, Palette.IND.darkened(0.15))
+	so.add_child(_ideo_social)
 	lv.add_child(so)
 
 	if not d0.is_empty():
@@ -555,8 +566,10 @@ func _step_platform() -> Control:
 		var fr := UI.hbox(6)
 		fr.add_child(UI.label("Fit with race", 12, Palette.MUTED))
 		fr.add_child(UI.spacer())
-		fr.add_child(UI.chip("%d%% aligned" % int(round(fit * 100)),
-			Palette.GOOD if fit > 0.60 else (Palette.WARN if fit > 0.45 else Palette.BAD), 0.20))
+		_fit_label = UI.label("%d%% aligned" % int(round(fit * 100)), 13,
+			Palette.GOOD if fit > 0.60 else (Palette.WARN if fit > 0.45 else Palette.BAD))
+		_fit_label.add_theme_font_override("font", Palette.font_mono)
+		fr.add_child(_fit_label)
 		lv.add_child(fr)
 		lv.add_child(UI.wrap("Measured against %s, weighting each group by size and by how much they care." % str(d0.get("name", "")), 280, 11, Palette.FAINT))
 
@@ -646,12 +659,21 @@ func _issue_row(iss: Dictionary) -> Control:
 		Sim.stances_from_area(stances, iid, val)
 		stance.text = _stance_text(iss, val)
 		stance.add_theme_color_override("font_color", _stance_color(val))
+		# mirror the brush into any policy rows currently on screen
+		for p2 in Sim.policies_for_area(iid):
+			var pid2 := str(p2.get("id", ""))
+			if _policy_rows.has(pid2):
+				var r: Dictionary = _policy_rows[pid2]
+				r["slider"].set_value_no_signal(val)
+				r["pick"].text = _policy_stance_text(p2, val)
+				r["pick"].add_theme_color_override("font_color", _stance_color(val))
+		_refresh_platform_readouts()
 		Audio.sfx("tick", -14.0))
-	bsld.drag_ended.connect(func(_c): _rebuild())
 	var bright := UI.label(str(iss.get("right", "")), 11, Palette.DEM)
 	bright.custom_minimum_size = Vector2(160, 0)
 	brow.add_child(bleft); brow.add_child(bsld); brow.add_child(bright)
 	v.add_child(brow)
+	_area_rows[iid] = {"stance": stance, "brush": bsld, "iss": iss}
 
 	if open:
 		v.add_child(_area_detail(iss, pols))
@@ -725,13 +747,38 @@ func _policy_row(p: Dictionary) -> Control:
 		stances[pid] = nv
 		pick.text = _policy_stance_text(p, nv)
 		pick.add_theme_color_override("font_color", _stance_color(nv))
+		var area := str(p.get("area", ""))
+		if _area_rows.has(area):
+			var ar: Dictionary = _area_rows[area]
+			var av: float = float(_areas().get(area, 0.0))
+			ar["brush"].set_value_no_signal(av)
+			ar["stance"].text = _stance_text(ar["iss"], av)
+			ar["stance"].add_theme_color_override("font_color", _stance_color(av))
+		_refresh_platform_readouts()
 		Audio.sfx("tick", -16.0))
-	sld.drag_ended.connect(func(_c): _rebuild())
 	var right := UI.label(str(p.get("pro", "")), 11, Palette.DEM)
 	right.custom_minimum_size = Vector2(160, 0)
 	row.add_child(left); row.add_child(sld); row.add_child(right)
 	v.add_child(row)
+	_policy_rows[pid] = {"pick": pick, "slider": sld}
 	return v
+
+## Live update of the compass, ideology labels and fit — no page rebuild, no flicker.
+func _refresh_platform_readouts() -> void:
+	var ideo := Sim.ideology_of(stances)
+	if is_instance_valid(_compass):
+		_compass.set_values(float(ideo.fiscal), float(ideo.social))
+	if is_instance_valid(_ideo_fiscal):
+		_ideo_fiscal.text = Sim.ideology_label(float(ideo.fiscal))
+	if is_instance_valid(_ideo_social):
+		_ideo_social.text = Sim.ideology_label(float(ideo.social))
+	if is_instance_valid(_fit_label):
+		var d := _district()
+		if not d.is_empty():
+			var fit := _platform_fit(d)
+			_fit_label.text = "%d%% aligned" % int(round(fit * 100))
+			_fit_label.add_theme_color_override("font_color",
+				Palette.GOOD if fit > 0.60 else (Palette.WARN if fit > 0.45 else Palette.BAD))
 
 func _agreement_row(r: Dictionary) -> Control:
 	var hr := UI.hbox(8)

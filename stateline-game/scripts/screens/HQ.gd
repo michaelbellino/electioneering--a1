@@ -102,8 +102,8 @@ func _build_topbar() -> Control:
 	apv.add_child(_ap_ctl)
 	h.add_child(apv)
 
-	var menu := UI.button("☰")
-	menu.tooltip_text = "Save your campaign"
+	var menu := UI.button("Menu")
+	menu.tooltip_text = "Menu — save, load, settings, restart, quit  (Esc)"
 	menu.pressed.connect(_open_menu)
 	h.add_child(menu)
 	return panel
@@ -329,9 +329,9 @@ func _build_bottom() -> Control:
 	_ticker.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_ticker.custom_minimum_size = Vector2(0, 40)
 	h.add_child(_ticker)
-	_end_btn = UI.button("  End Week  →", true)
+	_end_btn = UI.button("End Week  ▶", true)
 	_end_btn.custom_minimum_size = Vector2(200, 40)
-	_end_btn.tooltip_text = "Bank the week. Your opponent moves, money comes in, salaries go out,\na fresh poll lands — and something may happen on the trail."
+	_end_btn.tooltip_text = "Bank the week and advance.  (Space)\nYour opponent moves, money comes in, salaries go out, a fresh poll lands —\nand something may happen on the trail."
 	_end_btn.pressed.connect(_end_week)
 	h.add_child(_end_btn)
 	return h
@@ -522,7 +522,19 @@ func _rebuild_news() -> void:
 # ---------------------------------------------------------------------------
 func _open_menu() -> void:
 	Audio.sfx("click")
-	Game.save_game(0)
+	if main and main.has_method("show_pause_menu"):
+		main.show_pause_menu()
+
+func _unhandled_input(event: InputEvent) -> void:
+	if event is InputEventKey and event.pressed and not event.echo:
+		match event.keycode:
+			KEY_ESCAPE:
+				_open_menu()
+				get_viewport().set_input_as_handled()
+			KEY_SPACE, KEY_ENTER:
+				if not _busy and is_instance_valid(_end_btn) and not _end_btn.disabled:
+					_end_week()
+					get_viewport().set_input_as_handled()
 
 func _pill(text: String, color: Color) -> PanelContainer:
 	var p := PanelContainer.new()

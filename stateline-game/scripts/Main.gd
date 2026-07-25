@@ -309,6 +309,46 @@ func show_dilemma(d: Dictionary) -> void:
 # ---------------------------------------------------------------------------
 # Toasts
 # ---------------------------------------------------------------------------
+func show_pause_menu() -> void:
+	for c in overlay_layer.get_children():
+		if c is PauseMenu:
+			return
+	overlay_layer.mouse_filter = Control.MOUSE_FILTER_STOP
+	var menu := PauseMenu.new()
+	menu.main = self
+	overlay_layer.add_child(menu)
+	menu.closed.connect(func():
+		if is_instance_valid(menu): menu.queue_free()
+		overlay_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE)
+	menu.request.connect(func(action: String):
+		if is_instance_valid(menu): menu.queue_free()
+		overlay_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_menu_action(action))
+
+func _menu_action(action: String) -> void:
+	match action:
+		"load":
+			if Game.load_game():
+				go_to("hq")
+				show_toast("Campaign loaded.", "good")
+			else:
+				show_toast("No save found.", "bad")
+		"settings":
+			go_to("settings", {"return_to": "hq"})
+		"restart":
+			var st: Dictionary = Game.state
+			if st.is_empty():
+				go_to("title")
+				return
+			var player: Dictionary = st.player.duplicate(true)
+			Game.new_game(str(st.districtId), str(st.difficultyId), player)
+			go_to("hq")
+			show_toast("Race restarted.", "good")
+		"title":
+			go_to("title")
+		"quit":
+			get_tree().quit()
+
 func show_toast(text: String, kind := "info") -> void:
 	var panel := UI.panel()
 	panel.modulate.a = 0.0

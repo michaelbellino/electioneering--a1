@@ -15,6 +15,7 @@ var endorsers: Array = []
 var names: Dictionary = {}
 var ads: Dictionary = {}
 var copy: Dictionary = {}
+var geo: Dictionary = {}
 var loaded := false
 
 func _ready() -> void:
@@ -38,8 +39,9 @@ func _load_all() -> void:
 	names      = _json("res://data/names.json", {})
 	ads        = _json("res://data/ads.json", {})
 	copy       = _json("res://data/copy.json", {})
+	geo        = _json("res://data/geo.json", {})
 	loaded = true
-	print("[Content] loaded: %d issues, %d policies, %d districts, %d dilemmas" % [issues.size(), policies.size(), districts.size(), dilemmas.size()])
+	print("[Content] loaded: %d issues, %d policies, %d districts, %d dilemmas, geo %d states / %d CDs" % [issues.size(), policies.size(), districts.size(), dilemmas.size(), geo.get("states", {}).size(), geo.get("districts", {}).size()])
 
 func _json(path: String, fallback):
 	if not ResourceLoader.exists(path) and not FileAccess.file_exists(path):
@@ -63,3 +65,64 @@ func district(id: String) -> Dictionary:
 		if d.get("id", "") == id:
 			return d
 	return {}
+
+
+## --- Real geography -------------------------------------------------------
+## Boundaries are baked to a 0..1 box by tools/bake_geo.py (Census TIGER for
+## congressional districts, us-atlas for states).
+
+func _rings_from(entry: Dictionary) -> Array:
+	var out: Array = []
+	for ring in entry.get("rings", []):
+		var pv := PackedVector2Array()
+		for p in ring:
+			pv.append(Vector2(float(p[0]), float(p[1])))
+		if pv.size() >= 3:
+			out.append(pv)
+	return out
+
+## The boundary to draw for a race: its own district shape, else its state.
+func geo_rings(d: Dictionary) -> Array:
+	if geo.is_empty():
+		return []
+	var abbr := str(d.get("abbr", "")).to_upper()
+	var office := str(d.get("office", ""))
+	if office == "house":
+		var num := _district_number(str(d.get("id", "")), str(d.get("name", "")))
+		if num != "":
+			var key := "%s-%s" % [abbr, num]
+			var cds: Dictionary = geo.get("districts", {})
+			if cds.has(key):
+				return _rings_from(cds[key])
+	var states: Dictionary = geo.get("states", {})
+	if states.has(abbr):
+		return _rings_from(states[abbr])
+	return []
+
+## A caption saying what the outline actually is.
+func geo_label(d: Dictionary) -> String:
+	var abbr := str(d.get("abbr", "")).to_upper()
+	var office := str(d.get("office", ""))
+	if office == "house":
+		var num := _district_number(str(d.get("id", "")), str(d.get("name", "")))
+		var cds: Dictionary = geo.get("districts", {})
+		if num != "" and cds.has("%s-%s" % [abbr, num]):
+			return "Real district boundary · US Census TIGER"
+	if geo.get("states", {}).has(abbr):
+		return "Real state boundary · US Census"
+	return ""
+
+## Pull a zero-padded district number out of an id like "pa-07" or a name.
+func _district_number(id: String, nm: String) -> String:
+	var parts := id.split("-")
+	if parts.size() >= 2 and parts[1].is_valid_int():
+		return "%02d" % int(parts[1])
+	var digits := ""
+	for ch in nm:
+		if ch >= "0" and ch <= "9":
+			digits += ch
+		elif digits != "":
+			break
+	if digits != "":
+		return "%02d" % int(digits)
+	return ""

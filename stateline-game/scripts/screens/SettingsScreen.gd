@@ -1,7 +1,11 @@
 class_name SettingsScreen
 extends GameScreen
 
-func on_enter(_data: Variant = null) -> void:
+var _return_to := "title"
+
+func on_enter(data: Variant = null) -> void:
+	if data is Dictionary and data.has("return_to"):
+		_return_to = str(data["return_to"])
 	var box := UI.vbox(18)
 	box.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
 	box.grow_horizontal = Control.GROW_DIRECTION_BOTH
@@ -37,7 +41,7 @@ func on_enter(_data: Variant = null) -> void:
 	back.pressed.connect(func():
 		Audio.sfx("click")
 		Audio.refresh_volume()
-		go("title"))
+		go(_return_to))
 	box.add_child(back)
 
 func _toggle(label: String, key: String) -> Control:
