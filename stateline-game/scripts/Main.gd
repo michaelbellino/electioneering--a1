@@ -59,6 +59,61 @@ func _ready() -> void:
 
 	if "--shots" in OS.get_cmdline_user_args() or "--shots" in OS.get_cmdline_args():
 		call_deferred("_run_shots")
+	if "--portraits" in OS.get_cmdline_user_args() or "--portraits" in OS.get_cmdline_args():
+		call_deferred("_portrait_sheet")
+	if "--creator" in OS.get_cmdline_user_args() or "--creator" in OS.get_cmdline_args():
+		call_deferred("_creator_shots")
+
+func _goto_settled(name: String, data: Variant = null) -> void:
+	while _transitioning:
+		await get_tree().process_frame
+	await go_to(name, data)
+	while _transitioning:
+		await get_tree().process_frame
+
+func _creator_shots() -> void:
+	Game.settings["reduced_motion"] = true
+	await _goto_settled("creator")
+	await _wait(0.6)
+	var c := current
+	for i in 4:
+		c.step = i
+		if i == 2:
+			c.expanded_issue = "immigration"      # show an expanded issue
+		c._rebuild()
+		await _wait(0.7)
+		await _save_shot("creator_%d" % i)
+	print("CREATOR SHOTS done")
+	get_tree().quit()
+
+func _portrait_sheet() -> void:
+	Game.settings["reduced_motion"] = true
+	for c in content_layer.get_children():
+		c.queue_free()
+	var grid := GridContainer.new()
+	grid.columns = 7
+	grid.add_theme_constant_override("h_separation", 4)
+	grid.add_theme_constant_override("v_separation", 4)
+	grid.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	content_layer.add_child(grid)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 20260101
+	var parties := ["D", "R", "I"]
+	for i in 21:
+		var f := Portrait.make_features(rng)
+		f["hairStyle"] = i % Portrait.HAIR_STYLES     # cover every style
+		if i >= 14:
+			f["facial"] = 1 + (i % 3)
+			f["glasses"] = (i % 2 == 0)
+		var p := Portrait.new()
+		p.custom_minimum_size = Vector2(178, 258)
+		p.set_features(f)
+		p.set_party(parties[i % 3])
+		grid.add_child(p)
+	await _wait(0.6)
+	await _save_shot("portraits")
+	print("PORTRAIT SHEET done")
+	get_tree().quit()
 
 func _run_shots() -> void:
 	Game.settings["reduced_motion"] = true
@@ -73,8 +128,8 @@ func _run_shots() -> void:
 	}
 	await _wait(0.7); await _save_shot("01_title")
 	Game.new_game("pa-07", "normal", sample, 4242)
-	await go_to("creator"); await _wait(0.7); await _save_shot("02_creator")
-	await go_to("hq"); await _wait(0.8); await _save_shot("03_hq")
+	await _goto_settled("creator"); await _wait(0.7); await _save_shot("02_creator")
+	await _goto_settled("hq"); await _wait(0.8); await _save_shot("03_hq")
 	# play a few weeks so the chart/news populate
 	for i in 6:
 		for aid in ["fundraiser", "tv_positive", "rally", "canvass", "digital", "issue_ad"]:
@@ -88,8 +143,8 @@ func _run_shots() -> void:
 		await show_dilemma_shot(d)
 		await _wait(0.5); await _save_shot("05_dilemma")
 		for c in overlay_layer.get_children(): c.queue_free()
-	await go_to("election"); await _wait(4.5); await _save_shot("06_election")
-	await go_to("results", Game.state.get("result", {})); await _wait(0.8); await _save_shot("07_results")
+	await _goto_settled("election"); await _wait(4.5); await _save_shot("06_election")
+	await _goto_settled("results", Game.state.get("result", {})); await _wait(0.8); await _save_shot("07_results")
 	print("SHOTS complete")
 	get_tree().quit()
 

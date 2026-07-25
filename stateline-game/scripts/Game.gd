@@ -161,6 +161,48 @@ func action_def(id: String) -> Dictionary:
 		if a.id == id: return a
 	return {}
 
+const CHANNEL_WORDS := {
+	"nameRecognition": "name recognition",
+	"favorability": "favourability",
+	"turnout": "election-day turnout",
+	"enthusiasm": "base enthusiasm",
+	"opinion": "public opinion on your strongest issue",
+}
+
+## A full, readable explanation of what an action costs and does — used for tooltips
+## so no button in the game is an unexplained mystery.
+func action_tooltip(a: Dictionary) -> String:
+	var lines: Array = [str(a.get("desc", ""))]
+	lines.append("")
+	lines.append("Costs: %d action point%s%s" % [
+		int(a.ap), "" if int(a.ap) == 1 else "s",
+		("  ·  $" + _comma(int(a.cost))) if int(a.cost) > 0 else "  ·  free"])
+	if int(a.get("cooldown", 0)) > 0:
+		lines.append("Cooldown: %d week%s" % [int(a.cooldown), "" if int(a.cooldown) == 1 else "s"])
+	if int(a.get("fund", 0)) > 0:
+		lines.append("Raises about $%s (more with a Finance Director and a bigger profile)." % _comma(int(a.fund)))
+	for ef in a.get("effects", []):
+		var who: String = "you" if str(ef.get("target", "self")) == "self" else "your opponent"
+		var mag: float = float(ef.get("magnitude", 0.0))
+		var dir: String = "raises" if mag > 0 else "lowers"
+		var size_word: String = "slightly" if absf(mag) < 0.1 else ("strongly" if absf(mag) > 0.35 else "noticeably")
+		lines.append("• %s %s %s %s" % [dir.capitalize(), who + "'s", str(CHANNEL_WORDS.get(str(ef.get("channel", "")), str(ef.get("channel", "")))), size_word])
+	var amp: String = str(a.get("amp", ""))
+	if amp != "":
+		var sd: Dictionary = {}
+		for s in STAFF:
+			if str(s.role) == amp: sd = s
+		if not sd.is_empty():
+			lines.append("Amplified by your %s%s." % [str(sd.name), "" if staff_has(amp) else " (not hired)"])
+	if not can_do(str(a.id)) and state.has("ap"):
+		if int(state["ap"]) < int(a.ap):
+			lines.append("\n⚠ Not enough action points this week.")
+		elif int(state["cash"]) < int(a.cost) * USD:
+			lines.append("\n⚠ You cannot afford this.")
+		elif cooldown_left(str(a.id)) > 0:
+			lines.append("\n⚠ On cooldown for %d more week(s)." % cooldown_left(str(a.id)))
+	return "\n".join(lines)
+
 func staff_def(id: String) -> Dictionary:
 	for s in STAFF:
 		if s.id == id: return s

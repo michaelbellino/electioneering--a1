@@ -1,32 +1,37 @@
-STATELINE: CAMPAIGN TRAIL — Alpha 0.1.0  (Windows 64-bit)
+STATELINE: CAMPAIGN TRAIL — Alpha 0.2.0  (Windows 64-bit)
 =========================================================
 
-HOW TO RUN
-----------
-1. Keep BOTH .exe files together in this folder.
-2. Double-click  Stateline.exe
+RUN IT
+------
+Keep both .exe files together, then double-click  Stateline.exe
+SmartScreen ("Windows protected your PC") -> More info -> Run anyway.
+If no window appears, run Stateline.console.exe and send me what it prints.
 
-If Windows SmartScreen appears ("Windows protected your PC"):
-   click "More info" -> "Run anyway".  (Unsigned indie build, not malware.)
+WHAT'S NEW IN 0.2.0
+-------------------
+* Candidate portraits redrawn — real hairlines, 7 hair styles, facial hair,
+  skin/suit/tie options, glasses. All customizable.
+* Candidate creation is now a 4-step wizard instead of one overwhelming wall:
+    1 Identity   — portrait, name, party (each party explains what it does)
+    2 Strengths  — difficulty, attributes, backgrounds
+    3 Platform   — the 8 issues
+    4 The Race   — searchable, filterable race browser
+* Every selectable thing now clearly shows it is selected (accent border + tint).
+* Backgrounds/traits now list their EXACT effects as chips
+  (e.g. "+25% starting name recognition", "-15 Fundraising", "+$40,000").
+* The race list no longer overflows: search, filter by office, and a full
+  detail pane with demographics, lean, towns and an opening projection.
+* Issue sliders expand: open any issue to see which voter groups agree with
+  your position, how much of the electorate they are, and how much they care.
+* Tooltips everywhere — hover any gauge, stat, action or staffer.
+* Campaign staff now say what they do and what they cost per week.
 
-IF Stateline.exe DOES NOTHING (no window appears)
--------------------------------------------------
-Run  Stateline.console.exe  instead. It opens a black console window and
-prints WHY the game couldn't start (graphics driver, a blocked file, etc.).
-Send me that console text and I'll fix it fast.
+THE LOOP
+--------
+Build a candidate -> spend action points each week on ads, rallies, the ground
+game and fundraisers -> survive the weekly dilemmas -> election night.
+You start as an underdog nobody has heard of: buy name recognition before you
+try to persuade anyone. Name recognition gates everything.
 
-Also worth a 10-second check:
- * Right-click Stateline.exe -> Properties. If there's an "Unblock" checkbox
-   at the bottom, tick it and click OK, then try again.
- * Confirm Stateline.exe is about 109 MB (109,839,640 bytes). If it's smaller,
-   the download/join was incomplete — grab it again.
- * Windows Defender occasionally quarantines unsigned game exes. If Stateline.exe
-   vanishes after you run it, that's Defender — check Protection History and
-   "Allow" it, or add an exclusion for this folder.
-
-WHAT IT IS
-----------
-Create a candidate, pick a race, run the campaign week by week (ads, rallies,
-ground game, fundraisers), survive the dilemmas, then play out a live election
-night. You start as the underdog — buy name recognition before you persuade.
+The (hamburger) button in HQ saves; "Continue" on the title screen reloads.
 Settings (volume / music / reduced motion) are on the title screen.

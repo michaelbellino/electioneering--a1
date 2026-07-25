@@ -19,10 +19,7 @@ func on_enter(_data: Variant = null) -> void:
 	_fx = Confetti.new()
 	add_child(_fx)
 
-	var root := UI.vbox(12)
-	var m := UI.margin(24)
-	m.add_child(root)
-	add_child(m)
+	var root := page(24, 12)
 
 	var header := UI.hbox(10)
 	header.alignment = BoxContainer.ALIGNMENT_CENTER

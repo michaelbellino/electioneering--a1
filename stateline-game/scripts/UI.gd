@@ -98,6 +98,78 @@ static func _style_button(b: Button, primary: bool) -> void:
 	b.add_theme_color_override("font_disabled_color", Palette.FAINT)
 	b.add_theme_font_size_override("font_size", 16)
 
+## Toggle button with an unmistakable selected state (accent tint + border + text).
+static func style_toggle(b: Button, accent := Palette.ACCENT) -> void:
+	b.toggle_mode = true
+	b.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	var tint := Palette.BG2.lerp(accent, 0.24)
+	var states := {
+		"normal": flat(Palette.PANEL2, 10, 1, Palette.BORDER),
+		"hover": flat(Palette.PANEL2.lightened(0.07), 10, 1, Palette.BORDER_HI),
+		"pressed": flat(tint, 10, 2, accent),
+		"hover_pressed": flat(tint.lightened(0.05), 10, 2, accent),
+		"focus": flat(Palette.PANEL2.lightened(0.07), 10, 2, accent),
+		"disabled": flat(Palette.PANEL, 10, 1, Palette.BORDER),
+	}
+	for st in states:
+		var box: StyleBoxFlat = states[st]
+		box.content_margin_left = 16; box.content_margin_right = 16
+		box.content_margin_top = 10; box.content_margin_bottom = 10
+		b.add_theme_stylebox_override(st, box)
+	b.add_theme_color_override("font_color", Palette.MUTED)
+	b.add_theme_color_override("font_hover_color", Palette.INK)
+	b.add_theme_color_override("font_pressed_color", accent.lightened(0.3))
+	b.add_theme_color_override("font_hover_pressed_color", accent.lightened(0.35))
+	b.add_theme_color_override("font_focus_color", Palette.INK)
+	b.add_theme_color_override("font_disabled_color", Palette.FAINT)
+	b.add_theme_font_size_override("font_size", 15)
+
+## A selectable segmented-control button.
+static func selectable(text: String, accent := Palette.ACCENT) -> Button:
+	var b := Button.new()
+	b.text = text
+	b.focus_mode = Control.FOCUS_ALL
+	style_toggle(b, accent)
+	return b
+
+## A selectable card-button; caller fills it with a child laid out via UI.margin().
+static func select_card(accent := Palette.ACCENT) -> Button:
+	var b := Button.new()
+	b.focus_mode = Control.FOCUS_ALL
+	b.clip_text = false
+	style_toggle(b, accent)
+	return b
+
+## A small rounded status chip (used for trait effects, race stats, filters).
+static func chip(text: String, color := Palette.ACCENT, bg_alpha := 0.16) -> PanelContainer:
+	var p := PanelContainer.new()
+	var bg := color
+	bg.a = bg_alpha
+	var box := flat(bg, 999, 1, color.lerp(Palette.BORDER, 0.45))
+	box.content_margin_left = 9; box.content_margin_right = 9
+	box.content_margin_top = 3; box.content_margin_bottom = 3
+	p.add_theme_stylebox_override("panel", box)
+	p.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	p.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	var l := Label.new()
+	l.text = text
+	l.add_theme_font_size_override("font_size", 11)
+	l.add_theme_color_override("font_color", color.lightened(0.25))
+	p.add_child(l)
+	return p
+
+## Wrapping body text at a fixed width (prevents the overflow we had before).
+static func wrap(text: String, width: float, size := 12, color := Palette.MUTED) -> Label:
+	var l := label(text, size, color)
+	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	l.custom_minimum_size = Vector2(width, 0)
+	l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	return l
+
+static func tip(c: Control, text: String) -> Control:
+	c.tooltip_text = text
+	return c
+
 static func hbox(sep := 12) -> HBoxContainer:
 	var h := HBoxContainer.new()
 	h.add_theme_constant_override("separation", sep)

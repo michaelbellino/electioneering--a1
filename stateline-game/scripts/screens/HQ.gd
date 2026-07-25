@@ -27,10 +27,7 @@ func on_enter(_data: Variant = null) -> void:
 	_fx = Confetti.new()
 	add_child(_fx)
 
-	var root := UI.vbox(10)
-	var m := UI.margin(16)
-	m.add_child(root)
-	add_child(m)
+	var root := page(16, 10)
 
 	root.add_child(_build_topbar())
 
@@ -80,11 +77,15 @@ func _build_topbar() -> Control:
 	h.add_child(_pill("Campaign", Palette.ACCENT))
 
 	_week_lbl = UI.label("", 14, Palette.INK)
+	_week_lbl.tooltip_text = "Weeks remaining before election day.\nEffects ramp up and decay over time, so late spending lands harder — but ads fatigue."
+	_week_lbl.mouse_filter = Control.MOUSE_FILTER_STOP
 	_week_lbl.custom_minimum_size = Vector2(150, 0)
 	_week_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	h.add_child(_week_lbl)
 
 	var cashv := UI.vbox(0)
+	cashv.tooltip_text = "Money on hand. Spend it — cash in the bank on election day wins zero votes.\nIncome comes from fundraisers, the weekly small-dollar trickle and your Finance Director."
+	cashv.mouse_filter = Control.MOUSE_FILTER_STOP
 	cashv.add_child(UI.label("WAR CHEST", 10, Palette.FAINT))
 	_cash_lbl = UI.label("$0", 18, Palette.GOLD)
 	_cash_lbl.add_theme_font_override("font", Palette.font_mono)
@@ -92,6 +93,8 @@ func _build_topbar() -> Control:
 	h.add_child(cashv)
 
 	var apv := UI.vbox(0)
+	apv.tooltip_text = "Action points left this week. Every move costs at least one.\nThey refresh when you end the week; a Campaign Manager grants one more."
+	apv.mouse_filter = Control.MOUSE_FILTER_STOP
 	apv.add_child(UI.label("ACTIONS", 10, Palette.FAINT))
 	_ap_ctl = Control.new()
 	_ap_ctl.custom_minimum_size = Vector2(96, 22)
@@ -100,6 +103,7 @@ func _build_topbar() -> Control:
 	h.add_child(apv)
 
 	var menu := UI.button("☰")
+	menu.tooltip_text = "Save your campaign"
 	menu.pressed.connect(_open_menu)
 	h.add_child(menu)
 	return panel
@@ -125,10 +129,12 @@ func _build_left() -> Control:
 	var map_panel := UI.panel()
 	var mv := UI.vbox(8)
 	map_panel.add_child(mv)
-	mv.add_child(UI.kicker("The District"))
+	var mk := UI.kicker("The District")
+	mk.tooltip_text = "Each cell is a precinct, tinted by projected support.\nThe bus marks where your campaign has been. On election night these report one by one."
+	mk.mouse_filter = Control.MOUSE_FILTER_STOP
+	mv.add_child(mk)
 	_map = MapView.new()
-	_map.custom_minimum_size = Vector2(300, 250)
-	_map.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_map.custom_minimum_size = Vector2(300, 236)
 	_map.configure(Game.state.district)
 	mv.add_child(_map)
 	col.add_child(map_panel)
@@ -136,10 +142,14 @@ func _build_left() -> Control:
 	var wire := UI.panel()
 	var wv := UI.vbox(8)
 	wire.add_child(wv)
-	wv.add_child(UI.kicker("Race Wire"))
+	var wk := UI.kicker("Race Wire")
+	wk.tooltip_text = "Everyone on the ballot, with their latest polling and an estimate of their money.\nOpponent cash is an estimate — your own figure is exact."
+	wk.mouse_filter = Control.MOUSE_FILTER_STOP
+	wv.add_child(wk)
 	_wire_box = UI.vbox(8)
 	wv.add_child(_wire_box)
 	col.add_child(wire)
+	col.add_child(UI.spacer())
 	return col
 
 # ---------------------------------------------------------------------------
@@ -153,7 +163,10 @@ func _build_center() -> Control:
 	var pv := UI.vbox(6)
 	poll_panel.add_child(pv)
 	var ph := UI.hbox(8)
-	ph.add_child(UI.kicker("Polling — Your Share Over Time"))
+	var pk := UI.kicker("Polling — Your Share Over Time")
+	pk.tooltip_text = "Sampled polls, not the true result. The shaded band is the margin of error.\nHire a Pollster or commission a poll for a tighter, more reliable read."
+	pk.mouse_filter = Control.MOUSE_FILTER_STOP
+	ph.add_child(pk)
 	pv.add_child(ph)
 	_chart = PollChart.new()
 	_chart.custom_minimum_size = Vector2(0, 200)
@@ -167,10 +180,14 @@ func _build_center() -> Control:
 	grid.add_theme_constant_override("h_separation", 24)
 	grid.add_theme_constant_override("v_separation", 10)
 	g_panel.add_child(grid)
-	_fav_g = _add_gauge(grid, "Net Favorability", true)
-	_name_g = _add_gauge(grid, "Name Recognition", false)
-	_cash_g = _add_gauge(grid, "Cash vs. Opponent", false)
-	_mom_g = _add_gauge(grid, "Momentum", true)
+	_fav_g = _add_gauge(grid, "Net Favorability", true,
+		"How warmly voters feel about you, from -100 to +100.\nRaised by positive ads, speeches and good weeks; cut by attacks and scandal.\nIt feeds directly into vote choice.")
+	_name_g = _add_gauge(grid, "Name Recognition", false,
+		"The share of voters who have heard of you at all.\nThis GATES everything: a voter who doesn't know you cannot vote for you,\nno matter how much they agree with you. Buy reach before persuasion.")
+	_cash_g = _add_gauge(grid, "Cash vs. Opponent", false,
+		"Your war chest as a share of the money in this race.\nBelow 50% means you are being outspent on the airwaves.")
+	_mom_g = _add_gauge(grid, "Momentum", true,
+		"Which way your polling has moved over the last three weeks.\nMomentum is a read on your trend, not a resource you can spend.")
 	col.add_child(g_panel)
 
 	# actions
@@ -178,7 +195,10 @@ func _build_center() -> Control:
 	act_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	var av := UI.vbox(8)
 	act_panel.add_child(av)
-	av.add_child(UI.kicker("This Week's Moves"))
+	var ak := UI.kicker("This Week's Moves")
+	ak.tooltip_text = "Spend action points and money here. Hover any move for exactly what it costs and does."
+	ak.mouse_filter = Control.MOUSE_FILTER_STOP
+	av.add_child(ak)
 	var scroll := ScrollContainer.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
@@ -190,12 +210,14 @@ func _build_center() -> Control:
 	col.add_child(act_panel)
 	return col
 
-func _add_gauge(grid: GridContainer, label: String, bipolar: bool) -> Gauge:
+func _add_gauge(grid: GridContainer, label: String, bipolar: bool, tip := "") -> Gauge:
 	var g := Gauge.new()
 	g.custom_minimum_size = Vector2(260, 40)
 	g.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	g.bipolar = bipolar
 	g.label_text = label
+	g.tooltip_text = tip
+	g.mouse_filter = Control.MOUSE_FILTER_STOP
 	grid.add_child(g)
 	return g
 
@@ -219,7 +241,7 @@ func _action_button(a: Dictionary) -> Control:
 	b.custom_minimum_size = Vector2(250, 58)
 	b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	UI._style_button(b, false)
-	b.tooltip_text = a.desc
+	b.tooltip_text = Game.action_tooltip(a)
 	var v := UI.vbox(1)
 	v.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var top := UI.hbox(6)
@@ -268,15 +290,21 @@ func _build_right() -> Control:
 	col.custom_minimum_size = Vector2(300, 0)
 
 	var staff_panel := UI.panel()
+	staff_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	var sv := UI.vbox(8)
 	staff_panel.add_child(sv)
 	sv.add_child(UI.kicker("Campaign Staff"))
+	var sscroll := ScrollContainer.new()
+	sscroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	sscroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	_staff_box = UI.vbox(6)
-	sv.add_child(_staff_box)
+	_staff_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	sscroll.add_child(_staff_box)
+	sv.add_child(sscroll)
 	col.add_child(staff_panel)
 
 	var news_panel := UI.panel()
-	news_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	news_panel.custom_minimum_size = Vector2(0, 170)
 	var nv := UI.vbox(8)
 	news_panel.add_child(nv)
 	nv.add_child(UI.kicker("Field Notes"))
@@ -302,6 +330,7 @@ func _build_bottom() -> Control:
 	h.add_child(_ticker)
 	_end_btn = UI.button("  End Week  →", true)
 	_end_btn.custom_minimum_size = Vector2(200, 40)
+	_end_btn.tooltip_text = "Bank the week. Your opponent moves, money comes in, salaries go out,\na fresh poll lands — and something may happen on the trail."
 	_end_btn.pressed.connect(_end_week)
 	h.add_child(_end_btn)
 	return h
@@ -450,11 +479,11 @@ func _rebuild_staff() -> void:
 		var b := Button.new()
 		b.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		b.custom_minimum_size = Vector2(0, 46)
+		b.custom_minimum_size = Vector2(0, 92)
 		UI._style_button(b, false)
 		b.tooltip_text = s.blurb + "\nSalary $%s/wk" % Game._comma(int(s.salary))
 		b.disabled = hired or int(Game.state.cash) < cost * 100
-		var v := UI.vbox(0)
+		var v := UI.vbox(2)
 		v.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		var top := UI.hbox(6)
 		top.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -462,6 +491,12 @@ func _rebuild_staff() -> void:
 		top.add_child(UI.spacer())
 		top.add_child(UI.label(("HIRED" if hired else "$" + Game._comma(cost)), 12, Palette.GOOD if hired else Palette.GOLD))
 		v.add_child(top)
+		var blurb := UI.wrap(str(s.blurb), 240, 10, Palette.GOOD if hired else Palette.MUTED)
+		blurb.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		v.add_child(blurb)
+		var sal := UI.label("$%s / week" % Game._comma(int(s.salary)), 10, Palette.FAINT)
+		sal.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		v.add_child(sal)
 		var mc := UI.margin(6)
 		mc.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		mc.add_child(v)
