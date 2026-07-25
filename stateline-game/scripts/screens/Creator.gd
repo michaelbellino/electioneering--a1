@@ -106,7 +106,7 @@ func _rebuild(animate := true) -> void:
 		var b := UI.selectable("%d. %s" % [i + 1, STEPS[i]])
 		b.button_pressed = (i == step)
 		b.custom_minimum_size = Vector2(150, 0)
-		b.disabled = i > step and not _step_valid(step)
+		b.disabled = i > step and not _steps_valid_through(i - 1)
 		var idx := i
 		b.pressed.connect(func():
 			if idx <= step or _step_valid(step):
@@ -154,6 +154,13 @@ func _step_valid(s: int) -> bool:
 		1: return _spent_points() <= _budget()
 		3: return district_id != ""
 		_: return true
+
+## Every step up to and including `upto` must be valid before jumping ahead.
+func _steps_valid_through(upto: int) -> bool:
+	for i in range(0, upto + 1):
+		if not _step_valid(i):
+			return false
+	return true
 
 func _step_hint(s: int) -> String:
 	match s:

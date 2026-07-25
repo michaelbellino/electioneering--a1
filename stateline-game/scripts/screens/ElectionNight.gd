@@ -83,6 +83,7 @@ func on_enter(_data: Variant = null) -> void:
 	right.add_child(_banner)
 
 	_continue = UI.button("  Continue  →", true)
+	_continue.custom_minimum_size = Vector2(0, 46)
 	_continue.visible = false
 	_continue.pressed.connect(func(): Audio.sfx("click"); go("results", result))
 	right.add_child(_continue)
@@ -135,17 +136,35 @@ func _process(delta: float) -> void:
 		var noise := sin(_t * 5.0 + hash(cid) % 7) * wobble
 		var shown: float = clampf(final_share + noise, 0.0, 1.0)
 		var row: Dictionary = _rows[cid]
-		row["bar"].value = shown * _report_pct + final_share * 0.0
 		row["bar"].value = shown
 		row["pct"].text = "%.1f%%" % (shown * 100.0)
 		row["votes"].text = "%s votes" % Game._comma(int(total_votes * final_share * _report_pct))
 	_reporting_lbl.text = "%d%% reporting" % int(_report_pct * 100)
-	# needle
-	var margin: float = float(result.shares.get("player", 0)) - _top_opp_share()
-	var prob := clampf(0.5 + margin * 3.5, 0.02, 0.98)
-	_needle.set_prob(prob, (1.0 - _report_pct) * 0.13)
+	# needle: read the margin from the votes counted SO FAR, with uncertainty that
+	# narrows as precincts report. Early returns swing; the call tightens.
+	var counted := maxf(_report_pct, 0.001)
+	var lead := 0.0
+	for cid in _rows:
+		if cid == "player": continue
+		lead = maxf(lead, float(result.shares.get(cid, 0.0)))
+	var true_margin: float = float(result.shares.get("player", 0.0)) - lead
+	# a seeded early-return bias that decays to zero as the count completes
+	var bias := sin(float(hash(str(result.get("winner", "")))) * 0.0001 + 1.7) * 0.16
+	var seen_margin: float = true_margin + bias * (1.0 - counted)
+	var conf: float = 1.2 + 6.0 * counted          # confidence grows with the count
+	var prob := clampf(0.5 + seen_margin * conf, 0.02, 0.98)
+	_needle.set_prob(prob, (1.0 - _report_pct) * 0.16)
 	if _report_pct >= 1.0 and not _declared:
 		_declare()
+
+func _unhandled_input(event: InputEvent) -> void:
+	if event is InputEventKey and event.pressed and not event.echo:
+		if event.keycode in [KEY_SPACE, KEY_ENTER]:
+			if _report_pct < 1.0:
+				_report_pct = 1.0          # skip to the call
+			elif _declared:
+				go("results", result)
+			get_viewport().set_input_as_handled()
 
 func _top_opp_share() -> float:
 	var best := 0.0

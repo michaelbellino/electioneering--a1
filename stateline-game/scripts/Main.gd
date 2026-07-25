@@ -279,6 +279,7 @@ func advance_week() -> void:
 	_pending_dilemma = {}
 	Game.end_week()
 	await get_tree().process_frame
+	await show_week_review()
 	if not _pending_dilemma.is_empty():
 		var d: Dictionary = _pending_dilemma
 		_pending_dilemma = {}
@@ -294,6 +295,19 @@ func advance_week() -> void:
 
 func _on_dilemma(d: Dictionary) -> void:
 	_pending_dilemma = d
+
+func show_week_review() -> void:
+	var report: Dictionary = Game.state.get("weekReport", {})
+	if report.is_empty():
+		return
+	overlay_layer.mouse_filter = Control.MOUSE_FILTER_STOP
+	var sheet := WeekReview.new()
+	overlay_layer.add_child(sheet)
+	sheet.setup(report)
+	await sheet.dismissed
+	if is_instance_valid(sheet):
+		sheet.queue_free()
+	overlay_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 func show_dilemma(d: Dictionary) -> void:
 	overlay_layer.mouse_filter = Control.MOUSE_FILTER_STOP

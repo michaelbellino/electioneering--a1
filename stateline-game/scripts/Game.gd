@@ -482,6 +482,15 @@ func _poll_leading_opponent() -> String:
 
 ## Advance one week: opponent AI, fundraising trickle, salaries, dilemma, poll.
 func end_week() -> void:
+	var report := {
+		"week": int(state["week"]) + 1,
+		"cashOpen": int(state["cash"]),
+		"pollBefore": float(current_poll_shares().get("player", 0.0)),
+		"opponents": [],
+		"news": "",
+		"trickle": 0, "salaries": 0, "apRestored": 0, "managerBonus": false,
+	}
+	state["weekReport"] = report
 	# Opponent agents act
 	_run_opponents()
 	# Weekly small-dollar trickle
@@ -491,24 +500,32 @@ func end_week() -> void:
 	if staff_has("fundraiser"): trickle *= 1.5
 	if staff_has("digital_director"): trickle += 3000.0 * _player_exposure()
 	state["cash"] = int(state["cash"]) + int(round(trickle)) * USD
+	report["trickle"] = int(round(trickle))
 	# Salaries
 	var salary := 0
 	for sid in state.get("staff", []):
 		salary += int(staff_def(sid).get("salary", 0))
 	salary = int(round(salary * float(state["player"].get("salaryMult", 1.0))))
 	state["cash"] = int(state["cash"]) - salary * USD
+	report["salaries"] = salary
 
 	state["week"] = int(state["week"]) + 1
 	# Refresh AP (+manager)
 	var ap: int = int(state["maxAP"])
-	if staff_has("manager"): ap += 1
+	if staff_has("manager"):
+		ap += 1
+		report["managerBonus"] = true
 	state["ap"] = ap
+	report["apRestored"] = ap
 	# Reduce ad fatigue slowly (audiences forget)
 	for k in state["adFatigue"].keys():
 		state["adFatigue"][k] = maxi(0, int(state["adFatigue"][k]) - 1)
 
 	_auto_poll(false)
 	_maybe_headline()
+	report["cashClose"] = int(state["cash"])
+	report["pollAfter"] = float(current_poll_shares().get("player", 0.0))
+	report["effects"] = _effect_attribution()
 	week_advanced.emit(int(state["week"]))
 	state_changed.emit()
 
@@ -554,6 +571,17 @@ func _run_opponents() -> void:
 
 func _opp_effect(o: Dictionary, channel: String, target: String, mag: float, ramp: float, half: float) -> void:
 	var cid: String = o.id if target == "self" else "player"
+	if state.has("weekReport"):
+		var word := ""
+		if channel == "favorability" and target == "player": word = "ran attack ads against you"
+		elif channel == "nameRecognition": word = "bought airtime to raise their profile"
+		elif channel == "favorability": word = "ran positive ads"
+		elif channel == "turnout": word = "invested in their ground game"
+		if word != "":
+			var list: Array = state["weekReport"]["opponents"]
+			var entry := "%s %s" % [str(o.get("name", "Your opponent")), word]
+			if not list.has(entry):
+				list.append(entry)
 	state["effects"].append({
 		"cand": cid, "channel": channel, "magnitude": mag,
 		"start_week": float(state["week"]), "ramp_weeks": ramp, "half_life_weeks": half, "tone": signf(mag),
@@ -736,6 +764,8 @@ func _maybe_headline() -> void:
 	var text: String = _fill_placeholders(h.get("text",""))
 	var tone: String = h.get("tone","neutral")
 	_add_news(text, tone)
+	if state.has("weekReport"):
+		state["weekReport"]["news"] = text
 
 func _fill_placeholders(t: String) -> String:
 	var d: Dictionary = state.get("district", {})
@@ -750,6 +780,32 @@ func _log(text: String) -> void:
 	state["log"].push_front("W%d: %s" % [int(state["week"]) + 1, text])
 	if state["log"].size() > 60:
 		state["log"].pop_back()
+
+## The biggest live contributors to your standing right now, in plain words.
+## The simulation already models ramp and decay — this surfaces it.
+func _effect_attribution() -> Array:
+	var week := float(state["week"])
+	var buckets: Dictionary = {}
+	for e in state.get("effects", []):
+		var v: float = Sim.effect_value(e, week)
+		if absf(v) < 0.012:
+			continue
+		var mine: bool = str(e.get("cand", "")) == "player"
+		var ch := str(e.get("channel", ""))
+		var key := "%s|%s" % [ch, "you" if mine else "them"]
+		buckets[key] = float(buckets.get(key, 0.0)) + (v if mine else -v)
+	var out: Array = []
+	for key in buckets:
+		var parts: PackedStringArray = str(key).split("|")
+		var ch: String = parts[0]
+		var v: float = float(buckets[key])
+		var label := str(CHANNEL_WORDS.get(ch, ch))
+		out.append({
+			"text": "%s %s" % [("Your" if parts[1] == "you" else "Their"), label],
+			"value": v,
+		})
+	out.sort_custom(func(a, b): return absf(float(a["value"])) > absf(float(b["value"])))
+	return out.slice(0, 5)
 
 # ---------------------------------------------------------------------------
 # Save / load
