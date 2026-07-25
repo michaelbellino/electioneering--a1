@@ -59,6 +59,10 @@ func _ready() -> void:
 
 	if "--shots" in OS.get_cmdline_user_args() or "--shots" in OS.get_cmdline_args():
 		call_deferred("_run_shots")
+	if "--enight" in OS.get_cmdline_user_args() or "--enight" in OS.get_cmdline_args():
+		call_deferred("_election_check")
+	if "--enightshots" in OS.get_cmdline_user_args() or "--enightshots" in OS.get_cmdline_args():
+		call_deferred("_election_shots")
 	if "--portraits" in OS.get_cmdline_user_args() or "--portraits" in OS.get_cmdline_args():
 		call_deferred("_portrait_sheet")
 	if "--creator" in OS.get_cmdline_user_args() or "--creator" in OS.get_cmdline_args():
@@ -114,6 +118,96 @@ func _portrait_sheet() -> void:
 	await _save_shot("portraits")
 	print("PORTRAIT SHEET done")
 	get_tree().quit()
+
+func _election_shots() -> void:
+	var sample := {
+		"name": "Maya Okonkwo", "party": "D",
+		"attrs": {"charisma": 0.7, "competence": 0.6, "integrity": 0.6, "fundraising": 0.5},
+		"positions": {}, "traits": [], "baseExposure": 0.12, "baseFavorability": 0.02,
+		"features": {"skin":"c68642","hairStyle":2,"hairColor":"2b2b2b","suit":"1b2a3f","tie":"f5c451"},
+	}
+	Game.new_game("pa-07", "normal", sample, 913)
+	for w in range(int(Game.state.totalWeeks)):
+		for aid in ["fundraiser", "rally", "canvass", "tv_positive"]:
+			if Game.can_do(aid): Game.do_action(aid)
+		Game.end_week()
+	await _goto_settled("election")
+	for i in 7:
+		await _wait(3.4)
+		await _save_shot("en_%d" % i)
+	print("ELECTION SHOTS done")
+	get_tree().quit()
+
+## Election night must never invent a vote. The precinct split is a presentation
+## layer over a result the simulation already fixed, so every seed has to end with
+## the tallies matching the sim to the vote, and the projected winner matching too.
+func _election_check() -> void:
+	Game.settings["reduced_motion"] = true
+	var races := ["pa-07", "oh-09", "az-gov"]
+	var sample := {
+		"name": "Maya Okonkwo", "party": "D",
+		"attrs": {"charisma": 0.7, "competence": 0.6, "integrity": 0.6, "fundraising": 0.5},
+		"positions": {}, "traits": [], "baseExposure": 0.12, "baseFavorability": 0.02,
+		"features": {},
+	}
+	var bad := 0
+	var checked := 0
+	var calls: Array = []
+	print("=== ELECTION NIGHT CHECK ===")
+	for race in races:
+		for seed in range(8):
+			Game.new_game(race, "normal", sample, 900 + seed)
+			for w in range(int(Game.state.totalWeeks)):
+				for aid in ["fundraiser", "rally", "canvass"]:
+					if Game.can_do(aid): Game.do_action(aid)
+				Game.end_week()
+			await _goto_settled("election")
+			var scr := current
+			var call_at: float = scr.call_point()
+			var res0: Dictionary = scr.result
+			var margin0: float = absf(float(res0.shares.get("player", 0.0)) - _runner_up(res0)) * 100.0
+			calls.append({"race": race, "margin": margin0, "at": call_at})
+			scr._skip()
+			await get_tree().process_frame
+			checked += 1
+			var res: Dictionary = scr.result
+			var total: float = float(res.get("totalVotes", 0))
+			var worst := 0.0
+			for cid in scr._counted:
+				var expect: float = float(res.shares.get(cid, 0.0)) * total
+				worst = maxf(worst, absf(float(scr._counted[cid]) - expect))
+			var st: Array = scr._standings()
+			var proj: String = str(st[0]["id"]) if st.size() > 0 else ""
+			var agree: bool = (proj == "player") == bool(res.get("won", false))
+			if worst > 1.0 or not agree:
+				bad += 1
+				print("  MISMATCH %s seed %d  vote drift %.2f  projected=%s won=%s"
+					% [race, seed, worst, proj, str(res.get("won", false))])
+			# reveal order must cover every precinct exactly once
+			var seen := {}
+			for i in scr._order:
+				if seen.has(i):
+					bad += 1
+					print("  DUPLICATE precinct %d in %s seed %d" % [i, race, seed])
+				seen[i] = true
+			if seen.size() != scr._map.cells.size():
+				bad += 1
+				print("  ORDER covers %d of %d precincts (%s seed %d)"
+					% [seen.size(), scr._map.cells.size(), race, seed])
+	print("checked %d counts, %d problems" % [checked, bad])
+	calls.sort_custom(func(a, b): return float(a["margin"]) < float(b["margin"]))
+	print("--- when the race gets called (final margin -> %% of precincts in) ---")
+	for c in calls:
+		print("  %-7s  margin %5.1f pts   called at %3d%%" % [c["race"], c["margin"], int(round(float(c["at"]) * 100.0))])
+	print("ELECTION NIGHT CHECK: %s" % ("PASS" if bad == 0 else "FAIL"))
+	get_tree().quit()
+
+func _runner_up(res: Dictionary) -> float:
+	var best := 0.0
+	for cid in res.get("shares", {}):
+		if cid == "player": continue
+		best = maxf(best, float(res.shares[cid]))
+	return best
 
 func _run_shots() -> void:
 	Game.settings["reduced_motion"] = true

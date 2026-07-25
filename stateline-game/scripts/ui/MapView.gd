@@ -22,6 +22,7 @@ var _fit_scale := 1.0
 var _fit_off := Vector2.ZERO
 var _bbox := Rect2()
 var subtitle := ""
+var lead_colors: Dictionary = {}     # candidate id -> colour, set by ElectionNight
 
 func configure(d: Dictionary) -> void:
 	district = d
@@ -52,6 +53,17 @@ func _recompute_fit() -> void:
 
 func _uv_to_px(uv: Vector2) -> Vector2:
 	return _fit_off + uv * _fit_scale
+
+## Roughly how far a point sits from the nearest boundary edge, in uv units.
+func _edge_clearance(p: Vector2) -> float:
+	var best := INF
+	for ring in rings:
+		var n: int = ring.size()
+		for i in n:
+			var a: Vector2 = ring[i]
+			var b: Vector2 = ring[(i + 1) % n]
+			best = minf(best, Geometry2D.get_closest_point_to_segment(p, a, b).distance_to(p))
+	return 0.0 if best == INF else best
 
 func _recompute_bbox() -> void:
 	var mn := Vector2(INF, INF)
@@ -125,29 +137,62 @@ func _build() -> void:
 			"support": 0.5 + 0.5 * clampf(lean, -1, 1),
 			"reported": false, "reportT": 0.0,
 			"phase": _rng.randf() * TAU,
+			# filled in by ElectionNight when the count starts
+			"weight": 0.7 + _rng.randf() * 0.6,
+			"votes": {}, "lead": "", "margin": 0.0, "town": -1, "flash": 0.0,
 		})
 
-	# Towns: spread across the interior, far apart, biased away from the edge.
+	# Towns: best-candidate sampling. For each town, try a batch of interior points
+	# and keep whichever sits farthest from the towns already placed. A plain
+	# rejection loop clumps them whenever the district is an awkward shape.
 	var names: Array = district.get("towns", [])
 	var spots: Array = []
-	var t_tries := 0
-	while spots.size() < names.size() and t_tries < 6000:
-		t_tries += 1
-		var p := Vector2(_rng.randf(), _rng.randf())
-		if not _point_in_shape(p):
-			continue
-		var ok := true
-		for q in spots:
-			if p.distance_to(q) < 0.20:
-				ok = false
-				break
-		if ok:
-			spots.append(p)
+	for _n in names.size():
+		var best := Vector2(-1, -1)
+		var best_score := -1.0
+		var fallback := Vector2(-1, -1)
+		for _k in 140:
+			var p := Vector2(_rng.randf(), _rng.randf())
+			if not _point_in_shape(p):
+				continue
+			if fallback.x < 0.0:
+				fallback = p
+			# a hard margin off the boundary, so labels have somewhere to sit —
+			# used as a gate, never as part of the score, or every town migrates
+			# to the middle of the district
+			if _edge_clearance(p) < 0.030:
+				continue
+			var score := 4.0
+			for q in spots:
+				score = minf(score, p.distance_to(q))
+			if score > best_score:
+				best_score = score
+				best = p
+		if best.x < 0.0:
+			best = fallback
+		if best.x >= 0.0:
+			spots.append(best)
 	for i in mini(names.size(), spots.size()):
-		towns.append({"uv": spots[i], "name": str(names[i]), "pulse": 0.0, "visited": false})
+		towns.append({"uv": spots[i], "name": str(names[i]), "pulse": 0.0, "visited": false,
+			"reported": 0, "total": 0, "called": false})
 	if towns.size() > 0:
 		_recompute_fit()
 		_bus["pos"] = _uv_to_px(towns[0]["uv"])
+	# Every precinct belongs to its nearest town, and how close it sits to that town
+	# stands in for density: the tight urban clusters count slowest, exactly like
+	# the real thing, which is why cities so often come in last and swing a race.
+	for cell in cells:
+		var best := -1
+		var best_d := INF
+		for i in towns.size():
+			var d: float = Vector2(cell["uv"]).distance_to(Vector2(towns[i]["uv"]))
+			if d < best_d:
+				best_d = d
+				best = i
+		cell["town"] = best
+		cell["urban"] = clampf(1.0 - best_d / 0.30, 0.0, 1.0)
+		if best >= 0:
+			towns[best]["total"] = int(towns[best]["total"]) + 1
 
 # ---------------------------------------------------------------------------
 func set_projection(p_share: float, seg_shares: Dictionary) -> void:
@@ -169,12 +214,138 @@ func tour_next() -> void:
 	_bus["traveling"] = true
 	towns[int(_bus["target"])]["visited"] = true
 
+## Hand the election's real totals down to the precincts and work out the order
+## the clerks report them in. Returns that order as cell indices.
+##
+## The split is exact: each candidate's final vote count is divided among the
+## precincts in proportion to that precinct's demographic affinity for them, so
+## the precincts always add back up to the simulation's result to the vote. The
+## map can never disagree with the tally.
+func tabulate(result: Dictionary, cands: Array, seed_val: int) -> Array:
+	if cells.is_empty():
+		return []
+	var rng := RandomNumberGenerator.new()
+	rng.seed = seed_val
+	var total_votes: float = float(result.get("totalVotes", 0))
+	var seg_share := _segment_shares(result)
+
+	var totals: Dictionary = {}
+	for c in cands:
+		totals[c.id] = 0.0
+	for cell in cells:
+		var aff: Dictionary = {}
+		var base: Dictionary = seg_share.get(str(cell.get("seg", "")), {})
+		for c in cands:
+			var s: float = float(base.get(c.id, 1.0 / maxf(cands.size(), 1)))
+			aff[c.id] = maxf(s * (1.0 + rng.randfn(0.0, 0.16)), 0.004) * float(cell.get("weight", 1.0))
+			totals[c.id] = float(totals[c.id]) + float(aff[c.id])
+		cell["aff"] = aff
+
+	for cell in cells:
+		var votes: Dictionary = {}
+		var sum := 0.0
+		for c in cands:
+			var v: float = float(result.shares.get(c.id, 0.0)) * total_votes \
+				* float(cell["aff"][c.id]) / maxf(float(totals[c.id]), 1e-9)
+			votes[c.id] = v
+			sum += v
+		cell["votes"] = votes
+		var best := ""; var best_v := -1.0; var second := 0.0
+		for cid in votes:
+			var v2: float = float(votes[cid])
+			if v2 > best_v:
+				second = best_v
+				best_v = v2
+				best = cid
+			elif v2 > second:
+				second = v2
+		cell["lead"] = best
+		cell["margin"] = (best_v - maxf(second, 0.0)) / maxf(sum, 1e-9)
+
+	var seq: Array = []
+	for i in cells.size():
+		# Enough of a density skew that the towns visibly come in last and can
+		# swing it; a closeness penalty so the knife-edge boxes are the ones still
+		# outstanding at 95%; and a little per-clerk noise on top.
+		var t: float = float(cells[i].get("urban", 0.5)) * 0.32
+		t += _closeness_delay(float(cells[i]["margin"]))
+		t += rng.randf() * 0.30
+		seq.append({"i": i, "t": t})
+	seq.sort_custom(func(a, b): return float(a["t"]) < float(b["t"]))
+	var order: Array = []
+	for e in seq:
+		order.append(int(e["i"]))
+	return order
+
+func _closeness_delay(margin: float) -> float:
+	if margin < 0.01: return 0.55
+	if margin < 0.02: return 0.40
+	if margin < 0.04: return 0.22
+	if margin < 0.08: return 0.08
+	return 0.0
+
+func _segment_shares(result: Dictionary) -> Dictionary:
+	var out := {}
+	for seg in result.get("segments", {}):
+		var votes: Dictionary = result.segments[seg]
+		var tot := 0.0
+		for cid in votes:
+			tot += float(votes[cid])
+		var row := {}
+		for cid in votes:
+			row[cid] = float(votes[cid]) / tot if tot > 0 else 0.0
+		out[seg] = row
+	return out
+
+## Show the finished map with every box counted — no animation, no suspense.
+func show_final() -> void:
+	mode = "election"
+	reporting = false
+	report_pct = 1.0
+	for cell in cells:
+		cell["reported"] = true
+		cell["reportT"] = 1.0
+		cell["flash"] = 0.0
+	for t in towns:
+		t["reported"] = int(t["total"])
+		t["called"] = true
+	queue_redraw()
+
+## Switch to election-night rendering. The count itself is driven from outside
+## (ElectionNight owns the clock and the tabulation) — the map only renders it.
 func start_reporting() -> void:
 	mode = "election"
 	reporting = true
 	report_pct = 0.0
 	for cell in cells:
 		cell["reported"] = false
+		cell["reportT"] = 0.0
+	for t in towns:
+		t["reported"] = 0
+		t["called"] = false
+
+## Mark one precinct as counted. Returns its town index if that town just finished.
+func reveal_cell(i: int) -> int:
+	if i < 0 or i >= cells.size():
+		return -1
+	var cell: Dictionary = cells[i]
+	if cell["reported"]:
+		return -1
+	cell["reported"] = true
+	cell["reportT"] = 0.0
+	cell["flash"] = 1.0
+	var ti: int = int(cell.get("town", -1))
+	if ti >= 0 and ti < towns.size():
+		var t: Dictionary = towns[ti]
+		t["reported"] = int(t["reported"]) + 1
+		t["pulse"] = 0.7
+		if not t["called"] and int(t["reported"]) >= int(t["total"]):
+			t["called"] = true
+			return ti
+	return -1
+
+func set_report_pct(p: float) -> void:
+	report_pct = clampf(p, 0.0, 1.0)
 
 func _process(delta: float) -> void:
 	_t += delta
@@ -189,27 +360,13 @@ func _process(delta: float) -> void:
 	ripples = ripples.filter(func(r): return r["t"] < 1.0)
 	for t in towns:
 		t["pulse"] = maxf(0.0, float(t["pulse"]) - delta * 1.5)
-	if reporting:
-		report_pct = minf(1.0, report_pct + delta * 0.26)
-		var want := int(report_pct * cells.size())
-		var got := 0
+	if mode == "election":
 		for cell in cells:
-			if cell["reported"]: got += 1
-		while got < want:
-			var moved := false
-			for cell in cells:
-				if not cell["reported"]:
-					cell["reported"] = true
-					cell["reportT"] = 0.0
-					got += 1
-					moved = true
-					break
-			if not moved: break
-		for cell in cells:
-			if cell["reported"] and float(cell["reportT"]) < 1.0:
-				cell["reportT"] = minf(1.0, float(cell["reportT"]) + delta * 3.0)
-		if report_pct >= 1.0:
-			reporting = false
+			if cell["reported"]:
+				if float(cell["reportT"]) < 1.0:
+					cell["reportT"] = minf(1.0, float(cell["reportT"]) + delta * 3.2)
+				if float(cell["flash"]) > 0.0:
+					cell["flash"] = maxf(0.0, float(cell["flash"]) - delta * 1.8)
 	queue_redraw()
 
 # ---------------------------------------------------------------------------
@@ -238,18 +395,29 @@ func _draw() -> void:
 			_fill_poly(pts2, Color("f2ecdf"))
 
 	# precincts
+	var base_r := maxf(_fit_scale * 0.011, 2.0)
 	for cell in cells:
 		var p := _uv_to_px(cell["uv"])
 		var col: Color
-		if mode == "election" and not cell["reported"]:
-			col = Color("ded6c6")
+		var r := base_r
+		if mode == "election":
+			if not cell["reported"]:
+				# outstanding: a hollow dot, so "not counted yet" never reads as a result
+				draw_arc(p, base_r, 0, TAU, 12, Color("cdc4b1"), 1.2, true)
+				continue
+			col = _result_color(cell)
+			var t: float = float(cell["reportT"])
+			col = Color("fff8e0").lerp(col, t)
+			var fl: float = float(cell["flash"])
+			if fl > 0.0 and not reduced:
+				var halo := Palette.GOLD
+				halo.a = fl * 0.35
+				draw_circle(p, base_r + 5.0 * fl, halo)
+				r = base_r * (1.0 + 0.45 * fl)
 		else:
 			col = _support_color(float(cell["support"]))
-			if mode == "election":
-				col = Color("fff3cc").lerp(col, float(cell["reportT"]))
-		if mode == "campaign" and not reduced:
-			col.a = 0.80 + 0.20 * sin(_t * 1.3 + float(cell["phase"]))
-		var r := maxf(_fit_scale * 0.011, 2.0)
+			if not reduced:
+				col.a = 0.80 + 0.20 * sin(_t * 1.3 + float(cell["phase"]))
 		draw_circle(p, r, col)
 
 	# boundary on top
@@ -275,7 +443,12 @@ func _draw() -> void:
 		if pr > 0.0:
 			var gc := Palette.GOLD; gc.a = pr * 0.45
 			draw_circle(p, 9 + pr * 10, gc)
-		draw_circle(p, 4.5, Palette.GOLD if t["visited"] else Palette.INK)
+		var dot := Palette.INK
+		if mode == "election":
+			dot = Palette.GOLD if t["called"] else Palette.INK.lerp(Palette.BG, 0.45)
+		elif t["visited"]:
+			dot = Palette.GOLD
+		draw_circle(p, 4.5, dot)
 		draw_arc(p, 4.5, 0, TAU, 16, Color("ffffff"), 1.5, true)
 	_draw_town_labels()
 
@@ -304,6 +477,16 @@ func _fill_poly(pts: PackedVector2Array, col: Color) -> void:
 	while i + 2 < idx.size():
 		draw_colored_polygon(PackedVector2Array([pts[idx[i]], pts[idx[i + 1]], pts[idx[i + 2]]]), col)
 		i += 3
+
+## A counted precinct is coloured by who actually carried it and by how hard —
+## a 51/49 precinct should not look like a 90/10 one.
+func _result_color(cell: Dictionary) -> Color:
+	var lead := str(cell.get("lead", ""))
+	if lead == "":
+		return _support_color(float(cell.get("support", 0.5)))
+	var base: Color = lead_colors.get(lead, Palette.IND)
+	var m: float = clampf(float(cell.get("margin", 0.0)) / 0.35, 0.10, 1.0)
+	return Color("e6dfd0").lerp(base, 0.35 + 0.65 * m)
 
 func _support_color(support: float) -> Color:
 	if support >= 0.5:

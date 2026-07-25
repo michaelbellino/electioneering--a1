@@ -126,3 +126,11 @@ func _district_number(id: String, nm: String) -> String:
 	if digits != "":
 		return "%02d" % int(digits)
 	return ""
+
+## Human-readable name for a voter segment ("white_noncollege" -> "White, no
+## college degree"). The labels live on the segment list, not the behaviour table.
+func segment_label(id: String) -> String:
+	for s in segments:
+		if str(s.get("id", "")) == id:
+			return str(s.get("label", id))
+	return id
