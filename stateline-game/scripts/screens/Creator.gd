@@ -15,6 +15,7 @@ var party := "D"
 var attrs := {"charisma": 6, "competence": 6, "integrity": 5, "fundraising": 5}
 var traits: Array = []
 var positions: Dictionary = {}
+var stances: Dictionary = {}
 var features: Dictionary = {}
 var difficulty_id := "normal"
 var district_id := ""
@@ -41,8 +42,8 @@ const ATTR_INFO := {
 func on_enter(_data: Variant = null) -> void:
 	_rng.randomize()
 	features = Portrait.make_features(_rng)
-	for iss in Sim.issue_ids():
-		positions[iss] = 0.0
+	stances = Sim.blank_stances()
+	positions = Sim.aggregate_to_areas(stances)
 	if Content.districts.size() > 0:
 		district_id = str(Content.districts[0].get("id", ""))
 	_roll_name()
@@ -514,134 +515,257 @@ func _budget() -> int:
 	return int(Game.difficulty(difficulty_id).points)
 
 # ---------------------------------------------------------------------------
-# STEP 3 — Platform (each issue expands into the real model)
+# STEP 3 — Platform. Your platform is 24 concrete POLICY stances, not 8 vague
+# sliders. Area sliders are a quick brush; open an area to set each policy
+# precisely, see how it polls relative to its area, and who it moves.
 # ---------------------------------------------------------------------------
 func _step_platform() -> Control:
-	var scroll := ScrollContainer.new()
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	var col := UI.vbox(10)
-	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	scroll.add_child(col)
+	var row := UI.hbox(14)
+
+	# ---- left: ideology compass + summary -----------------------------------
+	var left := UI.panel()
+	left.custom_minimum_size = Vector2(330, 0)
+	var lv := UI.vbox(8)
+	left.add_child(lv)
+	lv.add_child(UI.kicker("Your ideology"))
+	var ideo := Sim.ideology_of(stances)
+	var compass := Compass.new()
+	compass.custom_minimum_size = Vector2(290, 270)
+	compass.set_values(float(ideo.fiscal), float(ideo.social))
+	compass.tooltip_text = "Computed from all 24 of your policy stances.\nThe gold crosshair is where this district's voters sit."
+	var d0: Dictionary = _district()
+	if not d0.is_empty():
+		var di := _district_ideology(d0)
+		compass.set_district(float(di.fiscal), float(di.social))
+	lv.add_child(compass)
+
+	var fi := UI.hbox(6)
+	fi.add_child(UI.label("Fiscal", 12, Palette.MUTED))
+	fi.add_child(UI.spacer())
+	fi.add_child(UI.chip(Sim.ideology_label(float(ideo.fiscal)), Palette.ACCENT))
+	lv.add_child(fi)
+	var so := UI.hbox(6)
+	so.add_child(UI.label("Social", 12, Palette.MUTED))
+	so.add_child(UI.spacer())
+	so.add_child(UI.chip(Sim.ideology_label(float(ideo.social)), Palette.IND))
+	lv.add_child(so)
+
+	if not d0.is_empty():
+		var fit := _platform_fit(d0)
+		var fr := UI.hbox(6)
+		fr.add_child(UI.label("Fit with race", 12, Palette.MUTED))
+		fr.add_child(UI.spacer())
+		fr.add_child(UI.chip("%d%% aligned" % int(round(fit * 100)),
+			Palette.GOOD if fit > 0.60 else (Palette.WARN if fit > 0.45 else Palette.BAD), 0.20))
+		lv.add_child(fr)
+		lv.add_child(UI.wrap("Measured against %s, weighting each group by size and by how much they care." % str(d0.get("name", "")), 280, 11, Palette.FAINT))
+
+	lv.add_child(UI.spacer())
+	var preset_lbl := UI.label("Quick presets", 12, Palette.MUTED)
+	lv.add_child(preset_lbl)
+	var prow := UI.hbox(6)
+	for p in [["Progressive", 0.55], ["Centrist", 0.0], ["Conservative", -0.55]]:
+		var pb := UI.button(str(p[0]))
+		pb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		pb.add_theme_font_size_override("font_size", 12)
+		pb.tooltip_text = "Set every policy to a %s starting point. You can still tune each one." % str(p[0]).to_lower()
+		pb.pressed.connect(func():
+			for pol in Content.policies:
+				stances[str(pol.get("id", ""))] = float(p[1])
+			Audio.sfx("confirm")
+			_rebuild())
+		prow.add_child(pb)
+	lv.add_child(prow)
+	row.add_child(left)
+
+	# ---- right: the areas ---------------------------------------------------
+	var right := UI.vbox(8)
+	right.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 
 	var head := UI.panel()
-	var hv := UI.vbox(6)
+	var hv := UI.vbox(4)
 	head.add_child(hv)
 	var hr := UI.hbox(8)
-	hr.add_child(UI.kicker("Where you stand"))
+	hr.add_child(UI.kicker("Where you stand — %d policies across %d areas" % [Content.policies.size(), Content.issues.size()]))
 	hr.add_child(UI.spacer())
-	var d: Dictionary = _district()
-	if not d.is_empty():
-		var fit := _platform_fit(d)
-		hr.add_child(UI.label("Fit with %s:" % str(d.get("name", "")), 12, Palette.MUTED))
-		hr.add_child(UI.chip("%d%% aligned" % int(round(fit * 100)),
-			Palette.GOOD if fit > 0.62 else (Palette.WARN if fit > 0.48 else Palette.BAD), 0.20))
+	hr.add_child(UI.label("Open an area to set each policy precisely", 11, Palette.FAINT))
 	hv.add_child(hr)
-	hv.add_child(UI.wrap("Voters reward proximity on the issues they care about. Open any issue to see exactly which voters it moves in your chosen race — and how much they care.", 900, 12, Palette.FAINT))
-	col.add_child(head)
+	right.add_child(head)
 
+	var scroll := ScrollContainer.new()
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	var col := UI.vbox(8)
+	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(col)
 	for iss in Content.issues:
 		col.add_child(_issue_row(iss))
-	return scroll
+	right.add_child(scroll)
+	row.add_child(right)
+	return row
 
 func _issue_row(iss: Dictionary) -> Control:
 	var iid := str(iss.get("id", ""))
 	var open: bool = expanded_issue == iid
+	var area_val: float = float(_areas().get(iid, 0.0))
 	var panel := UI.panel()
 	var v := UI.vbox(6)
 	panel.add_child(v)
 
 	var top := UI.hbox(8)
+	var pols := Sim.policies_for_area(iid)
 	var expander := UI.button(("▾  " if open else "▸  ") + str(iss.get("name", "")))
-	expander.tooltip_text = "Show who this issue moves in your race"
-	expander.custom_minimum_size = Vector2(230, 0)
+	expander.tooltip_text = "Open the %d specific policies under %s" % [pols.size(), str(iss.get("name", ""))]
+	expander.custom_minimum_size = Vector2(220, 0)
 	expander.pressed.connect(func():
 		expanded_issue = "" if open else iid
 		Audio.sfx("click")
 		_rebuild())
 	top.add_child(expander)
-	var stance := UI.label(_stance_text(iss, float(positions.get(iid, 0.0))), 12, _stance_color(float(positions.get(iid, 0.0))))
+	var stance := UI.label(_stance_text(iss, area_val), 12, _stance_color(area_val))
 	stance.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	top.add_child(stance)
+	top.add_child(UI.chip("%d policies" % pols.size(), Palette.MUTED, 0.10))
 	var sal := UI.chip("salience %d%%" % int(round(float(iss.get("baseSalience", 0.5)) * 100)), Palette.MUTED, 0.10)
-	sal.tooltip_text = "How much weight voters put on this issue nationally."
+	sal.tooltip_text = "How much weight voters put on this area nationally."
 	top.add_child(sal)
 	v.add_child(top)
 
+	# area-level brush: moves every policy underneath it at once
+	var brow := UI.hbox(8)
+	var bleft := UI.label(str(iss.get("left", "")), 11, Palette.GOP)
+	bleft.custom_minimum_size = Vector2(160, 0)
+	bleft.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	var bsld := HSlider.new()
+	bsld.min_value = -1.0; bsld.max_value = 1.0; bsld.step = 0.05
+	bsld.value = area_val
+	bsld.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	bsld.custom_minimum_size = Vector2(0, 22)
+	bsld.tooltip_text = "Sets every policy in this area at once. Open the area to fine-tune individual policies."
+	bsld.value_changed.connect(func(val):
+		Sim.stances_from_area(stances, iid, val)
+		stance.text = _stance_text(iss, val)
+		stance.add_theme_color_override("font_color", _stance_color(val))
+		Audio.sfx("tick", -14.0))
+	bsld.drag_ended.connect(func(_c): _rebuild())
+	var bright := UI.label(str(iss.get("right", "")), 11, Palette.DEM)
+	bright.custom_minimum_size = Vector2(160, 0)
+	brow.add_child(bleft); brow.add_child(bsld); brow.add_child(bright)
+	v.add_child(brow)
+
+	if open:
+		v.add_child(_area_detail(iss, pols))
+	return panel
+
+## The precise layer: one slider per named policy, with its polling character.
+func _area_detail(iss: Dictionary, pols: Array) -> Control:
+	var iid := str(iss.get("id", ""))
+	var inner := PanelContainer.new()
+	inner.add_theme_stylebox_override("panel", UI.flat(Palette.BG2, 8, 1, Palette.BORDER))
+	var box := UI.vbox(8)
+	inner.add_child(box)
+
+	box.add_child(UI.label("SPECIFIC POSITIONS", 11, Palette.GOLD))
+	box.add_child(UI.wrap("Your area position is the weighted average of these. Specific policies poll differently from the area they sit in — background checks outrun \"gun control\".", 780, 11, Palette.FAINT))
+
+	for p in pols:
+		box.add_child(_policy_row(p))
+
+	# who this area moves
+	var d: Dictionary = _district()
+	if not d.is_empty():
+		box.add_child(HSeparator.new())
+		var avg := _electorate_avg(d, iid)
+		var mine: float = float(_areas().get(iid, 0.0))
+		var line := UI.hbox(8)
+		line.add_child(UI.chip("Your area position %+.2f" % mine, Palette.ACCENT))
+		line.add_child(UI.chip("This electorate %+.2f" % avg, Palette.GOLD))
+		var gap: float = absf(mine - avg)
+		line.add_child(UI.chip("Gap %.2f — %s" % [gap, ("close" if gap < 0.35 else ("wide" if gap > 0.8 else "workable"))],
+			Palette.GOOD if gap < 0.35 else (Palette.BAD if gap > 0.8 else Palette.WARN)))
+		box.add_child(line)
+		box.add_child(UI.label("How each group sees you on this area", 12, Palette.MUTED))
+		for r in _segment_agreement(d, iid, mine):
+			box.add_child(_agreement_row(r))
+	return inner
+
+func _policy_row(p: Dictionary) -> Control:
+	var pid := str(p.get("id", ""))
+	var val: float = float(stances.get(pid, 0.0))
+	var v := UI.vbox(2)
+
+	var top := UI.hbox(6)
+	var nm := UI.label(str(p.get("label", "")), 13, Palette.INK)
+	nm.custom_minimum_size = Vector2(210, 0)
+	top.add_child(nm)
+	var pick := UI.label(_policy_stance_text(p, val), 12, _stance_color(val))
+	pick.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	top.add_child(pick)
+	top.add_child(UI.chip("weight %d%%" % int(round(float(p.get("weight", 0.0)) * 100)), Palette.MUTED, 0.10))
+	var off := float(p.get("popularOffset", 0.0))
+	if absf(off) >= 0.05:
+		var polls_better := off > 0.0
+		var c := UI.chip(("polls %+d vs area" % int(round(off * 100))), Palette.GOOD if polls_better else Palette.BAD)
+		c.tooltip_text = ("The progressive side of this policy is MORE popular than its area overall."
+			if polls_better else "The progressive side of this policy is LESS popular than its area overall.")
+		top.add_child(c)
+	v.add_child(top)
+
 	var row := UI.hbox(8)
-	var left := UI.label(str(iss.get("left", "")), 11, Palette.GOP)
-	left.custom_minimum_size = Vector2(170, 0)
+	var left := UI.label(str(p.get("con", "")), 11, Palette.GOP)
+	left.custom_minimum_size = Vector2(160, 0)
 	left.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	var sld := HSlider.new()
 	sld.min_value = -1.0; sld.max_value = 1.0; sld.step = 0.05
-	sld.value = float(positions.get(iid, 0.0))
+	sld.value = val
 	sld.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	sld.custom_minimum_size = Vector2(0, 22)
-	var right := UI.label(str(iss.get("right", "")), 11, Palette.DEM)
-	right.custom_minimum_size = Vector2(170, 0)
-	sld.value_changed.connect(func(val):
-		positions[iid] = val
-		stance.text = _stance_text(iss, val)
-		stance.add_theme_color_override("font_color", _stance_color(val))
-		Audio.sfx("tick", -12.0))
-	if open:
-		sld.value_changed.connect(func(_v): _refresh_footer())
+	sld.custom_minimum_size = Vector2(0, 20)
+	sld.tooltip_text = "%s  ←→  %s" % [str(p.get("con", "")), str(p.get("pro", ""))]
+	sld.value_changed.connect(func(nv):
+		stances[pid] = nv
+		pick.text = _policy_stance_text(p, nv)
+		pick.add_theme_color_override("font_color", _stance_color(nv))
+		Audio.sfx("tick", -16.0))
+	sld.drag_ended.connect(func(_c): _rebuild())
+	var right := UI.label(str(p.get("pro", "")), 11, Palette.DEM)
+	right.custom_minimum_size = Vector2(160, 0)
 	row.add_child(left); row.add_child(sld); row.add_child(right)
 	v.add_child(row)
+	return v
 
-	if open:
-		v.add_child(_issue_detail(iss))
-	return panel
+func _agreement_row(r: Dictionary) -> Control:
+	var hr := UI.hbox(8)
+	var nm := UI.label(str(r["label"]), 11, Palette.INK)
+	nm.custom_minimum_size = Vector2(180, 0)
+	hr.add_child(nm)
+	var bar := ProgressBar.new()
+	bar.show_percentage = false
+	bar.min_value = 0; bar.max_value = 1
+	bar.value = float(r["agree"])
+	bar.custom_minimum_size = Vector2(0, 10)
+	bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var c: Color = Palette.GOOD if float(r["agree"]) > 0.66 else (Palette.WARN if float(r["agree"]) > 0.42 else Palette.BAD)
+	bar.add_theme_stylebox_override("fill", UI.flat(c, 3))
+	bar.add_theme_stylebox_override("background", UI.flat(Palette.PANEL2, 3))
+	hr.add_child(bar)
+	var pct := UI.label("%d%%" % int(round(float(r["agree"]) * 100)), 11, c)
+	pct.add_theme_font_override("font", Palette.font_mono)
+	pct.custom_minimum_size = Vector2(42, 0)
+	hr.add_child(pct)
+	var share := UI.label("%d%% of voters" % int(round(float(r["share"]) * 100)), 11, Palette.FAINT)
+	share.custom_minimum_size = Vector2(92, 0)
+	hr.add_child(share)
+	var cares := UI.label("cares ×%.2f" % float(r["salience"]), 11, Palette.FAINT)
+	cares.add_theme_font_override("font", Palette.font_mono)
+	hr.add_child(cares)
+	return hr
 
-func _issue_detail(iss: Dictionary) -> Control:
-	var iid := str(iss.get("id", ""))
-	var d: Dictionary = _district()
-	var box := UI.vbox(6)
-	var inner := PanelContainer.new()
-	inner.add_theme_stylebox_override("panel", UI.flat(Palette.BG2, 8, 1, Palette.BORDER))
-	inner.add_child(box)
-	if d.is_empty():
-		box.add_child(UI.label("Pick a race to see who this moves.", 12, Palette.FAINT))
-		return inner
-
-	var avg := _electorate_avg(d, iid)
-	var mine := float(positions.get(iid, 0.0))
-	var line := UI.hbox(10)
-	line.add_child(UI.chip("Your stance %+.2f" % mine, Palette.ACCENT))
-	line.add_child(UI.chip("This electorate %+.2f" % avg, Palette.GOLD))
-	var gap: float = absf(mine - avg)
-	line.add_child(UI.chip("Gap %.2f — %s" % [gap, ("close" if gap < 0.35 else ("wide" if gap > 0.8 else "workable"))],
-		Palette.GOOD if gap < 0.35 else (Palette.BAD if gap > 0.8 else Palette.WARN)))
-	box.add_child(line)
-
-	box.add_child(UI.label("How each group sees your position", 12, Palette.MUTED))
-	var rows := _segment_agreement(d, iid, mine)
-	for r in rows:
-		var hr := UI.hbox(8)
-		var nm := UI.label(str(r["label"]), 11, Palette.INK)
-		nm.custom_minimum_size = Vector2(190, 0)
-		hr.add_child(nm)
-		var bar := ProgressBar.new()
-		bar.show_percentage = false
-		bar.min_value = 0; bar.max_value = 1
-		bar.value = float(r["agree"])
-		bar.custom_minimum_size = Vector2(0, 10)
-		bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		var c: Color = Palette.GOOD if float(r["agree"]) > 0.66 else (Palette.WARN if float(r["agree"]) > 0.42 else Palette.BAD)
-		bar.add_theme_stylebox_override("fill", UI.flat(c, 3))
-		bar.add_theme_stylebox_override("background", UI.flat(Palette.PANEL2, 3))
-		hr.add_child(bar)
-		var pct := UI.label("%d%%" % int(round(float(r["agree"]) * 100)), 11, c)
-		pct.add_theme_font_override("font", Palette.font_mono)
-		pct.custom_minimum_size = Vector2(42, 0)
-		hr.add_child(pct)
-		var share := UI.label("%d%% of voters" % int(round(float(r["share"]) * 100)), 11, Palette.FAINT)
-		share.custom_minimum_size = Vector2(96, 0)
-		hr.add_child(share)
-		var cares := UI.label("cares ×%.2f" % float(r["salience"]), 11, Palette.FAINT)
-		cares.add_theme_font_override("font", Palette.font_mono)
-		hr.add_child(cares)
-		box.add_child(hr)
-	return inner
+func _policy_stance_text(p: Dictionary, v: float) -> String:
+	var a := absf(v)
+	if a < 0.08:
+		return "No firm position"
+	var intensity := "Lean:" if a < 0.35 else ("Support:" if a < 0.7 else "Champion:")
+	return "%s %s" % [intensity, str(p.get("pro", "")) if v > 0 else str(p.get("con", ""))]
 
 func _stance_text(iss: Dictionary, v: float) -> String:
 	var a := absf(v)
@@ -655,7 +779,11 @@ func _stance_color(v: float) -> Color:
 	if absf(v) < 0.08: return Palette.MUTED
 	return Palette.DEM if v > 0 else Palette.GOP
 
-## CVAP- and salience-weighted average position of this electorate on an issue.
+## Current 8 area positions, aggregated from the 24 stances.
+func _areas() -> Dictionary:
+	return Sim.aggregate_to_areas(stances)
+
+## CVAP- and salience-weighted average position of this electorate on an area.
 func _electorate_avg(d: Dictionary, issue: String) -> float:
 	var num := 0.0
 	var den := 0.0
@@ -690,20 +818,40 @@ func _segment_label(seg: String) -> String:
 			return str(s.get("label", seg))
 	return seg
 
-## 0..1 overall platform alignment with a district, weighted by share × salience.
+## Where this district's voters sit on the two ideology axes.
+func _district_ideology(d: Dictionary) -> Dictionary:
+	var f := 0.0
+	var fw := 0.0
+	var s := 0.0
+	var sw := 0.0
+	for p in Content.policies:
+		var area := str(p.get("area", ""))
+		var epos := _electorate_avg(d, area) + float(p.get("popularOffset", 0.0))
+		var w := float(p.get("weight", 0.0))
+		var pf := float(p.get("fiscal", 0.0))
+		var ps := float(p.get("social", 0.0))
+		f += clampf(epos, -1, 1) * pf * w; fw += pf * w
+		s += clampf(epos, -1, 1) * ps * w; sw += ps * w
+	return {"fiscal": (f / fw) if fw > 0 else 0.0, "social": (s / sw) if sw > 0 else 0.0}
+
+## Platform alignment, computed POLICY BY POLICY so precise positions matter:
+## each policy is compared against the electorate's area position shifted by that
+## policy's own popularity offset, weighted by policy weight × group size × salience.
 func _platform_fit(d: Dictionary) -> float:
 	var num := 0.0
 	var den := 0.0
-	for iss in Sim.issue_ids():
+	for p in Content.policies:
+		var area := str(p.get("area", ""))
+		var pw := float(p.get("weight", 0.0))
+		var mine := float(stances.get(str(p.get("id", "")), 0.0))
 		for seg in d.get("segmentShares", {}):
 			var b: Dictionary = Content.behavior.get(seg, {})
 			if b.is_empty(): continue
-			var w := float(d["segmentShares"][seg]) * float(b.get("issueSalience", {}).get(iss, 1.0))
-			var pos := float(b.get("issuePositions", {}).get(iss, 0.0))
-			num += w * clampf(1.0 - absf(pos - float(positions.get(iss, 0.0))), 0.0, 1.0)
+			var w := pw * float(d["segmentShares"][seg]) * float(b.get("issueSalience", {}).get(area, 1.0))
+			var epos := clampf(float(b.get("issuePositions", {}).get(area, 0.0)) + float(p.get("popularOffset", 0.0)), -1.0, 1.0)
+			num += w * clampf(1.0 - absf(epos - mine), 0.0, 1.0)
 			den += w
 	return num / den if den > 0.0 else 0.5
-
 # ---------------------------------------------------------------------------
 # STEP 4 — The race (browser + detail; no more overflowing card wall)
 # ---------------------------------------------------------------------------
@@ -914,7 +1062,7 @@ func _preview_share(d: Dictionary) -> float:
 	var attr_floats := {}
 	for k in attrs: attr_floats[k] = float(attrs[k]) / 10.0
 	var me := {
-		"id": "player", "party": party, "positions": positions, "attrs": attr_floats,
+		"id": "player", "party": party, "positions": Sim.aggregate_to_areas(stances), "attrs": attr_floats,
 		"scandal": 0.0, "baseExposure": 0.5, "baseFavorability": 0.0,
 	}
 	var opp_dir: float = -1.0 if party == "D" else 1.0
@@ -943,7 +1091,8 @@ func _launch_campaign() -> void:
 		"name": pname.strip_edges(),
 		"party": party,
 		"attrs": attr_floats,
-		"positions": positions.duplicate(),
+		"positions": Sim.aggregate_to_areas(stances),
+		"stances": stances.duplicate(),
 		"traits": traits.duplicate(),
 		"features": features.duplicate(),
 		"baseExposure": 0.10,

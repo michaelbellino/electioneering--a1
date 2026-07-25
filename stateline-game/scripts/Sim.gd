@@ -251,6 +251,79 @@ func run_poll(true_shares: Dictionary, sample_size: int, rng: RandomNumberGenera
 # Helpers for content / AI
 # ---------------------------------------------------------------------------
 
+# ---------------------------------------------------------------------------
+# The POLICY layer: a platform is 24 concrete stances, not 8 abstract sliders.
+# Each area position the electorate model consumes is the weighted aggregate of
+# the stances beneath it, so precise positions drive the whole simulation.
+# ---------------------------------------------------------------------------
+
+func policies_for_area(area: String) -> Array:
+	var out: Array = []
+	for p in Content.policies:
+		if str(p.get("area", "")) == area:
+			out.append(p)
+	return out
+
+func policy(id: String) -> Dictionary:
+	for p in Content.policies:
+		if str(p.get("id", "")) == id:
+			return p
+	return {}
+
+## 24 stances → the 8 calibrated area positions the voter model uses.
+func aggregate_to_areas(stances: Dictionary) -> Dictionary:
+	var out: Dictionary = {}
+	for area in issue_ids():
+		var ps := policies_for_area(area)
+		var total_w := 0.0
+		var acc := 0.0
+		for p in ps:
+			var w := float(p.get("weight", 0.0))
+			total_w += w
+			acc += float(stances.get(str(p.get("id", "")), 0.0)) * w
+		out[area] = acc / total_w if total_w > 0.0 else 0.0
+	return out
+
+## Fill every stance in an area from a single area-level slider (quick platform).
+func stances_from_area(stances: Dictionary, area: String, value: float) -> void:
+	for p in policies_for_area(area):
+		stances[str(p.get("id", ""))] = value
+
+func blank_stances() -> Dictionary:
+	var d: Dictionary = {}
+	for p in Content.policies:
+		d[str(p.get("id", ""))] = 0.0
+	return d
+
+## Fiscal / social ideology, each −1 (conservative) .. +1 (progressive).
+func ideology_of(stances: Dictionary) -> Dictionary:
+	var f := 0.0
+	var fw := 0.0
+	var s := 0.0
+	var sw := 0.0
+	for p in Content.policies:
+		var v := float(stances.get(str(p.get("id", "")), 0.0))
+		var w := float(p.get("weight", 0.0))
+		var pf := float(p.get("fiscal", 0.0))
+		var ps := float(p.get("social", 0.0))
+		f += v * pf * w
+		fw += pf * w
+		s += v * ps * w
+		sw += ps * w
+	return {
+		"fiscal": (f / fw) if fw > 0.0 else 0.0,
+		"social": (s / sw) if sw > 0.0 else 0.0,
+	}
+
+func ideology_label(v: float) -> String:
+	var mag := absf(v)
+	if mag < 0.1:
+		return "Centrist"
+	var dir := "progressive" if v > 0.0 else "conservative"
+	if mag < 0.35: return "Lean %s" % dir
+	if mag < 0.65: return "Solidly %s" % dir
+	return "Staunchly %s" % dir
+
 ## Blank position map (all centrist).
 func blank_positions() -> Dictionary:
 	var d: Dictionary = {}

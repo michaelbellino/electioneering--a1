@@ -12,9 +12,16 @@ Windows/macOS/Linux executable.
 
 ## What it is
 
-- **Candidate creator** — procedural portrait, party, point-buy attributes (charisma / competence /
-  integrity / fundraising), trade-off background traits, an 8-issue platform, and a choice of **22
-  playable races** across the country (House, Senate, Governor, Mayor) at four difficulty levels.
+- **Candidate creator** — a four-step wizard: procedural portrait and party; point-buy attributes
+  (charisma / competence / integrity / fundraising) and trade-off background traits whose exact
+  effects are listed; a **24-policy platform**; and a searchable browser of **22 playable races**
+  (House, Senate, Governor, Mayor) at four difficulty levels.
+- **A platform of 24 concrete policy stances**, not 8 vague sliders. Under each issue area sit named
+  policies (universal background checks, drug-price negotiation, carbon pricing…) each with its own
+  weight and a *polling offset* — specific positions poll differently from the area they sit in.
+  Your area positions are the weighted aggregate, and a **fiscal × social ideology compass** plots you
+  against the district's own voters. Open any area to set each policy precisely and see which voter
+  groups agree, how big they are and how much they care.
 - **Campaign HQ** — an animated district map with a touring campaign bus, a live polling chart with
   margin-of-error band, favourability / name-recognition / cash / momentum gauges, a data-driven
   **action deck** (TV / radio / digital / issue ads, rallies, town halls, canvassing, direct mail,
@@ -67,8 +74,9 @@ data/               all content as JSON: issues, voter model, districts, dilemma
 audio/              procedurally-generated SFX + music (built by tools/gen_audio.py)
 ```
 
-## Status — alpha
+## Status — alpha 0.3.0
 
 The full campaign loop is complete and balanced (win rates track the star ratings across the four
-difficulties). Not yet built: the debate mini-game screen and the post-win **governing** phase (bill
-drafting, whip counts, re-election) — teased on the results screen and next on the roadmap.
+difficulties; `--balance` prints the table). Not yet built: the debate mini-game screen and the
+post-win **governing** phase (bill drafting, whip counts, re-election) — teased on the results
+screen and next on the roadmap.

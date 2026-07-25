@@ -1,0 +1,33 @@
+[
+  { "id": "tax_wealthy",       "area": "taxes_spending", "label": "Taxes on high earners",    "pro": "Raise top rates",            "con": "Cut top rates",             "weight": 0.35, "popularOffset":  0.15, "fiscal": 1.0, "social": 0.0 },
+  { "id": "tax_middle",        "area": "taxes_spending", "label": "Middle-class taxes",       "pro": "Expand credits",             "con": "Across-the-board cuts",     "weight": 0.30, "popularOffset":  0.10, "fiscal": 1.0, "social": 0.0 },
+  { "id": "spending_programs", "area": "taxes_spending", "label": "Social program spending",  "pro": "Expand programs",            "con": "Cut and balance",           "weight": 0.35, "popularOffset": -0.05, "fiscal": 1.0, "social": 0.0 },
+
+  { "id": "public_option",     "area": "healthcare",     "label": "Public health option",     "pro": "Create one",                 "con": "Keep private-only",         "weight": 0.40, "popularOffset":  0.10, "fiscal": 0.8, "social": 0.2 },
+  { "id": "drug_prices",       "area": "healthcare",     "label": "Drug price negotiation",   "pro": "Negotiate prices",           "con": "Market pricing",            "weight": 0.30, "popularOffset":  0.25, "fiscal": 0.8, "social": 0.2 },
+  { "id": "medicaid_expand",   "area": "healthcare",     "label": "Medicaid expansion",       "pro": "Expand eligibility",         "con": "Tighten eligibility",       "weight": 0.30, "popularOffset":  0.05, "fiscal": 0.9, "social": 0.1 },
+
+  { "id": "citizenship_path",  "area": "immigration",    "label": "Path to citizenship",      "pro": "Create a path",              "con": "No amnesty",                "weight": 0.35, "popularOffset":  0.00, "fiscal": 0.2, "social": 0.8 },
+  { "id": "border_security",   "area": "immigration",    "label": "Border enforcement",       "pro": "Humane processing",          "con": "Harden the border",         "weight": 0.40, "popularOffset": -0.20, "fiscal": 0.2, "social": 0.8 },
+  { "id": "legal_migration",   "area": "immigration",    "label": "Legal immigration levels", "pro": "Raise caps",                 "con": "Lower caps",                "weight": 0.25, "popularOffset":  0.05, "fiscal": 0.4, "social": 0.6 },
+
+  { "id": "background_checks", "area": "guns",           "label": "Universal background checks", "pro": "Require them",            "con": "Oppose new checks",         "weight": 0.40, "popularOffset":  0.30, "fiscal": 0.0, "social": 1.0 },
+  { "id": "assault_weapons",   "area": "guns",           "label": "Assault-weapons ban",      "pro": "Ban sales",                  "con": "Protect sales",             "weight": 0.35, "popularOffset": -0.05, "fiscal": 0.0, "social": 1.0 },
+  { "id": "carry_laws",        "area": "guns",           "label": "Concealed carry",          "pro": "Stricter permits",           "con": "Constitutional carry",      "weight": 0.25, "popularOffset": -0.10, "fiscal": 0.0, "social": 1.0 },
+
+  { "id": "abortion_legality", "area": "abortion",       "label": "Legality",                 "pro": "Protect access",             "con": "Restrict access",           "weight": 0.50, "popularOffset":  0.10, "fiscal": 0.0, "social": 1.0 },
+  { "id": "abortion_funding",  "area": "abortion",       "label": "Public funding",           "pro": "Fund coverage",              "con": "No public funding",         "weight": 0.25, "popularOffset": -0.15, "fiscal": 0.3, "social": 0.7 },
+  { "id": "abortion_late",     "area": "abortion",       "label": "Later-term limits",        "pro": "Physician discretion",       "con": "Strict limits",             "weight": 0.25, "popularOffset": -0.20, "fiscal": 0.0, "social": 1.0 },
+
+  { "id": "clean_energy",      "area": "climate_energy", "label": "Clean-energy investment",  "pro": "Invest big",                 "con": "Let markets decide",        "weight": 0.35, "popularOffset":  0.15, "fiscal": 0.6, "social": 0.4 },
+  { "id": "fossil_leases",     "area": "climate_energy", "label": "Drilling & pipelines",     "pro": "Wind down",                  "con": "Expand production",         "weight": 0.35, "popularOffset": -0.15, "fiscal": 0.6, "social": 0.4 },
+  { "id": "carbon_price",      "area": "climate_energy", "label": "Carbon pricing",           "pro": "Price carbon",               "con": "No carbon tax",             "weight": 0.30, "popularOffset": -0.10, "fiscal": 0.8, "social": 0.2 },
+
+  { "id": "police_funding",    "area": "crime_policing", "label": "Police budgets",           "pro": "Reallocate to services",     "con": "Fund the police",           "weight": 0.35, "popularOffset": -0.25, "fiscal": 0.3, "social": 0.7 },
+  { "id": "sentencing",        "area": "crime_policing", "label": "Sentencing reform",        "pro": "Reduce mandatory minimums",  "con": "Tough sentencing",          "weight": 0.35, "popularOffset":  0.05, "fiscal": 0.2, "social": 0.8 },
+  { "id": "drug_policy",       "area": "crime_policing", "label": "Drug policy",              "pro": "Treat, not jail",            "con": "Enforce hard",              "weight": 0.30, "popularOffset":  0.15, "fiscal": 0.3, "social": 0.7 },
+
+  { "id": "lgbtq_rights",      "area": "social_culture", "label": "LGBTQ protections",        "pro": "Expand protections",         "con": "Religious exemptions",      "weight": 0.35, "popularOffset":  0.05, "fiscal": 0.0, "social": 1.0 },
+  { "id": "school_curriculum", "area": "social_culture", "label": "School curriculum",        "pro": "Local educator control",     "con": "Parental review boards",    "weight": 0.35, "popularOffset": -0.10, "fiscal": 0.0, "social": 1.0 },
+  { "id": "voting_access",     "area": "social_culture", "label": "Voting access",            "pro": "Expand early/mail voting",   "con": "Tighten ID rules",          "weight": 0.30, "popularOffset":  0.10, "fiscal": 0.2, "social": 0.8 }
+]

@@ -3,6 +3,7 @@ extends Node
 ## Autoloaded as `Content`. Real placeholder now; full data wired in later.
 
 var issues: Array = []
+var policies: Array = []
 var segments: Array = []
 var behavior: Dictionary = {}      # segment_id -> behavior dict
 var districts: Array = []
@@ -21,6 +22,7 @@ func _ready() -> void:
 
 func _load_all() -> void:
 	issues     = _json("res://data/issues.json", [])
+	policies   = _json("res://data/policies.json", [])
 	var vm      = _json("res://data/voter_model.json", {})
 	segments   = vm.get("segments", []) if vm is Dictionary else []
 	behavior   = {}
@@ -37,7 +39,7 @@ func _load_all() -> void:
 	ads        = _json("res://data/ads.json", {})
 	copy       = _json("res://data/copy.json", {})
 	loaded = true
-	print("[Content] loaded: %d issues, %d districts, %d dilemmas" % [issues.size(), districts.size(), dilemmas.size()])
+	print("[Content] loaded: %d issues, %d policies, %d districts, %d dilemmas" % [issues.size(), policies.size(), districts.size(), dilemmas.size()])
 
 func _json(path: String, fallback):
 	if not ResourceLoader.exists(path) and not FileAccess.file_exists(path):
